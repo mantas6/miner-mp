@@ -8,10 +8,10 @@ Python standard library and, when ffmpeg is available, also encodes MP3 and OGG.
 
 Examples:
   # Smoke test render
-  python3 soundtrack_source.py --duration 8 --out-prefix assets/soviet-soundtrack-test
+  python3 soundtrack_source.py --duration 8 --out-prefix public/assets/soviet-soundtrack-test
 
   # Re-render browser assets used by game.js
-  python3 soundtrack_source.py --duration 175 --out-prefix assets/soviet-soundtrack
+  python3 soundtrack_source.py --duration 175 --out-prefix public/assets/soviet-soundtrack
 
 Notes:
   - Existing committed MP3/OGG files are browser playback assets.
@@ -220,8 +220,8 @@ def encode_with_ffmpeg(wav_path: Path, out_prefix: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Render the Motherload clone soundtrack from source.")
     parser.add_argument("--duration", type=float, default=175.0, help="render length in seconds")
-    parser.add_argument("--out-prefix", default="assets/soviet-soundtrack-source",
-                        help="output prefix, e.g. assets/soviet-soundtrack")
+    parser.add_argument("--out-prefix", default="public/assets/soviet-soundtrack-source",
+                        help="output prefix, e.g. public/assets/soviet-soundtrack")
     parser.add_argument("--keep-wav", action="store_true", help="keep intermediate WAV after MP3/OGG encode")
     args = parser.parse_args()
 

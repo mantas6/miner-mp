@@ -1,6 +1,6 @@
 # Moleload
 
-**Play online:** https://alfred687b.github.io/miner/
+**Status:** private repo; run locally with Vite (`npm run dev`) or build with `npm run build`.
 
 A small browser-based Motherload-style mining game. Mine ore, return to the surface depot, sell cargo, upgrade the ship, and survive deeper hazards/enemies until you reach the Motherlode core.
 
@@ -10,50 +10,83 @@ A small browser-based Motherload-style mining game. Mine ore, return to the surf
 miner/
 ├── README.md
 ├── index.html
+├── package.json
+├── vite.config.js
+├── src/
+│   └── main.js
 ├── style.css
 ├── game.js
 ├── soundtrack_source.py
-└── assets/
-    ├── soviet-soundtrack.mp3
-    └── soviet-soundtrack.ogg
+├── public/
+│   └── assets/
+│       ├── soviet-soundtrack.mp3
+│       └── soviet-soundtrack.ogg
+└── .github/
+    └── workflows/
+        └── build.yml
 ```
 
 | Path | Purpose |
 |---|---|
-| `index.html` | Main game page, canvas, HUD, intro/help overlay, shop buttons. |
+| `index.html` | Main game page, canvas, HUD, intro/help overlay, shop buttons; loaded by Vite. |
+| `src/main.js` | Vite entry point that imports CSS and game code. |
 | `style.css` | Visual styling, responsive/mobile HUD layout, intro art. |
 | `game.js` | Game logic: world generation, mining, movement, enemies, shop, HUD, sound. |
+| `vite.config.js` | Vite config, including relative asset paths for GitHub Pages. |
+| `.github/workflows/build.yml` | CI workflow that installs dependencies and verifies `npm run build`. |
 | `soundtrack_source.py` | Editable source generator for the soundtrack. |
-| `assets/soviet-soundtrack.mp3` | Browser music asset used when MP3 is supported. |
-| `assets/soviet-soundtrack.ogg` | Browser music fallback asset. |
+| `public/assets/soviet-soundtrack.mp3` | Browser music asset used when MP3 is supported. |
+| `public/assets/soviet-soundtrack.ogg` | Browser music fallback asset. |
 
 ## Play online
 
-GitHub Pages build:
+The previous GitHub Pages URL was:
 
 ```text
 https://alfred687b.github.io/miner/
 ```
 
+Because the repo is currently private and the current GitHub plan does not support Pages for this private repo, use `npm run dev` or `npm run preview` locally unless the repo is made public again.
+
 ## Run locally
 
-From the repository directory, start any static file server. For example, with Python:
+Install dependencies once:
 
 ```bash
-python3 -m http.server 8080
+npm install
 ```
 
-Then open:
+Start the Vite development server:
+
+```bash
+npm run dev
+```
+
+Then open the local URL printed by Vite, usually:
 
 ```text
-http://127.0.0.1:8080/
+http://127.0.0.1:5173/
 ```
 
-If `8080` is busy, choose another port:
+## Build
+
+Create a production build in `dist/`:
 
 ```bash
-python3 -m http.server 8090
+npm run build
 ```
+
+Preview the built site locally:
+
+```bash
+npm run preview
+```
+
+## Deployment
+
+This repository is currently private, and the current GitHub plan does not support GitHub Pages for this private repo. The project is still configured for a normal Vite production build via `npm run build`; the committed GitHub Actions workflow verifies that build on pushes to `main`.
+
+If the repo is made public again, the `dist/` output can be deployed to GitHub Pages using the standard Vite Pages workflow.
 
 ## Controls
 
@@ -83,8 +116,8 @@ python3 -m http.server 8090
 The game currently plays:
 
 ```text
-assets/soviet-soundtrack.mp3
-assets/soviet-soundtrack.ogg
+public/assets/soviet-soundtrack.mp3
+public/assets/soviet-soundtrack.ogg
 ```
 
 `game.js` chooses MP3 when the browser supports it, otherwise it falls back to OGG:
@@ -119,23 +152,23 @@ Important editable constants near the top:
 Use a short render before replacing the real game assets:
 
 ```bash
-python3 soundtrack_source.py --duration 8 --out-prefix assets/soviet-soundtrack-test --keep-wav
+python3 soundtrack_source.py --duration 8 --out-prefix public/assets/soviet-soundtrack-test --keep-wav
 ```
 
 Expected outputs:
 
 ```text
-assets/soviet-soundtrack-test.wav
-assets/soviet-soundtrack-test.mp3
-assets/soviet-soundtrack-test.ogg
+public/assets/soviet-soundtrack-test.wav
+public/assets/soviet-soundtrack-test.mp3
+public/assets/soviet-soundtrack-test.ogg
 ```
 
 Clean up the test files when done:
 
 ```bash
-rm assets/soviet-soundtrack-test.wav \
-   assets/soviet-soundtrack-test.mp3 \
-   assets/soviet-soundtrack-test.ogg
+rm public/assets/soviet-soundtrack-test.wav \
+   public/assets/soviet-soundtrack-test.mp3 \
+   public/assets/soviet-soundtrack-test.ogg
 ```
 
 ### Re-render the in-game soundtrack assets
@@ -143,20 +176,20 @@ rm assets/soviet-soundtrack-test.wav \
 This overwrites the files the game uses:
 
 ```bash
-python3 soundtrack_source.py --duration 175 --out-prefix assets/soviet-soundtrack
+python3 soundtrack_source.py --duration 175 --out-prefix public/assets/soviet-soundtrack
 ```
 
 Outputs:
 
 ```text
-assets/soviet-soundtrack.mp3
-assets/soviet-soundtrack.ogg
+public/assets/soviet-soundtrack.mp3
+public/assets/soviet-soundtrack.ogg
 ```
 
 `--keep-wav` can be added if you also want the intermediate WAV:
 
 ```bash
-python3 soundtrack_source.py --duration 175 --out-prefix assets/soviet-soundtrack --keep-wav
+python3 soundtrack_source.py --duration 175 --out-prefix public/assets/soviet-soundtrack --keep-wav
 ```
 
 ## Audio/browser notes
@@ -173,25 +206,24 @@ After making changes:
 
 ```bash
 python3 -m py_compile soundtrack_source.py
-python3 soundtrack_source.py --duration 3 --out-prefix assets/soviet-soundtrack-smoke --keep-wav
-rm assets/soviet-soundtrack-smoke.wav \
-   assets/soviet-soundtrack-smoke.mp3 \
-   assets/soviet-soundtrack-smoke.ogg
+python3 soundtrack_source.py --duration 3 --out-prefix public/assets/soviet-soundtrack-smoke --keep-wav
+rm public/assets/soviet-soundtrack-smoke.wav \
+   public/assets/soviet-soundtrack-smoke.mp3 \
+   public/assets/soviet-soundtrack-smoke.ogg
 ```
 
-For browser smoke testing, serve the folder and confirm the page loads:
+For browser smoke testing, build and preview the Vite app:
 
 ```bash
-python3 -m http.server 8080
-# open http://127.0.0.1:8080/
+npm run build
+npm run preview
+# open the local URL printed by Vite
 ```
 
-If URLs or asset names are changed, also check that these load successfully:
+If URLs or asset names are changed, also check that these load successfully from the preview server:
 
 ```text
-http://127.0.0.1:8080/
-http://127.0.0.1:8080/game.js
-http://127.0.0.1:8080/style.css
-http://127.0.0.1:8080/assets/soviet-soundtrack.mp3
-http://127.0.0.1:8080/assets/soviet-soundtrack.ogg
+/
+/assets/soviet-soundtrack.mp3
+/assets/soviet-soundtrack.ogg
 ```

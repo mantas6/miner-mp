@@ -2,11 +2,16 @@
 __pycache__/
 *.py[cod]
 
+# Node/Vite artifacts
+node_modules/
+dist/
+.vite/
+
 # Local editor/OS files
 .DS_Store
 .idea/
 .vscode/
 
 # Temporary soundtrack smoke-test renders
-assets/*-smoke.*
-assets/*-test.*
+public/assets/*-smoke.*
+public/assets/*-test.*
