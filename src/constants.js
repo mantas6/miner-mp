@@ -1,4 +1,4 @@
-export const TILE = 128; // oversized tiles for phone readability
+export const TILE = 96; // 25% zoomed-out tiles so more of the mine is visible
 export const WORLD_W = 90;
 export const WORLD_H = 320;
 export const SURFACE_HEIGHT = 3;
