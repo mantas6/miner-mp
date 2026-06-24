@@ -273,14 +273,35 @@ export function createRenderer({ state, get, rand }) {
     ctx.strokeStyle = '#ffc857'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(bx+TILE*9.55, by+TILE*.68); ctx.lineTo(bx+TILE*9.55, by+TILE*1.35); ctx.stroke();
     ['#9b5f2b','#6b8f40','#8b4d35','#b77934','#455d85','#7c3f33'].forEach((c,i)=>{ const col=i%3, row=Math.floor(i/3); ctx.fillStyle=c; ctx.fillRect(bx+TILE*(8.18+col*.43), groundY-TILE*(.32+row*.27), TILE*.35, TILE*.24); ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.strokeRect(bx+TILE*(8.18+col*.43), groundY-TILE*(.32+row*.27), TILE*.35, TILE*.24); });
 
-    drawFixedTreeline();
+    drawDistantTreeline();
+    drawParallaxTreeShapes(camX);
   }
 
-  function drawFixedTreeline() {
-    // Screen-space silhouettes: keep the distant treeline steady while the camera pans.
+  function drawDistantTreeline() {
+    // Distant line stays screen-space so the far background does not swim.
+    const baseY = SURFACE_HEIGHT * TILE - TILE * .28;
+    ctx.fillStyle = 'rgba(34,80,57,.42)';
+    ctx.beginPath();
+    ctx.moveTo(0, baseY);
+    for (let x=0; x<=canvas.width+40; x+=40) {
+      const h = 18 + rand(x, 7) * 20;
+      ctx.lineTo(x, baseY - h);
+      ctx.lineTo(x + 20, baseY - h * .72);
+    }
+    ctx.lineTo(canvas.width, baseY + 24);
+    ctx.lineTo(0, baseY + 24);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawParallaxTreeShapes(camX) {
+    // Nearer tree shapes are not camera-locked: they drift slower than buildings.
     const treeBaseY = SURFACE_HEIGHT * TILE - TILE * .18;
-    for (let i=0;i<34;i++) {
-      const x = (i*47 + 13) % canvas.width;
+    const spacing = TILE * .72;
+    const parallaxX = camX * TILE * .38;
+    for (let i=-4;i<24;i++) {
+      const worldX = i * spacing + 17;
+      const x = ((worldX - parallaxX) % (canvas.width + spacing * 2)) - spacing;
       const trunkH = 18 + rand(i,4)*20;
       const trunkW = 5 + rand(i,8)*5;
       const crownR = 15 + rand(i,3)*20;
