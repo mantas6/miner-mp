@@ -1,6 +1,8 @@
 export const TILE = 128; // oversized tiles for phone readability
 export const WORLD_W = 90;
 export const WORLD_H = 320;
+export const SURFACE_HEIGHT = 3;
+export const START_Y = SURFACE_HEIGHT - 1;
 
 export const ORES = [
   {name:'Coal', color:'#343434', value:8, min:2, chance:.10},

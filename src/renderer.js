@@ -1,4 +1,4 @@
-import { TILE, WORLD_H, WORLD_W } from './constants.js';
+import { SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants.js';
 import { canvas, ctx, H, W } from './dom.js';
 
 export function createRenderer({ state, get, rand }) {
@@ -78,7 +78,7 @@ export function createRenderer({ state, get, rand }) {
   function drawTile(t, wx, wy, sx, sy) {
     const pad = 1.5; // overdraw slightly so adjacent cells have no visible seams
     if(t.type==='air') {
-      if (wy>0){
+      if (wy >= SURFACE_HEIGHT){
         const darkness = Math.min(.76, wy/82);
         ctx.fillStyle = `rgba(17,10,7,${darkness})`;
         ctx.fillRect(sx-pad,sy-pad,TILE+pad*2,TILE+pad*2);
@@ -204,8 +204,8 @@ export function createRenderer({ state, get, rand }) {
     }
   }
   function drawTerrainBlendOverlay(camY) {
-    if (camY < .2) {
-      const gy = (1 - camY) * TILE;
+    if (camY < SURFACE_HEIGHT + .2) {
+      const gy = (SURFACE_HEIGHT - camY) * TILE;
       const grad = ctx.createLinearGradient(0, gy, 0, canvas.height);
       grad.addColorStop(0, 'rgba(100,58,28,.10)');
       grad.addColorStop(.55, 'rgba(58,31,16,.09)');
@@ -224,33 +224,57 @@ export function createRenderer({ state, get, rand }) {
     ctx.restore();
   }
   function drawSurface(camX, camY) {
-    if (camY >= 2.2) return;
-    const y = -camY*TILE;
-    ctx.fillStyle = '#1b623f'; ctx.fillRect(0, y, canvas.width, TILE*.25);
-    ctx.fillStyle = '#74451e'; ctx.fillRect(0, y+TILE*.25, canvas.width, TILE*.14);
-    // depot platform
-    const bx = (WORLD_W/2-4.8-camX)*TILE, by = y + TILE*.05;
-    ctx.fillStyle = '#39465a'; roundRect(ctx, bx-TILE*.7, by+TILE*.62, TILE*9.8, TILE*.25, 10); ctx.fill();
-    ctx.fillStyle = '#182538'; roundRect(ctx, bx, by+TILE*.12, TILE*3.6, TILE*.72, 14); ctx.fill();
-    ctx.fillStyle = '#314560'; roundRect(ctx, bx+TILE*.18, by+TILE*.26, TILE*1.0, TILE*.28, 8); ctx.fill();
-    ctx.fillStyle = '#ffc857'; ctx.font='bold 17px sans-serif'; ctx.fillText('DEPOT', bx+TILE*.28, by+TILE*.47);
-    drawRedStar(bx+TILE*3.18, by+TILE*.25, TILE*.12, '#ffdf64');
-    drawHammerSickle(bx+TILE*2.78, by+TILE*.58, TILE*.18);
-    ctx.strokeStyle='#d9e4f2'; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(bx-TILE*.35, by+TILE*.66); ctx.lineTo(bx-TILE*.35, by-TILE*.10); ctx.stroke();
-    ctx.fillStyle='#b91c1c'; ctx.beginPath(); ctx.moveTo(bx-TILE*.33, by-TILE*.08); ctx.lineTo(bx+TILE*.50, by+TILE*.03); ctx.lineTo(bx-TILE*.33, by+TILE*.18); ctx.closePath(); ctx.fill();
-    drawRedStar(bx+TILE*.04, by+TILE*.05, TILE*.085, '#ffd95a');
-    ctx.fillStyle = '#ff6b48'; roundRect(ctx, bx+TILE*4.1, by+TILE*.25, TILE*.70, TILE*.62, 8); ctx.fill();
-    drawRedStar(bx+TILE*4.45, by+TILE*.68, TILE*.13, '#ffd95a');
-    ctx.fillStyle = '#ffe28b'; ctx.fillRect(bx+TILE*4.27, by+TILE*.33, TILE*.36, TILE*.16);
-    ctx.fillStyle = '#60d394'; ctx.fillRect(bx+TILE*4.78, by+TILE*.58, TILE*.72, TILE*.08);
-    ctx.strokeStyle = '#93a4b8'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(bx+TILE*4.8, by+TILE*.38); ctx.lineTo(bx+TILE*5.45, by+TILE*.56); ctx.stroke();
-    // sell crane and cargo crates
-    ctx.fillStyle = '#a81919'; ctx.fillRect(bx+TILE*5.95, by+TILE*.02, TILE*1.05, TILE*.18); drawRedStar(bx+TILE*6.12, by+TILE*.11, TILE*.065, '#ffd95a');
-    ctx.strokeStyle = '#8ca0b8'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(bx+TILE*6.2, by+TILE*.85); ctx.lineTo(bx+TILE*6.2, by+TILE*.12); ctx.lineTo(bx+TILE*7.55, by+TILE*.12); ctx.stroke();
-    ctx.strokeStyle = '#ffc857'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(bx+TILE*7.4, by+TILE*.12); ctx.lineTo(bx+TILE*7.4, by+TILE*.48); ctx.stroke();
-    ['#9b5f2b','#6b8f40','#8b4d35'].forEach((c,i)=>{ ctx.fillStyle=c; ctx.fillRect(bx+TILE*(6.55+i*.42), by+TILE*.60, TILE*.34, TILE*.25); ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.strokeRect(bx+TILE*(6.55+i*.42), by+TILE*.60, TILE*.34, TILE*.25); });
-    // surface rocks/grass silhouettes
-    for (let i=0;i<28;i++) { const x=(i*47 + 13) % canvas.width; ctx.fillStyle=i%3?'#2f8756':'#235d3e'; ctx.fillRect(x, y+TILE*(.19+rand(i,2)*.06), 6+rand(i,3)*18, 14+rand(i,4)*18); }
+    if (camY >= SURFACE_HEIGHT + 1.4) return;
+    const groundY = (SURFACE_HEIGHT - camY) * TILE;
+    const skyTop = Math.max(0, -camY * TILE);
+    const bx = (WORLD_W/2 - 5.7 - camX) * TILE;
+    const by = groundY - TILE * 2.62;
+
+    // Three full blocks of surface air above the diggable ground.
+    const haze = ctx.createLinearGradient(0, skyTop, 0, groundY);
+    haze.addColorStop(0, 'rgba(89,160,221,.18)');
+    haze.addColorStop(.65, 'rgba(248,188,106,.10)');
+    haze.addColorStop(1, 'rgba(48,92,66,.16)');
+    ctx.fillStyle = haze;
+    ctx.fillRect(0, skyTop, canvas.width, Math.max(0, groundY - skyTop));
+
+    // Ground cap now sits below the 3-tile-tall surface space.
+    ctx.fillStyle = '#1b623f'; ctx.fillRect(0, groundY - TILE*.12, canvas.width, TILE*.18);
+    ctx.fillStyle = '#74451e'; ctx.fillRect(0, groundY + TILE*.06, canvas.width, TILE*.18);
+
+    // Taller depot/factory using the new headroom.
+    ctx.fillStyle = '#39465a'; roundRect(ctx, bx - TILE*.55, groundY - TILE*.18, TILE*11.2, TILE*.30, 10); ctx.fill();
+    ctx.fillStyle = '#121d2c'; roundRect(ctx, bx + TILE*.05, by + TILE*.62, TILE*3.85, TILE*2.28, 18); ctx.fill();
+    ctx.fillStyle = '#20344d'; roundRect(ctx, bx + TILE*.28, by + TILE*.92, TILE*1.24, TILE*.54, 8); ctx.fill();
+    ctx.fillStyle = '#2a4565'; roundRect(ctx, bx + TILE*1.75, by + TILE*.86, TILE*1.42, TILE*.62, 8); ctx.fill();
+    ctx.fillStyle = '#ffc857'; ctx.font='bold 25px sans-serif'; ctx.fillText('DEPOT', bx+TILE*.43, by+TILE*1.80);
+    drawRedStar(bx+TILE*3.35, by+TILE*1.12, TILE*.18, '#ffdf64');
+    drawHammerSickle(bx+TILE*3.03, by+TILE*1.90, TILE*.25);
+
+    // Smokestacks and flag tower extend high into the surface area.
+    ctx.fillStyle = '#24374d'; roundRect(ctx, bx+TILE*3.95, by+TILE*.18, TILE*.46, TILE*2.72, 8); ctx.fill();
+    ctx.fillStyle = '#314860'; roundRect(ctx, bx+TILE*4.58, by+TILE*.02, TILE*.55, TILE*2.88, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(210,226,238,.30)';
+    for (let i=0;i<5;i++) { ctx.beginPath(); ctx.ellipse(bx+TILE*(4.22+i*.20), by+TILE*(.05-i*.12), TILE*(.12+i*.035), TILE*.055, -.35, 0, Math.PI*2); ctx.fill(); }
+    ctx.strokeStyle='#d9e4f2'; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(bx-TILE*.34, groundY-TILE*.08); ctx.lineTo(bx-TILE*.34, by+TILE*.20); ctx.stroke();
+    ctx.fillStyle='#b91c1c'; ctx.beginPath(); ctx.moveTo(bx-TILE*.31, by+TILE*.21); ctx.lineTo(bx+TILE*.76, by+TILE*.39); ctx.lineTo(bx-TILE*.31, by+TILE*.63); ctx.closePath(); ctx.fill();
+    drawRedStar(bx+TILE*.12, by+TILE*.42, TILE*.105, '#ffd95a');
+
+    // Refuel tower and pump lines.
+    ctx.fillStyle = '#ff6b48'; roundRect(ctx, bx+TILE*5.45, by+TILE*1.10, TILE*.86, TILE*1.72, 10); ctx.fill();
+    drawRedStar(bx+TILE*5.88, by+TILE*2.36, TILE*.15, '#ffd95a');
+    ctx.fillStyle = '#ffe28b'; ctx.fillRect(bx+TILE*5.61, by+TILE*1.28, TILE*.52, TILE*.22);
+    ctx.strokeStyle = '#93a4b8'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(bx+TILE*6.18, by+TILE*1.70); ctx.lineTo(bx+TILE*7.05, by+TILE*2.08); ctx.lineTo(bx+TILE*7.05, groundY-TILE*.24); ctx.stroke();
+    ctx.fillStyle = '#60d394'; ctx.fillRect(bx+TILE*6.14, by+TILE*2.18, TILE*.92, TILE*.10);
+
+    // Taller sell crane and cargo stack.
+    ctx.fillStyle = '#a81919'; ctx.fillRect(bx+TILE*7.35, by+TILE*.58, TILE*1.62, TILE*.22); drawRedStar(bx+TILE*7.58, by+TILE*.69, TILE*.075, '#ffd95a');
+    ctx.strokeStyle = '#8ca0b8'; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(bx+TILE*7.78, groundY-TILE*.08); ctx.lineTo(bx+TILE*7.78, by+TILE*.68); ctx.lineTo(bx+TILE*9.75, by+TILE*.68); ctx.stroke();
+    ctx.strokeStyle = '#ffc857'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(bx+TILE*9.55, by+TILE*.68); ctx.lineTo(bx+TILE*9.55, by+TILE*1.35); ctx.stroke();
+    ['#9b5f2b','#6b8f40','#8b4d35','#b77934','#455d85','#7c3f33'].forEach((c,i)=>{ const col=i%3, row=Math.floor(i/3); ctx.fillStyle=c; ctx.fillRect(bx+TILE*(8.18+col*.43), groundY-TILE*(.32+row*.27), TILE*.35, TILE*.24); ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.strokeRect(bx+TILE*(8.18+col*.43), groundY-TILE*(.32+row*.27), TILE*.35, TILE*.24); });
+
+    // surface grass silhouettes just above the dirt cap
+    for (let i=0;i<32;i++) { const x=(i*47 + 13) % canvas.width; ctx.fillStyle=i%3?'#2f8756':'#235d3e'; ctx.fillRect(x, groundY - TILE*(.12+rand(i,2)*.06), 6+rand(i,3)*18, 14+rand(i,4)*18); }
   }
   function drawShip(p) {
     const dead = state.gameOver;

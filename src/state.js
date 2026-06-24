@@ -1,4 +1,4 @@
-import { WORLD_W } from './constants.js';
+import { START_Y, WORLD_W } from './constants.js';
 
 export function createInitialState() {
   return {
@@ -21,9 +21,9 @@ export function createInitialState() {
     },
     player: {
       x: Math.floor(WORLD_W / 2),
-      y: 0,
+      y: START_Y,
       drawX: Math.floor(WORLD_W / 2),
-      drawY: 0,
+      drawY: START_Y,
       facing: 1,
       bob: 0,
       drillAnim: 0,

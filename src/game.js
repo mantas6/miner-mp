@@ -1,4 +1,4 @@
-import { ORES, TILE, WORLD_H, WORLD_W } from './constants.js';
+import { ORES, START_Y, SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants.js';
 import { canvas, gamePanel, ctx, H, keys, ui, W } from './dom.js';
 import { createAudio } from './audio.js';
 import { createInitialState } from './state.js';
@@ -20,8 +20,8 @@ let renderer;
     return y > 10 && seam < 0.045 + depth * 0.035 && seamGate < 0.42;
   }
   function makeTile(x,y){
-    if (y <= 0) return {type:'air'};
-    if (y === 1 && Math.abs(x - WORLD_W/2) < 7) return {type:'dirt', hp:2, maxHp:2};
+    if (y < SURFACE_HEIGHT) return {type:'air'};
+    if (y === SURFACE_HEIGHT && Math.abs(x - WORLD_W/2) < 7) return {type:'dirt', hp:2, maxHp:2};
     if (naturalAirPocket(x,y)) return {type:'air'};
     const r = rand(x,y), depth = y;
     let ore = null;
@@ -57,7 +57,7 @@ let renderer;
   }
   function resetPlayer(full=true){
     if (full) { state.cash = 60; state.player.fuelMax=100; state.player.cargoMax=30; state.player.drill=1; }
-    Object.assign(state.player, {x: Math.floor(WORLD_W/2), y: 0, drawX: Math.floor(WORLD_W/2), drawY: 0, fuel: state.player.fuelMax, hull: 100, cargo: []});
+    Object.assign(state.player, {x: Math.floor(WORLD_W/2), y: START_Y, drawX: Math.floor(WORLD_W/2), drawY: START_Y, fuel: state.player.fuelMax, hull: 100, cargo: []});
     state.camX = Math.max(0, state.player.x - Math.floor(W/2));
     state.camY = 0;
     state.particles.length = 0;
@@ -161,7 +161,7 @@ let renderer;
       for (const [dx,dy] of options) {
         if (!dx && !dy) continue;
         const nx = e.x + dx, ny = e.y + dy;
-        if (nx <= 0 || nx >= WORLD_W-1 || ny <= 0 || ny >= WORLD_H-1) continue;
+        if (nx <= 0 || nx >= WORLD_W-1 || ny < SURFACE_HEIGHT || ny >= WORLD_H-1) continue;
         if (nx === p.x && ny === p.y) continue;
         if (get(nx,ny).type === 'air' && !enemyAt(nx,ny)) { e.x = nx; e.y = ny; break; }
       }
@@ -192,7 +192,7 @@ let renderer;
   }
   function drainHoverFuel(){
     const p = state.player;
-    if (state.gameOver || p.y === 0) return;
+    if (state.gameOver || atSurface()) return;
     if (!grounded()) {
       p.fuel = Math.max(0, p.fuel - 0.075);
       if (state.tick % 18 === 0) spawnDust(p.x, p.y + .35, '#ffb02e', 2);
@@ -238,7 +238,7 @@ let renderer;
     p.x = nx; p.y = ny; p.bob = 1;
     wakeEnemiesNear(p.x, p.y);
     if (dy > 0 && get(p.x,p.y+1).type === 'air') damage(0.35); // unstable fall bump
-    if (p.y === 0) { p.fuel = Math.min(p.fuelMax, p.fuel + .8); }
+    if (atSurface()) { p.fuel = Math.min(p.fuelMax, p.fuel + .8); }
     if (p.fuel < 0) p.fuel = 0;
     if (p.fuel <= 0) gameOver('Out of fuel — ship exploded. Tap anywhere to restart.');
   }
@@ -257,7 +257,7 @@ let renderer;
     if (p.fuel < p.fuelMax) return spend(refuelCost(),()=>p.fuel=p.fuelMax,'Fuel tank full.');
     toast('Hull and fuel are already full.');
   }
-  function atSurface(){ return state.player.y === 0; }
+  function atSurface(){ return state.player.y < SURFACE_HEIGHT; }
   function bindButtons(){
     ui.sell.onclick = sell;
     ui.fuelBtn.onclick = () => spend(refuelCost(),()=>state.player.fuel=state.player.fuelMax,'Fuel tank full.');
@@ -407,7 +407,7 @@ let renderer;
   function hud(){
     const p=state.player;
     ui.cash.textContent = `$${Math.floor(state.cash)}`;
-    ui.depth.textContent=`${p.y*10} m`;
+    ui.depth.textContent=`${Math.max(0, p.y - START_Y) * 10} m`;
     ui.fuel.max=p.fuelMax; ui.fuel.value=Math.max(0,p.fuel);
     ui.hull.max=p.hullMax; ui.hull.value=p.hull;
     ui.cargo.max=p.cargoMax; ui.cargo.value=cargoUsed();
