@@ -8,6 +8,65 @@ const state = createInitialState();
 let audio;
 let renderer;
 
+const SAVE_KEY = 'moleload-progress-v1';
+const DEFAULT_STATS = {
+  maxDepth: 0,
+  totalCashEarned: 0,
+  oreMined: 0,
+  enemiesDestroyed: 0,
+  deaths: 0,
+  motherlodeClaims: 0
+};
+state.stats = {...DEFAULT_STATS};
+
+function numeric(value, fallback, min=0, max=Number.MAX_SAFE_INTEGER) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return;
+    const save = JSON.parse(raw);
+    const p = state.player;
+    state.cash = numeric(save.cash, state.cash, 0);
+    p.fuelMax = numeric(save.fuelMax, p.fuelMax, 100, 1000);
+    p.hullMax = numeric(save.hullMax, p.hullMax, 100, 1000);
+    p.cargoMax = numeric(save.cargoMax, p.cargoMax, 30, 1000);
+    p.drill = numeric(save.drill, p.drill, 1, 100);
+    state.stats = {...DEFAULT_STATS, ...(save.stats || {})};
+    for (const key of Object.keys(DEFAULT_STATS)) state.stats[key] = numeric(state.stats[key], DEFAULT_STATS[key], 0);
+  } catch (err) {
+    console.warn('Could not load saved Moleload progress:', err);
+  }
+}
+
+function saveProgress() {
+  try {
+    const p = state.player;
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      version: 1,
+      cash: Math.floor(state.cash),
+      fuelMax: p.fuelMax,
+      hullMax: p.hullMax,
+      cargoMax: p.cargoMax,
+      drill: p.drill,
+      stats: state.stats,
+      savedAt: Date.now()
+    }));
+  } catch (err) {
+    console.warn('Could not save Moleload progress:', err);
+  }
+}
+
+function addCash(amount) {
+  state.cash += amount;
+  if (amount > 0) state.stats.totalCashEarned += amount;
+  saveProgress();
+}
+
   function rand(x,y){ let n = Math.sin(x*127.1 + y*311.7) * 43758.5453; return n - Math.floor(n); }
   function naturalAirPocket(x,y){
     if (y < 5 || x < 2 || x > WORLD_W - 3) return false;
@@ -54,10 +113,11 @@ let renderer;
     p.cargoMax = 30;
     p.drill = 1;
     p.cargo = [];
+    saveProgress();
   }
   function resetPlayer(full=true){
-    if (full) { state.cash = 60; state.player.fuelMax=100; state.player.cargoMax=30; state.player.drill=1; }
-    Object.assign(state.player, {x: Math.floor(WORLD_W/2), y: START_Y, drawX: Math.floor(WORLD_W/2), drawY: START_Y, fuel: state.player.fuelMax, hull: 100, cargo: []});
+    if (full) { state.cash = 60; state.player.fuelMax=100; state.player.hullMax=100; state.player.cargoMax=30; state.player.drill=1; state.stats = {...DEFAULT_STATS}; saveProgress(); }
+    Object.assign(state.player, {x: Math.floor(WORLD_W/2), y: START_Y, drawX: Math.floor(WORLD_W/2), drawY: START_Y, fuel: state.player.fuelMax, hull: state.player.hullMax, cargo: []});
     state.camX = Math.max(0, state.player.x - Math.floor(W/2));
     state.camY = 0;
     state.particles.length = 0;
@@ -109,7 +169,9 @@ let renderer;
       enemy.alive = false;
       spawnExplosion(enemy.x, enemy.y);
       const bounty = enemyBounty(enemy.y);
-      state.cash += bounty;
+      addCash(bounty);
+      state.stats.enemiesDestroyed++;
+      saveProgress();
       toast(`Enemy destroyed +$${bounty} bounty.`);
     } else {
       toast(`Enemy hit — ${Math.ceil(enemy.hp)} HP left.`);
@@ -125,7 +187,9 @@ let renderer;
       set(x,y,{type:'air'});
       spawnExplosion(x,y);
       const bounty = enemyBounty(y);
-      state.cash += bounty;
+      addCash(bounty);
+      state.stats.enemiesDestroyed++;
+      saveProgress();
       toast(`Dormant enemy drilled out +$${bounty} bounty.`);
       wakeEnemiesNear(x,y);
     } else {
@@ -185,6 +249,8 @@ let renderer;
   function gameOver(msg='Game over. Tap anywhere or press R to restart.'){
     if (state.gameOver) return;
     state.gameOver = true;
+    state.stats.deaths++;
+    saveProgress();
     toast(msg);
     spawnExplosion(state.player.x, state.player.y);
     audio.alarm();
@@ -219,7 +285,7 @@ let renderer;
     if (tile.type === 'rock') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.2; damage(4); p.fuel -= cost; spawnDust(nx, ny, '#444857', 8); audio.bump(); toast('Solid rock blocks the drill.'); return; }
     if (tile.type === 'enemy') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; p.fuel -= cost + 0.65; damageEnemyTile(nx, ny); return; }
     if (tile.type === 'hazard') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; tile.hp -= p.drill; p.fuel -= cost + 1.15; damage(3.5 + Math.floor(ny/90)); spawnDust(nx, ny, '#ff5f24', 18); audio.alarm(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); spawnExplosion(nx,ny); wakeEnemiesNear(nx,ny); toast('Magma pocket vented — hull scorched!'); } else toast(`Venting magma... ${Math.ceil(tile.hp)} hits left`); return; }
-    if (tile.type === 'artifact') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; p.fuel -= cost + 1.4; spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); state.cash += 5000; spawnExplosion(nx,ny); toast('Motherlode core claimed +$5000! Now get home alive.'); } else toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); return; }
+    if (tile.type === 'artifact') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; p.fuel -= cost + 1.4; spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); addCash(5000); state.stats.motherlodeClaims++; saveProgress(); spawnExplosion(nx,ny); toast('Motherlode core claimed +$5000! Now get home alive.'); } else toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); return; }
     if (tile.type !== 'air') {
       p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65;
       tile.hp -= p.drill;
@@ -229,7 +295,7 @@ let renderer;
       if (tile.hp <= 0) {
         if (tile.type === 'ore') {
           if (cargoUsed() >= p.cargoMax) { tile.hp = 1; toast('Cargo bay full. Go sell at the surface.'); audio.alarm(); return; }
-          p.cargo.push(tile.ore); toast(`Mined ${tile.ore.name} +$${tile.ore.value}`); audio.ore(tile.ore.value);
+          p.cargo.push(tile.ore); state.stats.oreMined++; saveProgress(); toast(`Mined ${tile.ore.name} +$${tile.ore.value}`); audio.ore(tile.ore.value);
         }
         set(nx,ny,{type:'air'});
         wakeEnemiesNear(nx, ny);
@@ -239,6 +305,7 @@ let renderer;
       if (performance.now() - audio.lastMove > 120) { audio.blip(150 + Math.abs(dy)*35, 0.035, 'triangle', 0.02); audio.lastMove = performance.now(); }
     }
     p.x = nx; p.y = ny; p.bob = 1;
+    state.stats.maxDepth = Math.max(state.stats.maxDepth, Math.max(0, p.y - START_Y) * 10);
     wakeEnemiesNear(p.x, p.y);
     if (dy > 0 && get(p.x,p.y+1).type === 'air') damage(0.35); // unstable fall bump
     if (atSurface()) { p.fuel = Math.min(p.fuelMax, p.fuel + .8); }
@@ -246,13 +313,13 @@ let renderer;
     if (p.fuel <= 0) gameOver('Out of fuel — ship exploded. Tap anywhere to restart.');
   }
   function damage(n){ const p=state.player; p.hull = Math.max(0, p.hull - n); if(n > 1) audio.bump(); if(p.hull <= 0){ gameOver('Ship destroyed. Tap anywhere to restart.'); } }
-  function sell(){ const v = cargoValue(); if (!atSurface()) return toast('Depot is on the surface.'); if(!v) return toast('Cargo is empty.'); state.cash += v; state.player.cargo=[]; toast(`Sold cargo for $${v}.`); audio.cash(v); }
+  function sell(){ const v = cargoValue(); if (!atSurface()) return toast('Depot is on the surface.'); if(!v) return toast('Cargo is empty.'); addCash(v); state.player.cargo=[]; saveProgress(); toast(`Sold cargo for $${v}.`); audio.cash(v); }
   function refuelCost(){ return Math.ceil(20 + (state.player.fuelMax - 100) * 0.35); }
   function repairCost(){ return Math.ceil(30 + (state.player.hullMax - state.player.hull) * 0.45); }
   function cargoCost(){ return Math.ceil(120 * Math.pow(1.32, Math.max(0, (state.player.cargoMax - 30) / 10))); }
   function tankCost(){ return Math.ceil(150 * Math.pow(1.34, Math.max(0, (state.player.fuelMax - 100) / 20))); }
   function drillCost(){ return Math.ceil(200 * Math.pow(1.55, Math.max(0, state.player.drill - 1))); }
-  function spend(amount, fn, msg){ if (!atSurface()) return toast('Upgrades are at the surface.'); if (state.cash < amount) { audio.alarm(); return toast(`Need $${amount}.`); } state.cash -= amount; fn(); toast(msg); audio.cash(amount); }
+  function spend(amount, fn, msg){ if (!atSurface()) return toast('Upgrades are at the surface.'); if (state.cash < amount) { audio.alarm(); return toast(`Need $${amount}.`); } state.cash -= amount; fn(); saveProgress(); toast(msg); audio.cash(amount); }
   function surfaceService(){
     const p = state.player;
     if (!atSurface()) return toast('Service depot is on the surface.');
@@ -496,6 +563,7 @@ let renderer;
 export function initGame(){
   audio = createAudio(ui, toast);
   renderer = createRenderer({ state, get, rand });
+  loadProgress();
   addEventListener('touchstart', tryAutoAudio, {passive:true});
   addEventListener('keydown', handleKeyDown, {capture:true});
   document.addEventListener('keydown', handleKeyDown, {capture:true});
@@ -507,5 +575,5 @@ export function initGame(){
   canvas.addEventListener('keyup', handleKeyUp, {capture:true});
   addEventListener('focus', focusGame);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) focusGame(); });
-  bindButtons(); bindTouchControls(); generate(); focusGame(); setTimeout(focusGame, 60); loop();
+  bindButtons(); bindTouchControls(); generate(); setInterval(saveProgress, 60000); addEventListener('beforeunload', saveProgress); focusGame(); setTimeout(focusGame, 60); loop();
 }
