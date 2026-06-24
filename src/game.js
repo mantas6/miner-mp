@@ -7,6 +7,7 @@ import { createRenderer } from './renderer.js';
 const state = createInitialState();
 let audio;
 let renderer;
+let resetConfirmUntil = 0;
 
 const SAVE_KEY = 'moleload-progress-v1';
 const DEFAULT_STATS = {
@@ -236,6 +237,7 @@ function addCash(amount) {
     return p.y >= WORLD_H-1 || get(p.x, p.y + 1).type !== 'air';
   }
   function restartGame(){
+    resetConfirmUntil = 0;
     const died = state.gameOver;
     keys.clear();
     state.input.keyImpulse = null;
@@ -337,6 +339,32 @@ function addCash(amount) {
     ui.drillBtn.onclick = () => spend(drillCost(),()=>state.player.drill+=1,'Drill power increased.');
     ui.soundBtn.addEventListener('pointerdown', e => e.stopPropagation());
     ui.soundBtn.onclick = e => { e.stopPropagation(); audio.toggle(); };
+    ui.infoBtn.onclick = e => { e.stopPropagation(); openInfoScreen(); };
+    ui.infoCloseBtn.onclick = e => { e.stopPropagation(); closeInfoScreen(); };
+    ui.infoScreen.addEventListener('pointerdown', e => { if (e.target === ui.infoScreen) closeInfoScreen(); });
+  }
+  function openInfoScreen(){
+    ui.infoScreen.classList.remove('hidden');
+    renderCargoDetails();
+  }
+  function closeInfoScreen(){
+    ui.infoScreen.classList.add('hidden');
+    focusGame();
+  }
+  function renderCargoDetails(){
+    const counts = new Map();
+    for (const ore of state.player.cargo) {
+      const entry = counts.get(ore.name) || {ore, count: 0};
+      entry.count++;
+      counts.set(ore.name, entry);
+    }
+    ui.cargoList.innerHTML = counts.size ? [...counts.values()].map(({ore, count}) => `
+      <li>
+        <span class="ore-icon" style="background:${ore.color}"></span>
+        <span class="ore-name">${ore.name}</span>
+        <span class="ore-count">× ${count}</span>
+        <span class="ore-value">$${ore.value * count}</span>
+      </li>`).join('') : '<li class="empty-cargo">Cargo bay empty</li>';
   }
   function updateButtonStates(){
     const p = state.player, surf = atSurface();
@@ -365,10 +393,19 @@ function addCash(amount) {
     if (keys.has('arrowdown')||keys.has('s')) return [0,1];
     return null;
   }
+  function requestReset(){
+    if (state.gameOver) { restartGame(); return; }
+    const now = performance.now();
+    if (now < resetConfirmUntil) {
+      restartGame();
+      return;
+    }
+    resetConfirmUntil = now + 3500;
+    toast('Press R again to reset progress in this run.');
+  }
   function input(){
     state.tick++;
     if (!state.introStarted) return;
-    if (keys.has('r')) { restartGame(); return; }
     const now = performance.now();
     const impulse = state.input.keyImpulse;
     if (impulse) {
@@ -427,7 +464,7 @@ function addCash(amount) {
   function bindTouchControls(){
     let start = null, tracking = false;
     gamePanel.addEventListener('pointerdown', e => {
-      if (e.target.closest && e.target.closest('button')) return;
+      if (e.target.closest && e.target.closest('button, #info-screen')) return;
       tracking = true;
       start = {x: e.clientX, y: e.clientY};
       const dir = directionFromPoint(e.clientX, e.clientY);
@@ -481,11 +518,12 @@ function addCash(amount) {
     ui.fuel.max=p.fuelMax; ui.fuel.value=Math.max(0,p.fuel);
     ui.hull.max=p.hullMax; ui.hull.value=p.hull;
     ui.cargo.max=p.cargoMax; ui.cargo.value=cargoUsed();
+    ui.fuelLabel.textContent = `${Math.ceil(Math.max(0, p.fuel))}/${p.fuelMax}`;
+    ui.hullLabel.textContent = `${Math.ceil(Math.max(0, p.hull))}/${p.hullMax}`;
+    ui.cargoLabel.textContent = `${cargoUsed()}/${p.cargoMax}`;
     const fuelPct = p.fuelMax ? p.fuel / p.fuelMax : 1;
     ui.fuelWarning.classList.toggle('show', fuelPct < 0.25 && !state.gameOver);
-    const counts={};
-    p.cargo.forEach(o=>counts[o.name]=(counts[o.name]||0)+1);
-    ui.cargoList.innerHTML = Object.keys(counts).length ? Object.entries(counts).map(([k,v])=>`<li>${k} × ${v}</li>`).join('') : '<li>Empty</li>';
+    if (!ui.infoScreen.classList.contains('hidden')) renderCargoDetails();
     updateButtonStates();
   }
   function loop(){ input(); if (state.introStarted) { drainHoverFuel(); updateEnemies(); } draw(); hud(); requestAnimationFrame(loop); }
@@ -522,9 +560,10 @@ function addCash(amount) {
       e.preventDefault();
       return;
     }
+    if (key === 'escape' && !ui.infoScreen.classList.contains('hidden')) { closeInfoScreen(); e.preventDefault(); e.stopPropagation(); return; }
     if (key === 'enter') { sell(); e.preventDefault(); e.stopPropagation(); return; }
     if (key === ' ') { surfaceService(); e.preventDefault(); e.stopPropagation(); return; }
-    if (key === 'r') { keys.add(key); e.preventDefault(); }
+    if (key === 'r') { if (!e.repeat) requestReset(); e.preventDefault(); e.stopPropagation(); }
   }
   function handleKeyUp(e){
     keys.delete(e.key.toLowerCase());
@@ -544,6 +583,7 @@ function addCash(amount) {
     if (e.key === 'Enter' || e.key === ' ') { startIntro(); e.preventDefault(); e.stopPropagation(); }
   });
   addEventListener('pointerdown', e => {
+    if (e.target.closest && e.target.closest('#info-screen')) return;
     if (!state.introStarted) { startIntro(); e.preventDefault(); e.stopPropagation(); return; }
     if (!state.gameOver) return;
     tryAutoAudio();
@@ -552,6 +592,7 @@ function addCash(amount) {
     e.stopPropagation();
   }, {capture:true});
   addEventListener('touchstart', e => {
+    if (e.target.closest && e.target.closest('#info-screen')) return;
     if (!state.introStarted) { startIntro(); e.preventDefault(); e.stopPropagation(); return; }
     if (!state.gameOver) return;
     tryAutoAudio();

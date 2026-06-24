@@ -25,6 +25,9 @@ export const ui = {
   fuel: document.getElementById('fuel'),
   hull: document.getElementById('hull'),
   cargo: document.getElementById('cargo'),
+  fuelLabel: document.getElementById('fuelLabel'),
+  hullLabel: document.getElementById('hullLabel'),
+  cargoLabel: document.getElementById('cargoLabel'),
   cargoList: document.getElementById('cargoList'),
   toast: document.getElementById('toast'),
   fuelWarning: document.getElementById('fuel-warning'),
@@ -35,5 +38,8 @@ export const ui = {
   repairBtn: document.getElementById('repairBtn'),
   cargoBtn: document.getElementById('cargoBtn'),
   tankBtn: document.getElementById('tankBtn'),
-  drillBtn: document.getElementById('drillBtn')
+  drillBtn: document.getElementById('drillBtn'),
+  infoBtn: document.getElementById('infoBtn'),
+  infoScreen: document.getElementById('info-screen'),
+  infoCloseBtn: document.getElementById('infoCloseBtn')
 };

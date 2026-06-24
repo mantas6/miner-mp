@@ -25,9 +25,9 @@
         </div>
 
         <div class="bar-row">
-          <div class="bar"><label>Fuel</label><meter id="fuel" min="0" max="100" value="100"></meter></div>
-          <div class="bar"><label>Hull</label><meter id="hull" min="0" max="100" value="100"></meter></div>
-          <div class="bar"><label>Cargo</label><meter id="cargo" min="0" max="100" value="0"></meter></div>
+          <div class="bar"><label>Fuel</label><meter id="fuel" min="0" max="100" value="100"></meter><span id="fuelLabel" class="bar-value">100/100</span></div>
+          <div class="bar"><label>Hull</label><meter id="hull" min="0" max="100" value="100"></meter><span id="hullLabel" class="bar-value">100/100</span></div>
+          <div class="bar"><label>Cargo</label><meter id="cargo" min="0" max="100" value="0"></meter><span id="cargoLabel" class="bar-value">0/30</span></div>
         </div>
 
         <div class="shop">
@@ -37,11 +37,30 @@
           <button id="cargoBtn">Cargo +10 $120</button>
           <button id="tankBtn">Tank +20 $150</button>
           <button id="drillBtn">Drill +1 $200</button>
+          <button id="infoBtn">Info / Cargo</button>
         </div>
+      </div>
 
-        <div class="hud-bottom">
-          <div class="cargo-list"><span>Cargo</span><ul id="cargoList"><li>Empty</li></ul></div>
-          <div class="controls"><kbd>WASD</kbd>/<kbd>Arrows</kbd> or tap around the ship to move & dig · <kbd>Enter</kbd> sell · <kbd>Space</kbd> repair/refuel · <kbd>R</kbd> restart</div>
+      <div id="info-screen" class="hidden" role="dialog" aria-modal="true" aria-labelledby="info-title">
+        <div class="info-card">
+          <div class="info-header">
+            <h2 id="info-title">Controls & Cargo</h2>
+            <button id="infoCloseBtn" class="close-btn" aria-label="Close info screen">×</button>
+          </div>
+          <section>
+            <h3>Controls</h3>
+            <ul class="control-list">
+              <li><kbd>WASD</kbd> / <kbd>Arrows</kbd><span>Move, fly, and dig</span></li>
+              <li><kbd>Tap / hold</kbd><span>Move toward the touched side of the ship</span></li>
+              <li><kbd>Enter</kbd><span>Sell cargo at the surface depot</span></li>
+              <li><kbd>Space</kbd><span>Repair or refuel at the surface</span></li>
+              <li><kbd>R</kbd> then <kbd>R</kbd><span>Confirm reset while alive</span></li>
+            </ul>
+          </section>
+          <section>
+            <h3>Cargo Bay</h3>
+            <ul id="cargoList" class="cargo-detail-list"><li class="empty-cargo">Empty</li></ul>
+          </section>
         </div>
       </div>
 
