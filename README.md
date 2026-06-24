@@ -1,5 +1,7 @@
 # Moleload
 
+**Play online:** https://alfred687b.github.io/miner/
+
 A small browser-based Motherload-style mining game. Mine ore, return to the surface depot, sell cargo, upgrade the ship, and survive deeper hazards/enemies until you reach the Motherlode core.
 
 ## Project structure
