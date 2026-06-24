@@ -204,8 +204,11 @@ let renderer;
     const p = state.player;
     if (p.fuel <= 0) { gameOver('Out of fuel — ship exploded. Tap anywhere to restart.'); return; }
     const nx = Math.max(1, Math.min(WORLD_W-2, p.x + dx));
-    const ny = Math.max(0, Math.min(WORLD_H-1, p.y + dy));
-    if (nx === p.x && ny === p.y) return;
+    const ny = Math.max(START_Y, Math.min(WORLD_H-1, p.y + dy));
+    if (nx === p.x && ny === p.y) {
+      if (dy < 0 && p.y === START_Y) toast('Stay low — the surface airspace is for the depot, not flying.');
+      return;
+    }
     const tile = get(nx,ny);
     const activeEnemy = enemyAt(nx, ny);
     let cost = 0.25 + Math.abs(dy)*0.08;
