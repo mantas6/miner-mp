@@ -1,0 +1,12 @@
+# Python/cache artifacts
+__pycache__/
+*.py[cod]
+
+# Local editor/OS files
+.DS_Store
+.idea/
+.vscode/
+
+# Temporary soundtrack smoke-test renders
+assets/*-smoke.*
+assets/*-test.*
