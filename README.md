@@ -13,9 +13,14 @@ miner/
 ├── package.json
 ├── vite.config.js
 ├── src/
-│   └── main.js
-├── style.css
-├── game.js
+│   ├── main.js
+│   ├── styles.css
+│   ├── constants.js
+│   ├── dom.js
+│   ├── state.js
+│   ├── audio.js
+│   ├── renderer.js
+│   └── game.js
 ├── soundtrack_source.py
 ├── public/
 │   └── assets/
@@ -29,9 +34,14 @@ miner/
 | Path | Purpose |
 |---|---|
 | `index.html` | Main game page, canvas, HUD, intro/help overlay, shop buttons; loaded by Vite. |
-| `src/main.js` | Vite entry point that imports CSS and game code. |
-| `style.css` | Visual styling, responsive/mobile HUD layout, intro art. |
-| `game.js` | Game logic: world generation, mining, movement, enemies, shop, HUD, sound. |
+| `src/main.js` | Vite entry point that imports styles and starts the game. |
+| `src/styles.css` | Visual styling, responsive/mobile HUD layout, intro art. |
+| `src/constants.js` | Shared game constants and ore definitions. |
+| `src/dom.js` | DOM/canvas element lookups and input key set. |
+| `src/state.js` | Initial game state factory. |
+| `src/audio.js` | Sound effects, music file playback, and synth fallback. |
+| `src/renderer.js` | Canvas drawing code for terrain, enemies, ship, surface, and overlays. |
+| `src/game.js` | Gameplay orchestration: world generation, mining, enemies, shop, input, HUD, and loop. |
 | `vite.config.js` | Vite config, including relative asset paths for GitHub Pages. |
 | `.github/workflows/build.yml` | CI workflow that installs dependencies and verifies `npm run build`. |
 | `soundtrack_source.py` | Editable source generator for the soundtrack. |
