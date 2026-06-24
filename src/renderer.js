@@ -273,8 +273,28 @@ export function createRenderer({ state, get, rand }) {
     ctx.strokeStyle = '#ffc857'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(bx+TILE*9.55, by+TILE*.68); ctx.lineTo(bx+TILE*9.55, by+TILE*1.35); ctx.stroke();
     ['#9b5f2b','#6b8f40','#8b4d35','#b77934','#455d85','#7c3f33'].forEach((c,i)=>{ const col=i%3, row=Math.floor(i/3); ctx.fillStyle=c; ctx.fillRect(bx+TILE*(8.18+col*.43), groundY-TILE*(.32+row*.27), TILE*.35, TILE*.24); ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.strokeRect(bx+TILE*(8.18+col*.43), groundY-TILE*(.32+row*.27), TILE*.35, TILE*.24); });
 
-    // surface grass silhouettes just above the dirt cap
-    for (let i=0;i<32;i++) { const x=(i*47 + 13) % canvas.width; ctx.fillStyle=i%3?'#2f8756':'#235d3e'; ctx.fillRect(x, groundY - TILE*(.12+rand(i,2)*.06), 6+rand(i,3)*18, 14+rand(i,4)*18); }
+    drawFixedTreeline();
+  }
+
+  function drawFixedTreeline() {
+    // Screen-space silhouettes: keep the distant treeline steady while the camera pans.
+    const treeBaseY = SURFACE_HEIGHT * TILE - TILE * .18;
+    for (let i=0;i<34;i++) {
+      const x = (i*47 + 13) % canvas.width;
+      const trunkH = 18 + rand(i,4)*20;
+      const trunkW = 5 + rand(i,8)*5;
+      const crownR = 15 + rand(i,3)*20;
+      ctx.fillStyle = 'rgba(47,66,39,.78)';
+      ctx.fillRect(x + crownR*.35, treeBaseY - trunkH, trunkW, trunkH);
+      ctx.fillStyle = i%3 ? 'rgba(47,135,86,.88)' : 'rgba(35,93,62,.88)';
+      ctx.beginPath();
+      ctx.ellipse(x + crownR*.5, treeBaseY - trunkH - crownR*.22, crownR*.58, crownR*.92, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = i%2 ? 'rgba(31,92,60,.72)' : 'rgba(65,145,78,.72)';
+      ctx.beginPath();
+      ctx.ellipse(x + crownR*.18, treeBaseY - trunkH + crownR*.05, crownR*.34, crownR*.54, -.4, 0, Math.PI*2);
+      ctx.fill();
+    }
   }
   function drawShip(p) {
     const dead = state.gameOver;
