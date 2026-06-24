@@ -1,10 +1,22 @@
 import { TILE } from './constants.js';
 
+export const VIEW_WIDTH = 960;
+export const VIEW_HEIGHT = 640;
+
 export const canvas = document.getElementById('game');
 export const gamePanel = document.getElementById('game-panel');
+
+const deviceScale = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+canvas.width = Math.round(VIEW_WIDTH * deviceScale);
+canvas.height = Math.round(VIEW_HEIGHT * deviceScale);
+canvas.style.aspectRatio = `${VIEW_WIDTH} / ${VIEW_HEIGHT}`;
+
 export const ctx = canvas.getContext('2d');
-export const W = Math.floor(canvas.width / TILE);
-export const H = Math.floor(canvas.height / TILE);
+ctx.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
+ctx.imageSmoothingEnabled = true;
+
+export const W = Math.floor(VIEW_WIDTH / TILE);
+export const H = Math.floor(VIEW_HEIGHT / TILE);
 export const keys = new Set();
 
 export const ui = {

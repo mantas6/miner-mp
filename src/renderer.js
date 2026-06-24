@@ -1,5 +1,5 @@
 import { SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants.js';
-import { canvas, ctx, H, W } from './dom.js';
+import { canvas, ctx, H, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom.js';
 
 export function createRenderer({ state, get, rand }) {
   function draw(){
@@ -8,9 +8,9 @@ export function createRenderer({ state, get, rand }) {
     const camY = Math.max(0, Math.min(WORLD_H-H, state.camY));
     const startX = Math.floor(camX), startY = Math.floor(camY);
     const offX = (startX - camX) * TILE, offY = (startY - camY) * TILE;
-    const sky = ctx.createLinearGradient(0,0,0,canvas.height);
+    const sky = ctx.createLinearGradient(0,0,0,VIEW_HEIGHT);
     sky.addColorStop(0,'#163762'); sky.addColorStop(.25,'#0e1d31'); sky.addColorStop(.26,'#2a1a11'); sky.addColorStop(1,'#050301');
-    ctx.fillStyle = sky; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = sky; ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
     for(let y=-1;y<=H+1;y++) for(let x=-1;x<=W+1;x++){
       const wx=x+startX, wy=y+startY, t=get(wx,wy), sx=x*TILE+offX, sy=y*TILE+offY;
       drawTile(t, wx, wy, sx, sy);
@@ -33,11 +33,11 @@ export function createRenderer({ state, get, rand }) {
     drawShip(p);
     ctx.restore();
     if(state.gameOver){
-      ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
       ctx.fillStyle='#fff'; ctx.textAlign='center';
-      ctx.font='bold 38px sans-serif'; ctx.fillText('GAME OVER', canvas.width/2, 295);
-      ctx.font='bold 24px sans-serif'; ctx.fillText('Tap anywhere to restart', canvas.width/2, 338);
-      ctx.font='18px sans-serif'; ctx.fillText('or press R', canvas.width/2, 370);
+      ctx.font='bold 38px sans-serif'; ctx.fillText('GAME OVER', VIEW_WIDTH/2, 295);
+      ctx.font='bold 24px sans-serif'; ctx.fillText('Tap anywhere to restart', VIEW_WIDTH/2, 338);
+      ctx.font='18px sans-serif'; ctx.fillText('or press R', VIEW_WIDTH/2, 370);
       ctx.textAlign='left';
     }
   }
@@ -45,7 +45,7 @@ export function createRenderer({ state, get, rand }) {
     for (const e of state.enemies) {
       if (!e.alive) continue;
       const sx = (e.drawX - camX) * TILE, sy = (e.drawY - camY) * TILE;
-      if (sx < -TILE || sy < -TILE || sx > canvas.width + TILE || sy > canvas.height + TILE) continue;
+      if (sx < -TILE || sy < -TILE || sx > VIEW_WIDTH + TILE || sy > VIEW_HEIGHT + TILE) continue;
       drawEnemyBody(sx, sy, e.hp / e.maxHp, e.flash);
     }
   }
@@ -206,19 +206,19 @@ export function createRenderer({ state, get, rand }) {
   function drawTerrainBlendOverlay(camY) {
     if (camY < SURFACE_HEIGHT + .2) {
       const gy = (SURFACE_HEIGHT - camY) * TILE;
-      const grad = ctx.createLinearGradient(0, gy, 0, canvas.height);
+      const grad = ctx.createLinearGradient(0, gy, 0, VIEW_HEIGHT);
       grad.addColorStop(0, 'rgba(100,58,28,.10)');
       grad.addColorStop(.55, 'rgba(58,31,16,.09)');
       grad.addColorStop(1, 'rgba(22,10,5,.16)');
-      ctx.fillStyle = grad; ctx.fillRect(0, Math.max(0, gy), canvas.width, canvas.height);
+      ctx.fillStyle = grad; ctx.fillRect(0, Math.max(0, gy), VIEW_WIDTH, VIEW_HEIGHT);
     } else {
-      ctx.fillStyle = 'rgba(45,24,13,.075)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = 'rgba(45,24,13,.075)'; ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
     }
     ctx.save(); ctx.globalCompositeOperation = 'soft-light';
     for (let i=0;i<10;i++) {
       ctx.fillStyle = i%2 ? 'rgba(255,182,96,.035)' : 'rgba(0,0,0,.045)';
       ctx.beginPath();
-      ctx.ellipse((i*.137%1)*canvas.width, (i*.293%1)*canvas.height, canvas.width*(.10+.025*(i%3)), canvas.height*(.06+.015*(i%4)), (i*.7)%Math.PI, 0, Math.PI*2);
+      ctx.ellipse((i*.137%1)*VIEW_WIDTH, (i*.293%1)*VIEW_HEIGHT, VIEW_WIDTH*(.10+.025*(i%3)), VIEW_HEIGHT*(.06+.015*(i%4)), (i*.7)%Math.PI, 0, Math.PI*2);
       ctx.fill();
     }
     ctx.restore();
@@ -236,11 +236,11 @@ export function createRenderer({ state, get, rand }) {
     haze.addColorStop(.65, 'rgba(248,188,106,.10)');
     haze.addColorStop(1, 'rgba(48,92,66,.16)');
     ctx.fillStyle = haze;
-    ctx.fillRect(0, skyTop, canvas.width, Math.max(0, groundY - skyTop));
+    ctx.fillRect(0, skyTop, VIEW_WIDTH, Math.max(0, groundY - skyTop));
 
     // Ground cap now sits below the 3-tile-tall surface space.
-    ctx.fillStyle = '#1b623f'; ctx.fillRect(0, groundY - TILE*.12, canvas.width, TILE*.18);
-    ctx.fillStyle = '#74451e'; ctx.fillRect(0, groundY + TILE*.06, canvas.width, TILE*.18);
+    ctx.fillStyle = '#1b623f'; ctx.fillRect(0, groundY - TILE*.12, VIEW_WIDTH, TILE*.18);
+    ctx.fillStyle = '#74451e'; ctx.fillRect(0, groundY + TILE*.06, VIEW_WIDTH, TILE*.18);
 
     // Taller depot/factory using the new headroom.
     ctx.fillStyle = '#39465a'; roundRect(ctx, bx - TILE*.55, groundY - TILE*.18, TILE*11.2, TILE*.30, 10); ctx.fill();
@@ -283,12 +283,12 @@ export function createRenderer({ state, get, rand }) {
     ctx.fillStyle = 'rgba(34,80,57,.42)';
     ctx.beginPath();
     ctx.moveTo(0, baseY);
-    for (let x=0; x<=canvas.width+40; x+=40) {
+    for (let x=0; x<=VIEW_WIDTH+40; x+=40) {
       const h = 18 + rand(x, 7) * 20;
       ctx.lineTo(x, baseY - h);
       ctx.lineTo(x + 20, baseY - h * .72);
     }
-    ctx.lineTo(canvas.width, baseY + 24);
+    ctx.lineTo(VIEW_WIDTH, baseY + 24);
     ctx.lineTo(0, baseY + 24);
     ctx.closePath();
     ctx.fill();
@@ -301,7 +301,7 @@ export function createRenderer({ state, get, rand }) {
     const parallaxX = camX * TILE * .38;
     for (let i=-4;i<24;i++) {
       const worldX = i * spacing + 17;
-      const x = ((worldX - parallaxX) % (canvas.width + spacing * 2)) - spacing;
+      const x = ((worldX - parallaxX) % (VIEW_WIDTH + spacing * 2)) - spacing;
       const trunkH = 18 + rand(i,4)*20;
       const trunkW = 5 + rand(i,8)*5;
       const crownR = 15 + rand(i,3)*20;

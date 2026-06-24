@@ -1,5 +1,5 @@
 import { ORES, START_Y, SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants.js';
-import { canvas, gamePanel, ctx, H, keys, ui, W } from './dom.js';
+import { canvas, gamePanel, ctx, H, keys, ui, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom.js';
 import { createAudio } from './audio.js';
 import { createInitialState } from './state.js';
 import { createRenderer } from './renderer.js';
@@ -330,9 +330,9 @@ let renderer;
   }
   function canvasCoverGeometry(){
     const rect = canvas.getBoundingClientRect();
-    const scale = Math.max(rect.width / canvas.width, rect.height / canvas.height);
-    const drawnW = canvas.width * scale;
-    const drawnH = canvas.height * scale;
+    const scale = Math.max(rect.width / VIEW_WIDTH, rect.height / VIEW_HEIGHT);
+    const drawnW = VIEW_WIDTH * scale;
+    const drawnH = VIEW_HEIGHT * scale;
     return {rect, scale, offsetX: (rect.width - drawnW) / 2, offsetY: (rect.height - drawnH) / 2};
   }
   function shipClientPosition(){
