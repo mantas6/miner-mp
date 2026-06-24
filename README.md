@@ -5,7 +5,7 @@ A small browser-based Motherload-style mining game. Mine ore, return to the surf
 ## Project structure
 
 ```text
-motherload-web/
+miner/
 ├── README.md
 ├── index.html
 ├── style.css
@@ -25,13 +25,20 @@ motherload-web/
 | `assets/soviet-soundtrack.mp3` | Browser music asset used when MP3 is supported. |
 | `assets/soviet-soundtrack.ogg` | Browser music fallback asset. |
 
+## Play online
+
+GitHub Pages build:
+
+```text
+https://alfred687b.github.io/miner/
+```
+
 ## Run locally
 
-From this directory:
+From the repository directory, start any static file server. For example, with Python:
 
 ```bash
-cd /var/lib/hermes/workspace/motherload-web
-nix run nixpkgs#caddy -- file-server --listen :8080 --root .
+python3 -m http.server 8080
 ```
 
 Then open:
@@ -40,16 +47,10 @@ Then open:
 http://127.0.0.1:8080/
 ```
 
-If `8080` is busy, choose another port, for example:
+If `8080` is busy, choose another port:
 
 ```bash
-nix run nixpkgs#caddy -- file-server --listen :8090 --root .
-```
-
-A Python fallback also works if Caddy is unavailable:
-
-```bash
-python3 -m http.server 8080 --bind 0.0.0.0
+python3 -m http.server 8090
 ```
 
 ## Controls
@@ -116,7 +117,6 @@ Important editable constants near the top:
 Use a short render before replacing the real game assets:
 
 ```bash
-cd /var/lib/hermes/workspace/motherload-web
 python3 soundtrack_source.py --duration 8 --out-prefix assets/soviet-soundtrack-test --keep-wav
 ```
 
@@ -141,7 +141,6 @@ rm assets/soviet-soundtrack-test.wav \
 This overwrites the files the game uses:
 
 ```bash
-cd /var/lib/hermes/workspace/motherload-web
 python3 soundtrack_source.py --duration 175 --out-prefix assets/soviet-soundtrack
 ```
 
@@ -171,7 +170,6 @@ python3 soundtrack_source.py --duration 175 --out-prefix assets/soviet-soundtrac
 After making changes:
 
 ```bash
-cd /var/lib/hermes/workspace/motherload-web
 python3 -m py_compile soundtrack_source.py
 python3 soundtrack_source.py --duration 3 --out-prefix assets/soviet-soundtrack-smoke --keep-wav
 rm assets/soviet-soundtrack-smoke.wav \
@@ -182,7 +180,7 @@ rm assets/soviet-soundtrack-smoke.wav \
 For browser smoke testing, serve the folder and confirm the page loads:
 
 ```bash
-nix run nixpkgs#caddy -- file-server --listen :8080 --root .
+python3 -m http.server 8080
 # open http://127.0.0.1:8080/
 ```
 
