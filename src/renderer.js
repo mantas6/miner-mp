@@ -227,8 +227,7 @@ export function createRenderer({ state, get, rand }) {
     if (camY >= SURFACE_HEIGHT + 1.4) return;
     const groundY = (SURFACE_HEIGHT - camY) * TILE;
     const skyTop = Math.max(0, -camY * TILE);
-    const bx = (WORLD_W/2 - 5.7 - camX) * TILE;
-    const by = groundY - TILE * 2.62;
+    const bx = (WORLD_W/2 - 4.4 - camX) * TILE;
 
     // Three full blocks of surface air above the diggable ground.
     const haze = ctx.createLinearGradient(0, skyTop, 0, groundY);
@@ -242,36 +241,49 @@ export function createRenderer({ state, get, rand }) {
     ctx.fillStyle = '#1b623f'; ctx.fillRect(0, groundY - TILE*.12, VIEW_WIDTH, TILE*.18);
     ctx.fillStyle = '#74451e'; ctx.fillRect(0, groundY + TILE*.06, VIEW_WIDTH, TILE*.18);
 
-    // Taller depot/factory using the new headroom.
-    ctx.fillStyle = '#39465a'; roundRect(ctx, bx - TILE*.55, groundY - TILE*.18, TILE*11.2, TILE*.30, 10); ctx.fill();
-    ctx.fillStyle = '#121d2c'; roundRect(ctx, bx + TILE*.05, by + TILE*.62, TILE*3.85, TILE*2.28, 18); ctx.fill();
-    ctx.fillStyle = '#20344d'; roundRect(ctx, bx + TILE*.28, by + TILE*.92, TILE*1.24, TILE*.54, 8); ctx.fill();
-    ctx.fillStyle = '#2a4565'; roundRect(ctx, bx + TILE*1.75, by + TILE*.86, TILE*1.42, TILE*.62, 8); ctx.fill();
-    ctx.fillStyle = '#ffc857'; ctx.font='bold 25px sans-serif'; ctx.fillText('DEPOT', bx+TILE*.43, by+TILE*1.80);
-    drawRedStar(bx+TILE*3.35, by+TILE*1.12, TILE*.18, '#ffdf64');
-    drawHammerSickle(bx+TILE*3.03, by+TILE*1.90, TILE*.25);
+    // Electric poles: 2 blocks tall (taller than the buildings), strung with wires. Drawn behind the buildings.
+    const poleTop = groundY - TILE*2;
+    const poleXs = [bx - TILE*1.0, bx + TILE*3.55, bx + TILE*9.0];
+    ctx.strokeStyle = '#15100b'; ctx.lineWidth = 3; ctx.beginPath();
+    for (let i=0;i<poleXs.length-1;i++) {
+      const x0=poleXs[i], x1=poleXs[i+1], wy=poleTop+TILE*.16, sag=TILE*.24;
+      ctx.moveTo(x0, wy); ctx.quadraticCurveTo((x0+x1)/2, wy+sag, x1, wy);
+      ctx.moveTo(x0, wy+TILE*.17); ctx.quadraticCurveTo((x0+x1)/2, wy+sag+TILE*.17, x1, wy+TILE*.17);
+    }
+    ctx.stroke();
+    for (const px of poleXs) {
+      ctx.fillStyle = '#5a4632'; ctx.fillRect(px - TILE*.05, poleTop, TILE*.10, TILE*2);
+      ctx.fillStyle = '#43321f'; ctx.fillRect(px - TILE*.30, poleTop + TILE*.10, TILE*.60, TILE*.07); ctx.fillRect(px - TILE*.22, poleTop + TILE*.27, TILE*.44, TILE*.06);
+      ctx.fillStyle = '#cfe0f0'; ctx.fillRect(px - TILE*.27, poleTop + TILE*.05, TILE*.05, TILE*.06); ctx.fillRect(px + TILE*.22, poleTop + TILE*.05, TILE*.05, TILE*.06);
+    }
 
-    // Smokestacks and flag tower extend high into the surface area.
-    ctx.fillStyle = '#24374d'; roundRect(ctx, bx+TILE*3.95, by+TILE*.18, TILE*.46, TILE*2.72, 8); ctx.fill();
-    ctx.fillStyle = '#314860'; roundRect(ctx, bx+TILE*4.58, by+TILE*.02, TILE*.55, TILE*2.88, 8); ctx.fill();
-    ctx.fillStyle = 'rgba(210,226,238,.30)';
-    for (let i=0;i<5;i++) { ctx.beginPath(); ctx.ellipse(bx+TILE*(4.22+i*.20), by+TILE*(.05-i*.12), TILE*(.12+i*.035), TILE*.055, -.35, 0, Math.PI*2); ctx.fill(); }
-    ctx.strokeStyle='#d9e4f2'; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(bx-TILE*.34, groundY-TILE*.08); ctx.lineTo(bx-TILE*.34, by+TILE*.20); ctx.stroke();
-    ctx.fillStyle='#b91c1c'; ctx.beginPath(); ctx.moveTo(bx-TILE*.31, by+TILE*.21); ctx.lineTo(bx+TILE*.76, by+TILE*.39); ctx.lineTo(bx-TILE*.31, by+TILE*.63); ctx.closePath(); ctx.fill();
-    drawRedStar(bx+TILE*.12, by+TILE*.42, TILE*.105, '#ffd95a');
+    // Buildings: each exactly one block tall, sitting on the ground.
+    const bh = TILE, top = groundY - bh;
+    const building = (x, w, body, roof) => {
+      ctx.fillStyle = body; roundRect(ctx, x, top, w, bh, 7); ctx.fill();
+      ctx.fillStyle = roof; ctx.fillRect(x - TILE*.04, top - TILE*.07, w + TILE*.08, TILE*.11);
+    };
+    const windows = (x, w, color) => {
+      ctx.fillStyle = color;
+      const cols = Math.max(2, Math.round(w / (TILE*.46))), gap = w / cols;
+      for (let i=0;i<cols;i++) ctx.fillRect(x + gap*i + gap*.30, top + bh*.34, gap*.40, bh*.30);
+    };
 
-    // Refuel tower and pump lines.
-    ctx.fillStyle = '#ff6b48'; roundRect(ctx, bx+TILE*5.45, by+TILE*1.10, TILE*.86, TILE*1.72, 10); ctx.fill();
-    drawRedStar(bx+TILE*5.88, by+TILE*2.36, TILE*.15, '#ffd95a');
-    ctx.fillStyle = '#ffe28b'; ctx.fillRect(bx+TILE*5.61, by+TILE*1.28, TILE*.52, TILE*.22);
-    ctx.strokeStyle = '#93a4b8'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(bx+TILE*6.18, by+TILE*1.70); ctx.lineTo(bx+TILE*7.05, by+TILE*2.08); ctx.lineTo(bx+TILE*7.05, groundY-TILE*.24); ctx.stroke();
-    ctx.fillStyle = '#60d394'; ctx.fillRect(bx+TILE*6.14, by+TILE*2.18, TILE*.92, TILE*.10);
+    // Central depot (labelled).
+    building(bx, TILE*3.3, '#2a4565', '#1b2c42');
+    ctx.fillStyle = '#ffc857'; ctx.font = 'bold 22px sans-serif'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('DEPOT', bx + TILE*.32, top + bh*.60);
+    drawRedStar(bx + TILE*2.9, top + bh*.40, TILE*.15, '#ffdf64');
 
-    // Taller sell crane and cargo stack.
-    ctx.fillStyle = '#a81919'; ctx.fillRect(bx+TILE*7.35, by+TILE*.58, TILE*1.62, TILE*.22); drawRedStar(bx+TILE*7.58, by+TILE*.69, TILE*.075, '#ffd95a');
-    ctx.strokeStyle = '#8ca0b8'; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(bx+TILE*7.78, groundY-TILE*.08); ctx.lineTo(bx+TILE*7.78, by+TILE*.68); ctx.lineTo(bx+TILE*9.75, by+TILE*.68); ctx.stroke();
-    ctx.strokeStyle = '#ffc857'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(bx+TILE*9.55, by+TILE*.68); ctx.lineTo(bx+TILE*9.55, by+TILE*1.35); ctx.stroke();
-    ['#9b5f2b','#6b8f40','#8b4d35','#b77934','#455d85','#7c3f33'].forEach((c,i)=>{ const col=i%3, row=Math.floor(i/3); ctx.fillStyle=c; ctx.fillRect(bx+TILE*(8.18+col*.43), groundY-TILE*(.32+row*.27), TILE*.35, TILE*.24); ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.strokeRect(bx+TILE*(8.18+col*.43), groundY-TILE*(.32+row*.27), TILE*.35, TILE*.24); });
+    // Refuel station.
+    building(bx + TILE*3.7, TILE*1.7, '#b5472b', '#7e2f1b');
+    ctx.fillStyle = '#ffe28b'; ctx.fillRect(bx + TILE*3.95, top + bh*.56, TILE*.5, TILE*.22);
+    drawHammerSickle(bx + TILE*4.62, top + bh*.40, TILE*.19);
+
+    // Sell shed with a small crate stack out front.
+    building(bx + TILE*5.7, TILE*2.0, '#39506f', '#26384d');
+    windows(bx + TILE*5.7, TILE*2.0, '#bfe0ff');
+    ['#9b5f2b','#6b8f40','#b77934','#455d85'].forEach((c,i)=>{ ctx.fillStyle=c; ctx.fillRect(bx+TILE*(8.05+(i%2)*.4), groundY-TILE*(.24+Math.floor(i/2)*.22), TILE*.34, TILE*.20); });
 
     drawDistantTreeline(groundY);
     drawParallaxTreeShapes(camX, groundY);
