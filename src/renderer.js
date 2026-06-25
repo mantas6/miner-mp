@@ -223,10 +223,18 @@ export function createRenderer({ state, get, rand }) {
     }
     ctx.restore();
   }
+  function surfaceMetrics(camY) {
+    const groundY = (SURFACE_HEIGHT - camY) * TILE;
+    return { groundY, skyTop: Math.max(0, -camY * TILE), block: TILE, top: groundY - TILE };
+  }
+  function pole(px, poleTop) {
+    ctx.fillStyle = '#5a4632'; ctx.fillRect(px - TILE*.05, poleTop, TILE*.10, TILE*2);
+    ctx.fillStyle = '#43321f'; ctx.fillRect(px - TILE*.30, poleTop + TILE*.10, TILE*.60, TILE*.07); ctx.fillRect(px - TILE*.22, poleTop + TILE*.27, TILE*.44, TILE*.06);
+    ctx.fillStyle = '#cfe0f0'; ctx.fillRect(px - TILE*.27, poleTop + TILE*.05, TILE*.05, TILE*.06); ctx.fillRect(px + TILE*.22, poleTop + TILE*.05, TILE*.05, TILE*.06);
+  }
   function drawSurface(camX, camY) {
     if (camY >= SURFACE_HEIGHT + 1.4) return;
-    const groundY = (SURFACE_HEIGHT - camY) * TILE;
-    const skyTop = Math.max(0, -camY * TILE);
+    const { groundY, skyTop, block, top } = surfaceMetrics(camY);
     const bx = (WORLD_W/2 - 4.4 - camX) * TILE;
 
     // Three full blocks of surface air above the diggable ground.
@@ -251,34 +259,29 @@ export function createRenderer({ state, get, rand }) {
       ctx.moveTo(x0, wy+TILE*.17); ctx.quadraticCurveTo((x0+x1)/2, wy+sag+TILE*.17, x1, wy+TILE*.17);
     }
     ctx.stroke();
-    for (const px of poleXs) {
-      ctx.fillStyle = '#5a4632'; ctx.fillRect(px - TILE*.05, poleTop, TILE*.10, TILE*2);
-      ctx.fillStyle = '#43321f'; ctx.fillRect(px - TILE*.30, poleTop + TILE*.10, TILE*.60, TILE*.07); ctx.fillRect(px - TILE*.22, poleTop + TILE*.27, TILE*.44, TILE*.06);
-      ctx.fillStyle = '#cfe0f0'; ctx.fillRect(px - TILE*.27, poleTop + TILE*.05, TILE*.05, TILE*.06); ctx.fillRect(px + TILE*.22, poleTop + TILE*.05, TILE*.05, TILE*.06);
-    }
+    for (const px of poleXs) pole(px, poleTop);
 
     // Buildings: each exactly one block tall, sitting on the ground.
-    const bh = TILE, top = groundY - bh;
     const building = (x, w, body, roof) => {
-      ctx.fillStyle = body; roundRect(ctx, x, top, w, bh, 7); ctx.fill();
+      ctx.fillStyle = body; roundRect(ctx, x, top, w, block, 7); ctx.fill();
       ctx.fillStyle = roof; ctx.fillRect(x - TILE*.04, top - TILE*.07, w + TILE*.08, TILE*.11);
     };
     const windows = (x, w, color) => {
       ctx.fillStyle = color;
       const cols = Math.max(2, Math.round(w / (TILE*.46))), gap = w / cols;
-      for (let i=0;i<cols;i++) ctx.fillRect(x + gap*i + gap*.30, top + bh*.34, gap*.40, bh*.30);
+      for (let i=0;i<cols;i++) ctx.fillRect(x + gap*i + gap*.30, top + block*.34, gap*.40, block*.30);
     };
 
     // Central depot (labelled).
     building(bx, TILE*3.3, '#2a4565', '#1b2c42');
     ctx.fillStyle = '#ffc857'; ctx.font = 'bold 22px sans-serif'; ctx.textBaseline = 'alphabetic';
-    ctx.fillText('DEPOT', bx + TILE*.32, top + bh*.60);
-    drawRedStar(bx + TILE*2.9, top + bh*.40, TILE*.15, '#ffdf64');
+    ctx.fillText('DEPOT', bx + TILE*.32, top + block*.60);
+    drawRedStar(bx + TILE*2.9, top + block*.40, TILE*.15, '#ffdf64');
 
     // Refuel station.
     building(bx + TILE*3.7, TILE*1.7, '#b5472b', '#7e2f1b');
-    ctx.fillStyle = '#ffe28b'; ctx.fillRect(bx + TILE*3.95, top + bh*.56, TILE*.5, TILE*.22);
-    drawHammerSickle(bx + TILE*4.62, top + bh*.40, TILE*.19);
+    ctx.fillStyle = '#ffe28b'; ctx.fillRect(bx + TILE*3.95, top + block*.56, TILE*.5, TILE*.22);
+    drawHammerSickle(bx + TILE*4.62, top + block*.40, TILE*.19);
 
     // Sell shed with a small crate stack out front.
     building(bx + TILE*5.7, TILE*2.0, '#39506f', '#26384d');
