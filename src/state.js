@@ -1,6 +1,43 @@
 import { START_Y, WORLD_W } from './constants.js';
 import { STARTING } from './balance.js';
 
+/**
+ * @typedef {Object} Player
+ * @property {number} x          Tile column the player occupies.
+ * @property {number} y          Tile row the player occupies.
+ * @property {number} drawX      Interpolated render column.
+ * @property {number} drawY      Interpolated render row.
+ * @property {number} facing     Horizontal facing direction (1 or -1).
+ * @property {number} bob        Idle bob animation phase.
+ * @property {number} drillAnim  Drill animation progress.
+ * @property {number} drillDx    Drill direction x-component.
+ * @property {number} drillDy    Drill direction y-component.
+ * @property {number} fuel       Current fuel.
+ * @property {number} fuelMax    Maximum fuel capacity.
+ * @property {number} hull       Current hull integrity.
+ * @property {number} hullMax    Maximum hull integrity.
+ * @property {number} cargoMax   Maximum cargo slots.
+ * @property {number} drill      Drill power level.
+ * @property {Object[]} cargo    Collected ore objects.
+ */
+
+/**
+ * @typedef {Object} GameState
+ * @property {Array} world         2D array of generated tiles.
+ * @property {number} cash         Player currency.
+ * @property {number} tick         Frame/tick counter.
+ * @property {boolean} gameOver    Whether the run has ended.
+ * @property {boolean} introStarted Whether the intro has begun.
+ * @property {number} camX         Camera column offset.
+ * @property {number} camY         Camera row offset.
+ * @property {Array} particles     Active particle effects.
+ * @property {Array} enemies       Active enemy entities.
+ * @property {Object} input        Input/repeat timing state.
+ * @property {Player} player       The player entity.
+ * @property {Object} [stats]      Run/progress statistics.
+ */
+
+/** @returns {GameState} */
 export function createInitialState() {
   return {
     world: [],
