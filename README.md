@@ -53,7 +53,7 @@ miner/
 The previous GitHub Pages URL was:
 
 ```text
-https://alfred687b.github.io/miner/
+https://sigmund687.github.io/miner/
 ```
 
 Because the repo is currently private and the current GitHub plan does not support Pages for this private repo, use `npm run dev` or `npm run preview` locally unless the repo is made public again.
