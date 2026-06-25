@@ -43,3 +43,7 @@ export const ui = {
   infoScreen: document.getElementById('info-screen'),
   infoCloseBtn: document.getElementById('infoCloseBtn')
 };
+
+export function setSoundIcon(on) {
+  ui.soundBtn.textContent = on ? '🔊' : '🔇';
+}

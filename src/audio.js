@@ -1,3 +1,5 @@
+import { setSoundIcon } from './dom.js';
+
 export function createAudio(ui, toast) {
   return {
     ctx: null,
@@ -35,21 +37,21 @@ export function createAudio(ui, toast) {
         if (!this.ctx) return false;
         if (this.ctx.state === 'suspended') await this.ctx.resume();
         this.enabled = true;
-        ui.soundBtn.textContent = '🔊';
+        setSoundIcon(true);
         await this.startMusic();
         this.blip(720, 0.10, 'square', 0.11);
         toast('Soundtrack on');
         return true;
       } catch (err) {
         this.enabled = false;
-        ui.soundBtn.textContent = '🔇';
+        setSoundIcon(false);
         return false;
       }
     },
     disable() {
       this.wantsSound = false;
       this.enabled = false;
-      ui.soundBtn.textContent = '🔇';
+      setSoundIcon(false);
       this.stopMusic();
     },
     async toggle() {
