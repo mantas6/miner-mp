@@ -4,6 +4,7 @@ import { createAudio } from './audio.js';
 import { createInitialState } from './state.js';
 import { createRenderer } from './renderer.js';
 import { STARTING, LIMITS, FUEL, HULL, ECONOMY } from './balance.js';
+import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill } from './economy.js';
 
 const state = createInitialState();
 let audio;
@@ -318,21 +319,15 @@ function addCash(amount) {
   }
   function damage(n){ const p=state.player; p.hull = Math.max(0, p.hull - n); if(n > 1) audio.bump(); if(p.hull <= 0){ gameOver('Ship destroyed. Tap anywhere to restart.'); } }
   function sell(){ const v = cargoValue(); if (!atSurface()) return toast('Depot is on the surface.'); if(!v) return toast('Cargo is empty.'); addCash(v); state.player.cargo=[]; saveProgress(); toast(`Sold cargo for $${v}.`); audio.cash(v); }
-  function refuelCost(){ return Math.ceil(ECONOMY.refuel.base + (state.player.fuelMax - STARTING.fuelMax) * ECONOMY.refuel.perTank); }
-  function repairCost(){ return Math.ceil(ECONOMY.repair.base + (state.player.hullMax - state.player.hull) * ECONOMY.repair.perHull); }
-  function cargoCost(){ return Math.ceil(ECONOMY.cargo.base * Math.pow(ECONOMY.cargo.growth, Math.max(0, (state.player.cargoMax - STARTING.cargoMax) / ECONOMY.cargo.step))); }
-  function tankCost(){ return Math.ceil(ECONOMY.tank.base * Math.pow(ECONOMY.tank.growth, Math.max(0, (state.player.fuelMax - STARTING.fuelMax) / ECONOMY.tank.step))); }
-  function drillCost(){ return Math.ceil(ECONOMY.drill.base * Math.pow(ECONOMY.drill.growth, Math.max(0, state.player.drill - STARTING.drill))); }
   function spend(amount, fn, msg){ if (!atSurface()) return toast('Upgrades are at the surface.'); if (state.cash < amount) { audio.alarm(); return toast(`Need $${amount}.`); } state.cash -= amount; fn(); saveProgress(); toast(msg); audio.cash(amount); }
   function refuel(){
     const p = state.player;
     if (!atSurface()) return toast('Service depot is on the surface.');
     if (p.fuel >= p.fuelMax) return toast('Fuel tank already full.');
     if (state.cash <= 0) { audio.alarm(); return toast('No cash to buy fuel.'); }
-    const full = refuelCost();
-    const pay = Math.min(state.cash, full);
-    const ratio = full > 0 ? pay / full : 1;
-    p.fuel = Math.min(p.fuelMax, p.fuel + (p.fuelMax - p.fuel) * ratio);
+    const full = refuelCost(p);
+    const { value, pay } = partialFill(p.fuel, p.fuelMax, state.cash, full);
+    p.fuel = value;
     state.cash -= pay;
     saveProgress();
     toast(p.fuel >= p.fuelMax ? 'Fuel tank full.' : `Partial refuel — spent $${Math.round(pay)} (all your cash).`);
@@ -343,10 +338,9 @@ function addCash(amount) {
     if (!atSurface()) return toast('Service depot is on the surface.');
     if (p.hull >= p.hullMax) return toast('Hull already at full strength.');
     if (state.cash <= 0) { audio.alarm(); return toast('No cash for repairs.'); }
-    const full = repairCost();
-    const pay = Math.min(state.cash, full);
-    const ratio = full > 0 ? pay / full : 1;
-    p.hull = Math.min(p.hullMax, p.hull + (p.hullMax - p.hull) * ratio);
+    const full = repairCost(p);
+    const { value, pay } = partialFill(p.hull, p.hullMax, state.cash, full);
+    p.hull = value;
     state.cash -= pay;
     saveProgress();
     toast(p.hull >= p.hullMax ? 'Hull repaired.' : `Partial repair — spent $${Math.round(pay)} (all your cash).`);
@@ -365,9 +359,9 @@ function addCash(amount) {
     ui.sell.onclick = sell;
     ui.fuelBtn.onclick = () => refuel();
     ui.repairBtn.onclick = () => repair();
-    ui.cargoBtn.onclick = () => spend(cargoCost(),()=>state.player.cargoMax+=ECONOMY.cargo.step,'Cargo bay expanded.');
-    ui.tankBtn.onclick = () => spend(tankCost(),()=>{state.player.fuelMax+=ECONOMY.tank.step; state.player.fuel=state.player.fuelMax;},'Fuel tank upgraded.');
-    ui.drillBtn.onclick = () => spend(drillCost(),()=>state.player.drill+=ECONOMY.drill.step,'Drill power increased.');
+    ui.cargoBtn.onclick = () => spend(cargoCost(state.player),()=>state.player.cargoMax+=ECONOMY.cargo.step,'Cargo bay expanded.');
+    ui.tankBtn.onclick = () => spend(tankCost(state.player),()=>{state.player.fuelMax+=ECONOMY.tank.step; state.player.fuel=state.player.fuelMax;},'Fuel tank upgraded.');
+    ui.drillBtn.onclick = () => spend(drillCost(state.player),()=>state.player.drill+=ECONOMY.drill.step,'Drill power increased.');
     ui.soundBtn.addEventListener('pointerdown', e => e.stopPropagation());
     ui.soundBtn.onclick = e => { e.stopPropagation(); audio.toggle(); };
     ui.infoBtn.onclick = e => { e.stopPropagation(); openInfoScreen(); };
@@ -400,16 +394,16 @@ function addCash(amount) {
   function updateButtonStates(){
     const p = state.player, surf = atSurface();
     ui.sell.disabled = !surf || cargoValue() <= 0;
-    ui.fuelBtn.textContent = `Refuel $${refuelCost()}`;
-    ui.repairBtn.textContent = `Repair $${repairCost()}`;
-    ui.cargoBtn.textContent = `Cargo +10 $${cargoCost()}`;
-    ui.tankBtn.textContent = `Tank +20 $${tankCost()}`;
-    ui.drillBtn.textContent = `Drill +1 $${drillCost()}`;
+    ui.fuelBtn.textContent = `Refuel $${refuelCost(p)}`;
+    ui.repairBtn.textContent = `Repair $${repairCost(p)}`;
+    ui.cargoBtn.textContent = `Cargo +10 $${cargoCost(p)}`;
+    ui.tankBtn.textContent = `Tank +20 $${tankCost(p)}`;
+    ui.drillBtn.textContent = `Drill +1 $${drillCost(p)}`;
     ui.fuelBtn.disabled = !surf || state.cash <= 0 || p.fuel >= p.fuelMax;
     ui.repairBtn.disabled = !surf || state.cash <= 0 || p.hull >= p.hullMax;
-    ui.cargoBtn.disabled = !surf || state.cash < cargoCost();
-    ui.tankBtn.disabled = !surf || state.cash < tankCost();
-    ui.drillBtn.disabled = !surf || state.cash < drillCost();
+    ui.cargoBtn.disabled = !surf || state.cash < cargoCost(p);
+    ui.tankBtn.disabled = !surf || state.cash < tankCost(p);
+    ui.drillBtn.disabled = !surf || state.cash < drillCost(p);
   }
   const movementKeys = {
     arrowleft: [-1, 0], a: [-1, 0],
