@@ -1,0 +1,18 @@
+[
+  {
+    "category": "balance",
+    "description": "Change the starting cargo capacity to 10.",
+    "steps": [
+      "Find the player/ship initial state or balance configuration that controls starting cargo capacity.",
+      "Set the starting cargo capacity to 10 without changing cargo upgrade increments unless required by tests or gameplay consistency.",
+      "Update HUD/default labels or persistence/reset behavior if they assume the old starting capacity."
+    ],
+    "acceptance": [
+      "A new game starts with cargo capacity 10.",
+      "The cargo HUD displays 0/10 at game start.",
+      "Existing cargo upgrades and saved-game reset behavior still work correctly.",
+      "The full test/build command passes."
+    ],
+    "passes": false
+  }
+]
