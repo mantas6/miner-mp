@@ -354,9 +354,10 @@ function addCash(amount) {
   function surfaceService(){
     const p = state.player;
     if (!atSurface()) return toast('Service depot is on the surface.');
-    if (p.hull < p.hullMax) return repair();
+    if (cargoValue() > 0) return sell();
     if (p.fuel < p.fuelMax) return refuel();
-    toast('Hull and fuel are already full.');
+    if (p.hull < p.hullMax) return repair();
+    toast('Cargo empty, hull and fuel are full.');
   }
   function atSurface(){ return state.player.y < SURFACE_HEIGHT; }
   function bindButtons(){

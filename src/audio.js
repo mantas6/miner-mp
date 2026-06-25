@@ -49,7 +49,7 @@ export function createAudio(ui, toast) {
     disable() {
       this.wantsSound = false;
       this.enabled = false;
-      ui.soundBtn.textContent = 'Sound: off';
+      ui.soundBtn.textContent = '🔇';
       this.stopMusic();
     },
     async toggle() {
