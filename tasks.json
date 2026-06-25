@@ -14,5 +14,41 @@
       "The full test/build command passes."
     ],
     "passes": false
+  },
+  {
+    "category": "hud-feedback",
+    "description": "Make low fuel and low hull/health HUD bars flash to draw attention.",
+    "steps": [
+      "Find the HUD rendering code for the fuel and hull/health bars.",
+      "Define clear low/critical thresholds for fuel and hull/health, reusing existing warning thresholds if they already exist.",
+      "Add a visible flashing/pulsing effect around the fuel bar when fuel is low.",
+      "Add a visible flashing/pulsing effect around the hull/health bar when hull/health is low.",
+      "Keep the effect readable and not overwhelming during normal play."
+    ],
+    "acceptance": [
+      "The fuel bar visibly flashes or pulses when fuel is below the chosen low-fuel threshold.",
+      "The hull/health bar visibly flashes or pulses when hull/health is below the chosen low-health threshold.",
+      "The bars do not flash while their values are safely above the thresholds.",
+      "The effect works during gameplay and after save/load or reset paths that update HUD state.",
+      "The full test/build command passes."
+    ],
+    "passes": false
+  },
+  {
+    "category": "hud-feedback",
+    "description": "Make the cargo bar flash when cargo is full.",
+    "steps": [
+      "Find the HUD rendering code for the cargo bar and cargo capacity state.",
+      "Detect when current cargo is at or above cargo capacity.",
+      "Add a visible flashing/pulsing effect around the cargo bar while cargo is full.",
+      "Ensure the effect stops immediately once cargo is sold, deposited, or otherwise reduced below capacity."
+    ],
+    "acceptance": [
+      "The cargo bar visibly flashes or pulses when cargo is full.",
+      "The cargo bar does not flash when cargo is below capacity.",
+      "The effect updates correctly after mining, selling/depositing cargo, upgrades, save/load, and reset flows.",
+      "The full test/build command passes."
+    ],
+    "passes": false
   }
 ]
