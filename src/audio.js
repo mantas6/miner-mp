@@ -9,6 +9,7 @@ export function createAudio(ui, toast) {
     musicTimer: null,
     step: 0,
     lastMove: 0,
+    lastLowFuel: 0,
     init() {
       if (this.ctx) return;
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -18,14 +19,14 @@ export function createAudio(ui, toast) {
       this.master.gain.value = 0.55;
       this.master.connect(this.ctx.destination);
       this.musicGain = this.ctx.createGain();
-      this.musicGain.gain.value = 0.13;
+      this.musicGain.gain.value = 0.065;
       this.musicGain.connect(this.master);
       this.musicEl = new Audio();
       const canMp3 = this.musicEl.canPlayType && this.musicEl.canPlayType('audio/mpeg');
       this.musicEl.src = canMp3 ? 'assets/soviet-soundtrack.mp3' : 'assets/soviet-soundtrack.ogg';
       this.musicEl.loop = true;
       this.musicEl.preload = 'auto';
-      this.musicEl.volume = 0.72;
+      this.musicEl.volume = 0.36;
     },
     async enable() {
       this.wantsSound = true;
@@ -34,14 +35,14 @@ export function createAudio(ui, toast) {
         if (!this.ctx) return false;
         if (this.ctx.state === 'suspended') await this.ctx.resume();
         this.enabled = true;
-        ui.soundBtn.textContent = 'Sound: on';
+        ui.soundBtn.textContent = '🔊';
         await this.startMusic();
         this.blip(720, 0.10, 'square', 0.11);
         toast('Soundtrack on');
         return true;
       } catch (err) {
         this.enabled = false;
-        ui.soundBtn.textContent = 'Sound: off';
+        ui.soundBtn.textContent = '🔇';
         return false;
       }
     },
@@ -91,6 +92,7 @@ export function createAudio(ui, toast) {
     enemyHit() { this.noise(0.10, 0.10, 360); this.blip(230, 0.08, 'sawtooth', 0.10, -80); },
     enemyWake() { this.blip(110, 0.10, 'square', 0.12); setTimeout(()=>this.blip(150, 0.12, 'square', 0.10), 85); },
     alarm() { this.blip(180, 0.12, 'square', 0.13); setTimeout(()=>this.blip(130, 0.16, 'square', 0.13), 120); },
+    lowFuel() { this.blip(880, 0.09, 'square', 0.10, -120); setTimeout(()=>this.blip(660, 0.13, 'square', 0.10, -90), 120); },
     async startMusic() {
       this.stopMusic();
       if (this.musicEl) {

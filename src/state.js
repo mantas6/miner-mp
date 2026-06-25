@@ -33,7 +33,7 @@ export function createInitialState() {
       fuelMax: 100,
       hull: 100,
       hullMax: 100,
-      cargoMax: 30,
+      cargoMax: 15,
       drill: 1,
       cargo: []
     }

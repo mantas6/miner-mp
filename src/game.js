@@ -35,7 +35,7 @@ function loadProgress() {
     state.cash = numeric(save.cash, state.cash, 0);
     p.fuelMax = numeric(save.fuelMax, p.fuelMax, 100, 1000);
     p.hullMax = numeric(save.hullMax, p.hullMax, 100, 1000);
-    p.cargoMax = numeric(save.cargoMax, p.cargoMax, 30, 1000);
+    p.cargoMax = numeric(save.cargoMax, p.cargoMax, 15, 1000);
     p.drill = numeric(save.drill, p.drill, 1, 100);
     state.stats = {...DEFAULT_STATS, ...(save.stats || {})};
     for (const key of Object.keys(DEFAULT_STATS)) state.stats[key] = numeric(state.stats[key], DEFAULT_STATS[key], 0);
@@ -111,13 +111,13 @@ function addCash(amount) {
   function resetShipUpgradesAfterDeath(){
     const p = state.player;
     p.fuelMax = 100;
-    p.cargoMax = 30;
+    p.cargoMax = 15;
     p.drill = 1;
     p.cargo = [];
     saveProgress();
   }
   function resetPlayer(full=true){
-    if (full) { state.cash = 60; state.player.fuelMax=100; state.player.hullMax=100; state.player.cargoMax=30; state.player.drill=1; state.stats = {...DEFAULT_STATS}; saveProgress(); }
+    if (full) { state.cash = 60; state.player.fuelMax=100; state.player.hullMax=100; state.player.cargoMax=15; state.player.drill=1; state.stats = {...DEFAULT_STATS}; saveProgress(); }
     Object.assign(state.player, {x: Math.floor(WORLD_W/2), y: START_Y, drawX: Math.floor(WORLD_W/2), drawY: START_Y, fuel: state.player.fuelMax, hull: state.player.hullMax, cargo: []});
     state.camX = Math.max(0, state.player.x - Math.floor(W/2));
     state.camY = 0;
@@ -262,7 +262,7 @@ function addCash(amount) {
     const p = state.player;
     if (state.gameOver || atSurface()) return;
     if (!grounded()) {
-      p.fuel = Math.max(0, p.fuel - 0.075);
+      p.fuel = Math.max(0, p.fuel - 0.0375); // hovering uses 50% less fuel
       if (state.tick % 18 === 0) spawnDust(p.x, p.y + .35, '#ffb02e', 2);
       if (p.fuel <= 0) gameOver('Out of fuel — ship exploded. Tap anywhere to restart.');
     }
@@ -280,18 +280,20 @@ function addCash(amount) {
     const tile = get(nx,ny);
     const activeEnemy = enemyAt(nx, ny);
     let cost = 0.25 + Math.abs(dy)*0.08;
+    const flyCost = cost * 0.5;             // moving/hovering uses 50% less fuel
+    const dig = extra => (cost + extra) * 1.5; // digging uses 50% more fuel
     p.facing = dx ? Math.sign(dx) : p.facing;
-    if (activeEnemy) { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; p.fuel -= cost + 0.65; damageEnemy(activeEnemy); return; }
+    if (activeEnemy) { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; p.fuel -= dig(0.65); damageEnemy(activeEnemy); return; }
     if (tile.type !== 'air' && dy < 0) { p.drillDx = 0; p.drillDy = -1; p.drillAnim = 0.75; audio.bump(); toast('The drill cannot dig upward. Use tunnels to fly up.'); return; }
     if (tile.type !== 'air' && dx !== 0 && dy === 0 && !grounded()) { p.drillDx = dx; p.drillDy = 0; p.drillAnim = 0.55; audio.bump(); toast('Side drilling needs solid ground underneath.'); return; }
-    if (tile.type === 'rock') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.2; damage(4); p.fuel -= cost; spawnDust(nx, ny, '#444857', 8); audio.bump(); toast('Solid rock blocks the drill.'); return; }
-    if (tile.type === 'enemy') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; p.fuel -= cost + 0.65; damageEnemyTile(nx, ny); return; }
-    if (tile.type === 'hazard') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; tile.hp -= p.drill; p.fuel -= cost + 1.15; damage(3.5 + Math.floor(ny/90)); spawnDust(nx, ny, '#ff5f24', 18); audio.alarm(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); spawnExplosion(nx,ny); wakeEnemiesNear(nx,ny); toast('Magma pocket vented — hull scorched!'); } else toast(`Venting magma... ${Math.ceil(tile.hp)} hits left`); return; }
-    if (tile.type === 'artifact') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; p.fuel -= cost + 1.4; spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); addCash(5000); state.stats.motherlodeClaims++; saveProgress(); spawnExplosion(nx,ny); toast('Motherlode core claimed +$5000! Now get home alive.'); } else toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); return; }
+    if (tile.type === 'rock') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.2; damage(4); p.fuel -= dig(0); spawnDust(nx, ny, '#444857', 8); audio.bump(); toast('Solid rock blocks the drill.'); return; }
+    if (tile.type === 'enemy') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; p.fuel -= dig(0.65); damageEnemyTile(nx, ny); return; }
+    if (tile.type === 'hazard') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; tile.hp -= p.drill; p.fuel -= dig(1.15); damage(3.5 + Math.floor(ny/90)); spawnDust(nx, ny, '#ff5f24', 18); audio.alarm(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); spawnExplosion(nx,ny); wakeEnemiesNear(nx,ny); toast('Magma pocket vented — hull scorched!'); } else toast(`Venting magma... ${Math.ceil(tile.hp)} hits left`); return; }
+    if (tile.type === 'artifact') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; p.fuel -= dig(1.4); spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); addCash(5000); state.stats.motherlodeClaims++; saveProgress(); spawnExplosion(nx,ny); toast('Motherlode core claimed +$5000! Now get home alive.'); } else toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); return; }
     if (tile.type !== 'air') {
       p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65;
       tile.hp -= p.drill;
-      p.fuel -= cost + 0.9;
+      p.fuel -= dig(0.9);
       spawnDust(nx, ny, tile.type === 'ore' ? tile.ore.color : '#9d6a42', tile.type === 'ore' ? 14 : 9);
       audio.mine();
       if (tile.hp <= 0) {
@@ -303,13 +305,12 @@ function addCash(amount) {
         wakeEnemiesNear(nx, ny);
       } else { toast(`Drilling... ${Math.max(1, tile.hp)} hits left`); return; }
     } else {
-      p.fuel -= cost;
+      p.fuel -= flyCost;
       if (performance.now() - audio.lastMove > 120) { audio.blip(150 + Math.abs(dy)*35, 0.035, 'triangle', 0.02); audio.lastMove = performance.now(); }
     }
     p.x = nx; p.y = ny; p.bob = 1;
     state.stats.maxDepth = Math.max(state.stats.maxDepth, Math.max(0, p.y - START_Y) * 10);
     wakeEnemiesNear(p.x, p.y);
-    if (dy > 0 && get(p.x,p.y+1).type === 'air') damage(0.35); // unstable fall bump
     if (atSurface()) { p.fuel = Math.min(p.fuelMax, p.fuel + .8); }
     if (p.fuel < 0) p.fuel = 0;
     if (p.fuel <= 0) gameOver('Out of fuel — ship exploded. Tap anywhere to restart.');
@@ -318,22 +319,50 @@ function addCash(amount) {
   function sell(){ const v = cargoValue(); if (!atSurface()) return toast('Depot is on the surface.'); if(!v) return toast('Cargo is empty.'); addCash(v); state.player.cargo=[]; saveProgress(); toast(`Sold cargo for $${v}.`); audio.cash(v); }
   function refuelCost(){ return Math.ceil(20 + (state.player.fuelMax - 100) * 0.35); }
   function repairCost(){ return Math.ceil(30 + (state.player.hullMax - state.player.hull) * 0.45); }
-  function cargoCost(){ return Math.ceil(120 * Math.pow(1.32, Math.max(0, (state.player.cargoMax - 30) / 10))); }
+  function cargoCost(){ return Math.ceil(120 * Math.pow(1.32, Math.max(0, (state.player.cargoMax - 15) / 10))); }
   function tankCost(){ return Math.ceil(150 * Math.pow(1.34, Math.max(0, (state.player.fuelMax - 100) / 20))); }
   function drillCost(){ return Math.ceil(200 * Math.pow(1.55, Math.max(0, state.player.drill - 1))); }
   function spend(amount, fn, msg){ if (!atSurface()) return toast('Upgrades are at the surface.'); if (state.cash < amount) { audio.alarm(); return toast(`Need $${amount}.`); } state.cash -= amount; fn(); saveProgress(); toast(msg); audio.cash(amount); }
+  function refuel(){
+    const p = state.player;
+    if (!atSurface()) return toast('Service depot is on the surface.');
+    if (p.fuel >= p.fuelMax) return toast('Fuel tank already full.');
+    if (state.cash <= 0) { audio.alarm(); return toast('No cash to buy fuel.'); }
+    const full = refuelCost();
+    const pay = Math.min(state.cash, full);
+    const ratio = full > 0 ? pay / full : 1;
+    p.fuel = Math.min(p.fuelMax, p.fuel + (p.fuelMax - p.fuel) * ratio);
+    state.cash -= pay;
+    saveProgress();
+    toast(p.fuel >= p.fuelMax ? 'Fuel tank full.' : `Partial refuel — spent $${Math.round(pay)} (all your cash).`);
+    audio.cash(pay);
+  }
+  function repair(){
+    const p = state.player;
+    if (!atSurface()) return toast('Service depot is on the surface.');
+    if (p.hull >= p.hullMax) return toast('Hull already at full strength.');
+    if (state.cash <= 0) { audio.alarm(); return toast('No cash for repairs.'); }
+    const full = repairCost();
+    const pay = Math.min(state.cash, full);
+    const ratio = full > 0 ? pay / full : 1;
+    p.hull = Math.min(p.hullMax, p.hull + (p.hullMax - p.hull) * ratio);
+    state.cash -= pay;
+    saveProgress();
+    toast(p.hull >= p.hullMax ? 'Hull repaired.' : `Partial repair — spent $${Math.round(pay)} (all your cash).`);
+    audio.cash(pay);
+  }
   function surfaceService(){
     const p = state.player;
     if (!atSurface()) return toast('Service depot is on the surface.');
-    if (p.hull < p.hullMax) return spend(repairCost(),()=>p.hull=p.hullMax,'Hull repaired.');
-    if (p.fuel < p.fuelMax) return spend(refuelCost(),()=>p.fuel=p.fuelMax,'Fuel tank full.');
+    if (p.hull < p.hullMax) return repair();
+    if (p.fuel < p.fuelMax) return refuel();
     toast('Hull and fuel are already full.');
   }
   function atSurface(){ return state.player.y < SURFACE_HEIGHT; }
   function bindButtons(){
     ui.sell.onclick = sell;
-    ui.fuelBtn.onclick = () => spend(refuelCost(),()=>state.player.fuel=state.player.fuelMax,'Fuel tank full.');
-    ui.repairBtn.onclick = () => spend(repairCost(),()=>state.player.hull=state.player.hullMax,'Hull repaired.');
+    ui.fuelBtn.onclick = () => refuel();
+    ui.repairBtn.onclick = () => repair();
     ui.cargoBtn.onclick = () => spend(cargoCost(),()=>state.player.cargoMax+=10,'Cargo bay expanded.');
     ui.tankBtn.onclick = () => spend(tankCost(),()=>{state.player.fuelMax+=20; state.player.fuel=state.player.fuelMax;},'Fuel tank upgraded.');
     ui.drillBtn.onclick = () => spend(drillCost(),()=>state.player.drill+=1,'Drill power increased.');
@@ -374,8 +403,8 @@ function addCash(amount) {
     ui.cargoBtn.textContent = `Cargo +10 $${cargoCost()}`;
     ui.tankBtn.textContent = `Tank +20 $${tankCost()}`;
     ui.drillBtn.textContent = `Drill +1 $${drillCost()}`;
-    ui.fuelBtn.disabled = !surf || state.cash < refuelCost() || p.fuel >= p.fuelMax;
-    ui.repairBtn.disabled = !surf || state.cash < repairCost() || p.hull >= p.hullMax;
+    ui.fuelBtn.disabled = !surf || state.cash <= 0 || p.fuel >= p.fuelMax;
+    ui.repairBtn.disabled = !surf || state.cash <= 0 || p.hull >= p.hullMax;
     ui.cargoBtn.disabled = !surf || state.cash < cargoCost();
     ui.tankBtn.disabled = !surf || state.cash < tankCost();
     ui.drillBtn.disabled = !surf || state.cash < drillCost();
@@ -522,7 +551,9 @@ function addCash(amount) {
     ui.hullLabel.textContent = `${Math.ceil(Math.max(0, p.hull))}/${p.hullMax}`;
     ui.cargoLabel.textContent = `${cargoUsed()}/${p.cargoMax}`;
     const fuelPct = p.fuelMax ? p.fuel / p.fuelMax : 1;
-    ui.fuelWarning.classList.toggle('show', fuelPct < 0.25 && !state.gameOver);
+    const lowFuel = fuelPct < 0.25 && !state.gameOver;
+    ui.fuelWarning.classList.toggle('show', lowFuel);
+    if (lowFuel && !atSurface() && performance.now() - audio.lastLowFuel > 1400) { audio.lowFuel(); audio.lastLowFuel = performance.now(); }
     if (!ui.infoScreen.classList.contains('hidden')) renderCargoDetails();
     updateButtonStates();
   }

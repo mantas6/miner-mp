@@ -12,11 +12,7 @@
 
       <div id="hud" aria-label="Game status and actions">
         <div class="hud-top">
-          <div>
-            <h1>Moleload</h1>
-            <p class="subtitle">Mine deep. Sell high. Get home alive.</p>
-          </div>
-          <button id="soundBtn" class="sound">Sound: off</button>
+          <button id="soundBtn" class="sound" aria-label="Toggle sound" title="Toggle sound">🔇</button>
         </div>
 
         <div class="stats-grid">
@@ -44,9 +40,13 @@
       <div id="info-screen" class="hidden" role="dialog" aria-modal="true" aria-labelledby="info-title">
         <div class="info-card">
           <div class="info-header">
-            <h2 id="info-title">Controls & Cargo</h2>
+            <h2 id="info-title">Cargo & Controls</h2>
             <button id="infoCloseBtn" class="close-btn" aria-label="Close info screen">×</button>
           </div>
+          <section>
+            <h3>Cargo Bay</h3>
+            <ul id="cargoList" class="cargo-detail-list"><li class="empty-cargo">Empty</li></ul>
+          </section>
           <section>
             <h3>Controls</h3>
             <ul class="control-list">
@@ -56,10 +56,6 @@
               <li><kbd>Space</kbd><span>Repair or refuel at the surface</span></li>
               <li><kbd>R</kbd> then <kbd>R</kbd><span>Confirm reset while alive</span></li>
             </ul>
-          </section>
-          <section>
-            <h3>Cargo Bay</h3>
-            <ul id="cargoList" class="cargo-detail-list"><li class="empty-cargo">Empty</li></ul>
           </section>
         </div>
       </div>
