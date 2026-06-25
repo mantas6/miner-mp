@@ -1,9 +1,10 @@
 import { START_Y, WORLD_W } from './constants.js';
+import { STARTING } from './balance.js';
 
 export function createInitialState() {
   return {
     world: [],
-    cash: 60,
+    cash: STARTING.cash,
     tick: 0,
     gameOver: false,
     introStarted: false,
@@ -29,12 +30,12 @@ export function createInitialState() {
       drillAnim: 0,
       drillDx: 0,
       drillDy: 1,
-      fuel: 100,
-      fuelMax: 100,
-      hull: 100,
-      hullMax: 100,
-      cargoMax: 15,
-      drill: 1,
+      fuel: STARTING.fuel,
+      fuelMax: STARTING.fuelMax,
+      hull: STARTING.hull,
+      hullMax: STARTING.hullMax,
+      cargoMax: STARTING.cargoMax,
+      drill: STARTING.drill,
       cargo: []
     }
   };
