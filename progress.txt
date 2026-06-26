@@ -1,0 +1,1 @@
+2026-06-26 - Completed balance task: starting cargo capacity is now 10. Added init.sh/test.sh project scripts, state regression coverage for the starting cargo capacity and upgrade increment behavior, and ignored local Vite dev-server artifacts. Verified with ./test.sh and a Node state smoke check that a fresh state yields cargo HUD label 0/10.

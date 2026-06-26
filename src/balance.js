@@ -7,7 +7,7 @@ export const STARTING = Object.freeze({
   fuelMax: 100,
   hull: 100,
   hullMax: 100,
-  cargoMax: 15,
+  cargoMax: 10,
   drill: 1
 });
 

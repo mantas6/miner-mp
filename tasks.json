@@ -13,7 +13,7 @@
       "Existing cargo upgrades and saved-game reset behavior still work correctly.",
       "The full test/build command passes."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "hud-feedback",
