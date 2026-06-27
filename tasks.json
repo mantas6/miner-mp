@@ -32,7 +32,7 @@
       "The effect works during gameplay and after save/load or reset paths that update HUD state.",
       "The full test/build command passes."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "hud-feedback",

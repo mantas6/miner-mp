@@ -36,6 +36,7 @@ export const FUEL = Object.freeze({
 });
 
 export const HULL = Object.freeze({
+  lowHullFraction: 0.30,
   rockBump: 4,
   hazardBase: 3.5,
   hazardDepthDivisor: 90,
