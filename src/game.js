@@ -5,7 +5,7 @@ import { createInitialState } from './state.js';
 import { createRenderer } from './renderer.js';
 import { STARTING, FUEL, HULL, ECONOMY } from './balance.js';
 import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill } from './economy.js';
-import { shouldFuelBarFlash, shouldHullBarFlash } from './hud-alerts.js';
+import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from './hud-alerts.js';
 import { load, save, DEFAULT_STATS } from './persistence.js';
 import { rand, makeTile } from './world.js';
 
@@ -469,8 +469,10 @@ function hud(){
   ui.cargoLabel.textContent = `${cargoUsed()}/${p.cargoMax}`;
   const lowFuel = shouldFuelBarFlash(state);
   const lowHull = shouldHullBarFlash(state);
+  const fullCargo = shouldCargoBarFlash(state);
   ui.fuel.closest('.bar')?.classList.toggle('bar-alert', lowFuel);
   ui.hull.closest('.bar')?.classList.toggle('bar-alert', lowHull);
+  ui.cargo.closest('.bar')?.classList.toggle('bar-alert', fullCargo);
   ui.fuelWarning.classList.toggle('show', lowFuel);
   if (lowFuel && !atSurface() && performance.now() - audio.lastLowFuel > FUEL.lowFuelWarnMs) { audio.lowFuel(); audio.lastLowFuel = performance.now(); }
   if (!ui.infoScreen.classList.contains('hidden')) renderCargoDetails();

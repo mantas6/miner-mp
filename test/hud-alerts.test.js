@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { STARTING, FUEL, HULL } from '../src/balance.js';
 import { createInitialState } from '../src/state.js';
-import { isBelowWarningFraction, shouldFuelBarFlash, shouldHullBarFlash } from '../src/hud-alerts.js';
+import {
+  isAtOrAboveCapacity,
+  isBelowWarningFraction,
+  shouldCargoBarFlash,
+  shouldFuelBarFlash,
+  shouldHullBarFlash
+} from '../src/hud-alerts.js';
 
 function alertState(overrides = {}) {
   const state = createInitialState();
@@ -30,5 +36,31 @@ describe('HUD alert flashing thresholds', () => {
     expect(shouldFuelBarFlash(gameOver)).toBe(false);
     expect(shouldHullBarFlash(gameOver)).toBe(false);
     expect(isBelowWarningFraction(0, 0, 0.25)).toBe(false);
+  });
+
+  it('flashes the cargo bar only when cargo is full', () => {
+    const state = alertState({ cargoMax: 10 });
+    state.player.cargo = Array.from({ length: 9 }, (_, id) => ({ id }));
+    expect(shouldCargoBarFlash(state)).toBe(false);
+
+    state.player.cargo.push({ id: 9 });
+    expect(shouldCargoBarFlash(state)).toBe(true);
+
+    state.player.cargo.pop();
+    expect(shouldCargoBarFlash(state)).toBe(false);
+  });
+
+  it('keeps cargo flashing state tied to capacity, upgrades, game-over, and invalid max values', () => {
+    const state = alertState({ cargoMax: 10 });
+    state.player.cargo = Array.from({ length: 10 }, (_, id) => ({ id }));
+    expect(shouldCargoBarFlash(state)).toBe(true);
+
+    state.player.cargoMax = 20;
+    expect(shouldCargoBarFlash(state)).toBe(false);
+
+    state.player.cargoMax = 10;
+    state.gameOver = true;
+    expect(shouldCargoBarFlash(state)).toBe(false);
+    expect(isAtOrAboveCapacity(0, 0)).toBe(false);
   });
 });

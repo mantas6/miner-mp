@@ -49,6 +49,6 @@
       "The effect updates correctly after mining, selling/depositing cargo, upgrades, save/load, and reset flows.",
       "The full test/build command passes."
     ],
-    "passes": false
+    "passes": true
   }
 ]
