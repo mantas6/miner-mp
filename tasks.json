@@ -68,7 +68,7 @@
       "index.html is reduced to the Vite root/container markup and script entry point rather than containing the full GUI.",
       "The full test/build command passes."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "frontend-architecture",

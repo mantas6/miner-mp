@@ -13,5 +13,9 @@
   "devDependencies": {
     "vite": "^7.0.0",
     "vitest": "^4.1.9"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   }
 }
