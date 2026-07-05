@@ -50,5 +50,24 @@
       "The full test/build command passes."
     ],
     "passes": true
+  },
+  {
+    "category": "frontend-architecture",
+    "description": "Migrate the current HTML-based GUI to React.",
+    "steps": [
+      "Inspect the existing index.html and JavaScript UI/HUD code to identify static markup, dynamic HUD updates, controls, overlays, and game canvas mounting behavior.",
+      "Add React and React DOM to the Vite project and introduce a React entry point without breaking the game loop or canvas rendering.",
+      "Move the GUI/HUD markup currently defined in HTML into React components, keeping IDs/classes/data hooks or replacing them with equivalent integration points for existing game logic.",
+      "Refactor DOM update code as needed so React owns the GUI while gameplay systems can still update HUD state predictably.",
+      "Preserve existing visuals, controls, save/load/reset behavior, and responsive layout during the migration.",
+      "Add or update tests around GUI state/rendering boundaries where practical."
+    ],
+    "acceptance": [
+      "The game runs with the GUI rendered by React components instead of static HTML markup.",
+      "Existing HUD values, flashing alerts, controls, overlays, and canvas/gameplay interactions continue to work after migration.",
+      "index.html is reduced to the Vite root/container markup and script entry point rather than containing the full GUI.",
+      "The full test/build command passes."
+    ],
+    "passes": false
   }
 ]
