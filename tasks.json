@@ -69,5 +69,23 @@
       "The full test/build command passes."
     ],
     "passes": false
+  },
+  {
+    "category": "frontend-architecture",
+    "description": "Migrate the codebase from JavaScript to TypeScript.",
+    "steps": [
+      "Inspect the existing JavaScript files, Vite configuration, tests, and module boundaries to plan an incremental TypeScript migration.",
+      "Add TypeScript tooling and configuration to the Vite project, including appropriate tsconfig settings and npm scripts if needed.",
+      "Rename source and test files from .js/.jsx to .ts/.tsx where appropriate, adding explicit types for shared game state, systems, HUD integration, and persistence data.",
+      "Resolve type errors without weakening checks unnecessarily, using clear interfaces/types for core game objects and DOM integration points.",
+      "Keep runtime behavior, save/load compatibility, tests, and build output unchanged except for the TypeScript migration."
+    ],
+    "acceptance": [
+      "The project source and tests build and run through TypeScript-aware tooling.",
+      "Core gameplay state, HUD/UI integration, persistence, and utility modules have meaningful TypeScript types instead of broad any-style placeholders where practical.",
+      "Existing gameplay, controls, save/load/reset behavior, HUD flashing alerts, and React GUI migration compatibility are preserved.",
+      "The full test/build command passes."
+    ],
+    "passes": false
   }
 ]
