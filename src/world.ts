@@ -1,6 +1,7 @@
 // Pure deterministic world generation. DOM-free / testable.
 // No imports from dom.js, game.js, or balance.js.
-import { ORES, SURFACE_HEIGHT, WORLD_W, WORLD_H } from './constants.js';
+import { ORES, SURFACE_HEIGHT, WORLD_W, WORLD_H } from './constants';
+import type { Tile } from './types';
 
 /**
  * Deterministic pseudo-random value in [0,1) for a tile coordinate.
@@ -33,7 +34,7 @@ export function naturalAirPocket(x,y){
  * @param {number} y
  * @returns {{type:string, [key:string]:any}}
  */
-export function makeTile(x,y){
+export function makeTile(x: number, y: number): Tile {
   if (y < SURFACE_HEIGHT) return {type:'air'};
   if (y === SURFACE_HEIGHT && Math.abs(x - WORLD_W/2) < 7) return {type:'dirt', hp:2, maxHp:2};
   if (naturalAirPocket(x,y)) return {type:'air'};

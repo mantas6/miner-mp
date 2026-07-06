@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill } from '../src/economy.js';
-import { STARTING, ECONOMY } from '../src/balance.js';
+import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill } from '../src/economy';
+import { STARTING, ECONOMY } from '../src/balance';
 
 describe('cost functions', () => {
   it('refuelCost at baseline and upgraded', () => {

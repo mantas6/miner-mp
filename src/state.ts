@@ -1,5 +1,6 @@
-import { START_Y, WORLD_W } from './constants.js';
-import { STARTING } from './balance.js';
+import { START_Y, WORLD_W } from './constants';
+import { STARTING } from './balance';
+import type { GameState } from './types';
 
 /**
  * @typedef {Object} Player
@@ -38,7 +39,7 @@ import { STARTING } from './balance.js';
  */
 
 /** @returns {GameState} */
-export function createInitialState() {
+export function createInitialState(): GameState {
   return {
     world: [],
     cash: STARTING.cash,
@@ -49,6 +50,14 @@ export function createInitialState() {
     camY: 0,
     particles: [],
     enemies: [],
+    stats: {
+      maxDepth: 0,
+      totalCashEarned: 0,
+      oreMined: 0,
+      enemiesDestroyed: 0,
+      deaths: 0,
+      motherlodeClaims: 0
+    },
     input: {
       keyImpulse: null,
       lastKeyboardMove: 0,

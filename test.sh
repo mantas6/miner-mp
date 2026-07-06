@@ -4,4 +4,5 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 npm test
+npm run typecheck
 npm run build

@@ -3,8 +3,8 @@ import React from 'react';
 export function MinerApp() {
   return (
     <main id="shell">
-      <section id="game-panel" tabIndex="0" autoFocus>
-        <canvas id="game" width="960" height="640" tabIndex="0" aria-label="Moleload mining game" />
+      <section id="game-panel" tabIndex={0} autoFocus>
+        <canvas id="game" width={960} height={640} tabIndex={0} aria-label="Moleload mining game" />
 
         <div id="hud" aria-label="Game status and actions">
           <div className="hud-top">
@@ -58,7 +58,7 @@ export function MinerApp() {
 
         <div id="fuel-warning" role="alert">⚠ LOW FUEL — return to the surface</div>
         <div id="toast" role="status"></div>
-        <div id="intro" role="button" tabIndex="0" aria-label="Press screen to start Moleload">
+        <div id="intro" role="button" tabIndex={0} aria-label="Press screen to start Moleload">
           <div className="intro-card">
             <div className="soviet-badge" aria-hidden="true">
               <div className="lenin-face">

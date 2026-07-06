@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { MinerApp } from '../src/ui.jsx';
+import { MinerApp } from '../src/ui';
 
 const GAME_DOM_IDS = [
   'shell',

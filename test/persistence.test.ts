@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { numeric } from '../src/persistence.js';
+import { numeric } from '../src/persistence';
 
 describe('numeric clamp', () => {
   it('passes through a finite value within range', () => {

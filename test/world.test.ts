@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { rand, naturalAirPocket, makeTile } from '../src/world.js';
-import { SURFACE_HEIGHT, WORLD_W, WORLD_H } from '../src/constants.js';
+import { rand, naturalAirPocket, makeTile } from '../src/world';
+import { SURFACE_HEIGHT, WORLD_W, WORLD_H } from '../src/constants';
 
 describe('rand', () => {
   it('is deterministic for the same coordinate', () => {

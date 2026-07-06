@@ -1,18 +1,19 @@
-import { ORES, START_Y, SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants.js';
-import { canvas, gamePanel, ctx, H, keys, ui, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom.js';
-import { createAudio } from './audio.js';
-import { createInitialState } from './state.js';
-import { createRenderer } from './renderer.js';
-import { STARTING, FUEL, HULL, ECONOMY } from './balance.js';
-import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill } from './economy.js';
-import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from './hud-alerts.js';
-import { load, save, DEFAULT_STATS } from './persistence.js';
-import { rand, makeTile } from './world.js';
+import { ORES, START_Y, SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants';
+import { canvas, gamePanel, ctx, H, keys, ui, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom';
+import { createAudio } from './audio';
+import { createInitialState } from './state';
+import { createRenderer } from './renderer';
+import { STARTING, FUEL, HULL, ECONOMY } from './balance';
+import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill } from './economy';
+import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from './hud-alerts';
+import { load, save, DEFAULT_STATS } from './persistence';
+import { rand, makeTile } from './world';
 
 const state = createInitialState();
 let audio;
 let renderer;
 let resetConfirmUntil = 0;
+let toastTimer = 0;
 
 state.stats = {...DEFAULT_STATS};
 
@@ -51,7 +52,7 @@ function get(x,y){ return state.world[y]?.[x] || {type:'rock', hp:999}; }
 function set(x,y,t){ if(state.world[y]) state.world[y][x] = t; }
 function cargoUsed(){ return state.player.cargo.length; }
 function cargoValue(){ return state.player.cargo.reduce((s,o)=>s+o.value,0); }
-function toast(msg){ ui.toast.textContent = msg; ui.toast.classList.add('show'); clearTimeout(toast.t); toast.t=setTimeout(()=>ui.toast.classList.remove('show'),1800); }
+function toast(msg){ ui.toast.textContent = msg; ui.toast.classList.add('show'); clearTimeout(toastTimer); toastTimer=window.setTimeout(()=>ui.toast.classList.remove('show'),1800); }
 function spawnDust(x,y,color='#9d6a42', amount=10){
   for (let i=0;i<amount;i++) state.particles.push({x:x+0.5,y:y+0.5,vx:(Math.random()-.5)*.08,vy:(Math.random()-.7)*.09,life:22+Math.random()*18,color,size:.035+Math.random()*.045});
 }
@@ -395,7 +396,7 @@ function shipClientPosition(){
     y: rect.top + offsetY + (p.drawY - camY + 0.5) * TILE * scale
   };
 }
-function directionFromPoint(clientX, clientY, fallbackStart=null){
+function directionFromPoint(clientX: number, clientY: number, fallbackStart: {x: number; y: number} | null = null): [number, number] | null {
   const ship = shipClientPosition();
   let dx = clientX - ship.x;
   let dy = clientY - ship.y;
@@ -410,7 +411,8 @@ function directionFromPoint(clientX, clientY, fallbackStart=null){
 function bindTouchControls(){
   let start = null, tracking = false;
   gamePanel.addEventListener('pointerdown', e => {
-    if (e.target.closest && e.target.closest('button, #info-screen')) return;
+    const target = e.target as Element;
+    if (target.closest && target.closest('button, #info-screen')) return;
     tracking = true;
     start = {x: e.clientX, y: e.clientY};
     const dir = directionFromPoint(e.clientX, e.clientY);
@@ -550,7 +552,8 @@ export function initGame(){
     if (e.key === 'Enter' || e.key === ' ') { startIntro(); e.preventDefault(); e.stopPropagation(); }
   });
   addEventListener('pointerdown', e => {
-    if (e.target.closest && e.target.closest('#info-screen')) return;
+    const target = e.target as Element;
+    if (target.closest && target.closest('#info-screen')) return;
     if (!state.introStarted) { startIntro(); e.preventDefault(); e.stopPropagation(); return; }
     if (!state.gameOver) return;
     tryAutoAudio();
@@ -559,7 +562,8 @@ export function initGame(){
     e.stopPropagation();
   }, {capture:true});
   addEventListener('touchstart', e => {
-    if (e.target.closest && e.target.closest('#info-screen')) return;
+    const target = e.target as Element;
+    if (target.closest && target.closest('#info-screen')) return;
     if (!state.introStarted) { startIntro(); e.preventDefault(); e.stopPropagation(); return; }
     if (!state.gameOver) return;
     tryAutoAudio();

@@ -1,5 +1,5 @@
-import { SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants.js';
-import { canvas, ctx, H, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom.js';
+import { SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants';
+import { canvas, ctx, H, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom';
 
 export function createRenderer({ state, get, rand }) {
   function draw(){

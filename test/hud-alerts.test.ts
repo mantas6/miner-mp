@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { STARTING, FUEL, HULL } from '../src/balance.js';
-import { createInitialState } from '../src/state.js';
+import { STARTING, FUEL, HULL } from '../src/balance';
+import { createInitialState } from '../src/state';
 import {
   isAtOrAboveCapacity,
   isBelowWarningFraction,
   shouldCargoBarFlash,
   shouldFuelBarFlash,
   shouldHullBarFlash
-} from '../src/hud-alerts.js';
+} from '../src/hud-alerts';
 
 function alertState(overrides = {}) {
   const state = createInitialState();

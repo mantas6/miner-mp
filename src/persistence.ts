@@ -1,4 +1,4 @@
-import { LIMITS } from './balance.js';
+import { LIMITS } from './balance';
 
 export const SAVE_KEY = 'moleload-progress-v1';
 export const DEFAULT_STATS = {
@@ -16,7 +16,7 @@ export function numeric(value, fallback, min=0, max=Number.MAX_SAFE_INTEGER) {
   return Math.max(min, Math.min(max, n));
 }
 
-/** @param {import('./state.js').GameState} state */
+/** @param {import('./state').GameState} state */
 export function load(state) {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
@@ -35,7 +35,7 @@ export function load(state) {
   }
 }
 
-/** @param {import('./state.js').GameState} state */
+/** @param {import('./state').GameState} state */
 export function save(state) {
   try {
     const p = state.player;

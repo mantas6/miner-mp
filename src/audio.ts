@@ -1,7 +1,11 @@
-import { setSoundIcon } from './dom.js';
+import { setSoundIcon } from './dom';
+import type { GameUi } from './dom';
+import type { AudioController } from './types';
 
-export function createAudio(ui, toast) {
-  return {
+type ToastFn = (message: string) => void;
+
+export function createAudio(ui: GameUi, toast: ToastFn): AudioController {
+  const audio: AudioController = {
     ctx: null,
     enabled: false,
     wantsSound: true,
@@ -113,7 +117,7 @@ export function createAudio(ui, toast) {
     startSynthMusic() {
       const bass = [55,55,65.4,55,73.4,65.4,49,49];
       const lead = [220,0,247,262,0,196,185,0,220,247,294,262,0,196,165,0];
-      this.musicTimer = setInterval(() => {
+      this.musicTimer = window.setInterval(() => {
         if (!this.enabled || !this.ctx) return;
         const i = this.step++;
         const now = this.ctx.currentTime;
@@ -139,4 +143,6 @@ export function createAudio(ui, toast) {
     },
     stopMusic() { if (this.musicTimer) clearInterval(this.musicTimer); this.musicTimer = null; if (this.musicEl) this.musicEl.pause(); }
   };
+
+  return audio;
 }

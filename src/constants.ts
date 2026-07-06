@@ -1,10 +1,12 @@
+import type { Ore } from './types';
+
 export const TILE = 96; // 25% zoomed-out tiles so more of the mine is visible
 export const WORLD_W = 90;
 export const WORLD_H = 320;
 export const SURFACE_HEIGHT = 3;
 export const START_Y = SURFACE_HEIGHT - 1;
 
-export const ORES = [
+export const ORES: Ore[] = [
   {name:'Coal', color:'#343434', value:8, min:2, chance:.10},
   {name:'Copper', color:'#c47b45', value:16, min:7, chance:.08},
   {name:'Silver', color:'#c8d3e0', value:36, min:18, chance:.055},
