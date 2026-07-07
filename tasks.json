@@ -87,5 +87,23 @@
       "The full test/build command passes."
     ],
     "passes": true
+  },
+  {
+    "category": "runtime-smoke-testing",
+    "description": "Fix the React/TypeScript startup ordering so the live browser game actually mounts and becomes playable instead of crashing on missing DOM hooks.",
+    "steps": [
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh to start the Vite dev server and reproduce the live browser crash with a rendered smoke test.",
+      "Inspect src/main.tsx, src/game.ts, and src/dom.ts to remove eager DOM-hook evaluation before React has synchronously rendered the GUI shell.",
+      "Refactor the DOM integration so initGame resolves required elements only after MinerApp has mounted, while preserving the existing element IDs/classes consumed by gameplay, HUD alerts, controls, save/load/reset, and game-over flows.",
+      "Add an automated startup regression test or browser-oriented smoke test that imports/loads the entry path and proves #game, #hud, and core controls exist before game initialization touches them.",
+      "After the fix, play/observe the served game enough to dismiss the intro, move/dig, and confirm the HUD updates without console exceptions."
+    ],
+    "acceptance": [
+      "Opening the Vite-served game in a real browser shows the React GUI, intro overlay, canvas, HUD meters, and shop controls instead of an empty root or missing #game exception.",
+      "The player can start the game, move/dig with keyboard or pointer input, and see fuel/depth/cargo HUD changes during the smoke test.",
+      "Regression coverage fails on the current eager DOM import/startup ordering and passes after the fix.",
+      "Before marking complete, run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
+    ],
+    "passes": false
   }
 ]
