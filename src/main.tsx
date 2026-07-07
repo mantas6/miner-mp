@@ -1,7 +1,6 @@
 import './styles.css';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { initGame } from './game';
 import { MinerApp } from './ui';
 
 const rootElement = document.getElementById('root');
@@ -13,4 +12,5 @@ flushSync(() => {
   root.render(<MinerApp />);
 });
 
+const { initGame } = await import('./game');
 initGame();
