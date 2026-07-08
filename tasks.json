@@ -1,109 +1,40 @@
 [
   {
     "category": "balance",
-    "description": "Change the starting cargo capacity to 10.",
+    "description": "Improve the first-minute mining loop by guaranteeing visible, reachable low-tier ore near the starting shaft.",
     "steps": [
-      "Find the player/ship initial state or balance configuration that controls starting cargo capacity.",
-      "Set the starting cargo capacity to 10 without changing cargo upgrade increments unless required by tests or gameplay consistency.",
-      "Update HUD/default labels or persistence/reset behavior if they assume the old starting capacity."
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh to serve and observe the current game before editing.",
+      "Inspect src/world.ts, src/constants.ts, src/balance.ts, and the existing world/state tests to understand deterministic ore generation and starting-position constraints.",
+      "Adjust early-depth world generation so a new player can find and mine several Coal/Copper ore tiles within roughly the first 40-80 m around the starting area without making deeper ore progression trivial.",
+      "Keep the change deterministic and DOM-free; avoid hard-coding a brittle single route if a small starter seam or early-depth density rule is clearer.",
+      "Add or update unit tests that verify near-start early ore availability while preserving late-game special tiles, hazards, enemies, and the Motherlode core behavior.",
+      "Run ./init.sh and perform a live smoke where the intro is dismissed and the player mines enough early tiles to collect at least one ore item."
     ],
     "acceptance": [
-      "A new game starts with cargo capacity 10.",
-      "The cargo HUD displays 0/10 at game start.",
-      "Existing cargo upgrades and saved-game reset behavior still work correctly.",
-      "The full test/build command passes."
-    ],
-    "passes": true
-  },
-  {
-    "category": "hud-feedback",
-    "description": "Make low fuel and low hull/health HUD bars flash to draw attention.",
-    "steps": [
-      "Find the HUD rendering code for the fuel and hull/health bars.",
-      "Define clear low/critical thresholds for fuel and hull/health, reusing existing warning thresholds if they already exist.",
-      "Add a visible flashing/pulsing effect around the fuel bar when fuel is low.",
-      "Add a visible flashing/pulsing effect around the hull/health bar when hull/health is low.",
-      "Keep the effect readable and not overwhelming during normal play."
-    ],
-    "acceptance": [
-      "The fuel bar visibly flashes or pulses when fuel is below the chosen low-fuel threshold.",
-      "The hull/health bar visibly flashes or pulses when hull/health is below the chosen low-health threshold.",
-      "The bars do not flash while their values are safely above the thresholds.",
-      "The effect works during gameplay and after save/load or reset paths that update HUD state.",
-      "The full test/build command passes."
-    ],
-    "passes": true
-  },
-  {
-    "category": "hud-feedback",
-    "description": "Make the cargo bar flash when cargo is full.",
-    "steps": [
-      "Find the HUD rendering code for the cargo bar and cargo capacity state.",
-      "Detect when current cargo is at or above cargo capacity.",
-      "Add a visible flashing/pulsing effect around the cargo bar while cargo is full.",
-      "Ensure the effect stops immediately once cargo is sold, deposited, or otherwise reduced below capacity."
-    ],
-    "acceptance": [
-      "The cargo bar visibly flashes or pulses when cargo is full.",
-      "The cargo bar does not flash when cargo is below capacity.",
-      "The effect updates correctly after mining, selling/depositing cargo, upgrades, save/load, and reset flows.",
-      "The full test/build command passes."
-    ],
-    "passes": true
-  },
-  {
-    "category": "frontend-architecture",
-    "description": "Migrate the current HTML-based GUI to React.",
-    "steps": [
-      "Inspect the existing index.html and JavaScript UI/HUD code to identify static markup, dynamic HUD updates, controls, overlays, and game canvas mounting behavior.",
-      "Add React and React DOM to the Vite project and introduce a React entry point without breaking the game loop or canvas rendering.",
-      "Move the GUI/HUD markup currently defined in HTML into React components, keeping IDs/classes/data hooks or replacing them with equivalent integration points for existing game logic.",
-      "Refactor DOM update code as needed so React owns the GUI while gameplay systems can still update HUD state predictably.",
-      "Preserve existing visuals, controls, save/load/reset behavior, and responsive layout during the migration.",
-      "Add or update tests around GUI state/rendering boundaries where practical."
-    ],
-    "acceptance": [
-      "The game runs with the GUI rendered by React components instead of static HTML markup.",
-      "Existing HUD values, flashing alerts, controls, overlays, and canvas/gameplay interactions continue to work after migration.",
-      "index.html is reduced to the Vite root/container markup and script entry point rather than containing the full GUI.",
-      "The full test/build command passes."
-    ],
-    "passes": true
-  },
-  {
-    "category": "frontend-architecture",
-    "description": "Migrate the codebase from JavaScript to TypeScript.",
-    "steps": [
-      "Inspect the existing JavaScript files, Vite configuration, tests, and module boundaries to plan an incremental TypeScript migration.",
-      "Add TypeScript tooling and configuration to the Vite project, including appropriate tsconfig settings and npm scripts if needed.",
-      "Rename source and test files from .js/.jsx to .ts/.tsx where appropriate, adding explicit types for shared game state, systems, HUD integration, and persistence data.",
-      "Resolve type errors without weakening checks unnecessarily, using clear interfaces/types for core game objects and DOM integration points.",
-      "Keep runtime behavior, save/load compatibility, tests, and build output unchanged except for the TypeScript migration."
-    ],
-    "acceptance": [
-      "The project source and tests build and run through TypeScript-aware tooling.",
-      "Core gameplay state, HUD/UI integration, persistence, and utility modules have meaningful TypeScript types instead of broad any-style placeholders where practical.",
-      "Existing gameplay, controls, save/load/reset behavior, HUD flashing alerts, and React GUI migration compatibility are preserved.",
-      "The full test/build command passes."
-    ],
-    "passes": true
-  },
-  {
-    "category": "runtime-smoke-testing",
-    "description": "Fix the React/TypeScript startup ordering so the live browser game actually mounts and becomes playable instead of crashing on missing DOM hooks.",
-    "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh to start the Vite dev server and reproduce the live browser crash with a rendered smoke test.",
-      "Inspect src/main.tsx, src/game.ts, and src/dom.ts to remove eager DOM-hook evaluation before React has synchronously rendered the GUI shell.",
-      "Refactor the DOM integration so initGame resolves required elements only after MinerApp has mounted, while preserving the existing element IDs/classes consumed by gameplay, HUD alerts, controls, save/load/reset, and game-over flows.",
-      "Add an automated startup regression test or browser-oriented smoke test that imports/loads the entry path and proves #game, #hud, and core controls exist before game initialization touches them.",
-      "After the fix, play/observe the served game enough to dismiss the intro, move/dig, and confirm the HUD updates without console exceptions."
-    ],
-    "acceptance": [
-      "Opening the Vite-served game in a real browser shows the React GUI, intro overlay, canvas, HUD meters, and shop controls instead of an empty root or missing #game exception.",
-      "The player can start the game, move/dig with keyboard or pointer input, and see fuel/depth/cargo HUD changes during the smoke test.",
-      "Regression coverage fails on the current eager DOM import/startup ordering and passes after the fix.",
+      "In a fresh live browser run, the player can reach and collect at least one low-tier ore within the first short descent from the surface without wandering blindly for multiple screens.",
+      "The top of the mine still contains dirt/air navigation decisions and does not become an all-ore tutorial corridor.",
+      "Automated tests cover deterministic early ore availability and guard against regressing the existing world-generation landmarks and hazards.",
       "Before marking complete, run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
     ],
-    "passes": true
+    "passes": false
+  },
+  {
+    "category": "hud-feedback",
+    "description": "Show clearer cargo value and next-upgrade feedback during early mining runs.",
+    "steps": [
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh and observe the HUD/cargo flow before editing.",
+      "Inspect src/ui.tsx, src/game.ts, src/economy.ts, src/dom.ts, and the UI/startup tests to locate HUD hooks and existing cargoValue/cargo-detail behavior.",
+      "Add a compact always-visible or easily discoverable HUD readout for current cargo value and/or the amount needed for the cheapest affordable next upgrade so mining rewards are understandable without opening the info dialog repeatedly.",
+      "Update the readout after mining, selling, buying upgrades, save/load, reset, and empty/full cargo transitions without breaking existing DOM IDs/classes consumed by the game runtime.",
+      "Add or update tests for the new HUD hooks and any DOM-free formatting/helper logic used to compute cargo value or upgrade guidance.",
+      "Run ./init.sh and perform a live smoke that mines/sells or manipulates cargo enough to see the new feedback change."
+    ],
+    "acceptance": [
+      "During play, the HUD or info surface clearly communicates current cargo value and useful next-upgrade affordability/progress feedback.",
+      "The feedback updates correctly after cargo changes, selling, upgrades, save/load, and reset flows.",
+      "Existing HUD meters, alert flashing, controls, and React startup behavior remain intact.",
+      "Before marking complete, run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
+    ],
+    "passes": false
   }
 ]
