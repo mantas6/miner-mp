@@ -16,7 +16,7 @@
       "Automated tests cover deterministic early ore availability and guard against regressing the existing world-generation landmarks and hazards.",
       "Before marking complete, run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "hud-feedback",

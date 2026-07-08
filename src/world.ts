@@ -28,6 +28,24 @@ export function naturalAirPocket(x,y){
   return y > 10 && seam < 0.045 + depth * 0.035 && seamGate < 0.42;
 }
 
+const STARTER_ORE_PATCHES = [
+  {xOffset: 0, y: SURFACE_HEIGHT + 3, oreName: 'Coal'},
+  {xOffset: -2, y: SURFACE_HEIGHT + 4, oreName: 'Coal'},
+  {xOffset: 2, y: SURFACE_HEIGHT + 5, oreName: 'Copper'},
+  {xOffset: -1, y: SURFACE_HEIGHT + 7, oreName: 'Copper'}
+];
+
+/**
+ * A small deterministic starter seam near the shaft gives new players visible
+ * low-tier goals in the first 40-80 m without flattening the whole opening.
+ */
+export function starterOreForCoordinate(x: number, y: number) {
+  const shaftX = Math.floor(WORLD_W / 2);
+  const patch = STARTER_ORE_PATCHES.find(tile => x === shaftX + tile.xOffset && y === tile.y);
+  if (!patch) return null;
+  return ORES.find(ore => ore.name === patch.oreName && y >= ore.min) || null;
+}
+
 /**
  * Generate the tile at a world coordinate. Deterministic for a given (x,y).
  * @param {number} x
@@ -39,10 +57,12 @@ export function makeTile(x: number, y: number): Tile {
   if (y === SURFACE_HEIGHT && Math.abs(x - WORLD_W/2) < 7) return {type:'dirt', hp:2, maxHp:2};
   if (naturalAirPocket(x,y)) return {type:'air'};
   const r = rand(x,y), depth = y;
-  let ore = null;
-  for (let i = ORES.length - 1; i >= 0; i--) {
-    const o = ORES[i];
-    if (depth >= o.min && r < o.chance * Math.min(2.2, 1 + depth / 90)) { ore = o; break; }
+  let ore = starterOreForCoordinate(x, y);
+  if (!ore) {
+    for (let i = ORES.length - 1; i >= 0; i--) {
+      const o = ORES[i];
+      if (depth >= o.min && r < o.chance * Math.min(2.2, 1 + depth / 90)) { ore = o; break; }
+    }
   }
   if (y === WORLD_H - 2 && Math.abs(x - Math.floor(WORLD_W/2)) <= 1) return {type:'artifact', hp:24, maxHp:24};
   if (ore) { const hp = Math.max(3, Math.ceil((depth/28)+4)); return {type:'ore', ore, hp, maxHp: hp}; }

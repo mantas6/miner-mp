@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rand, naturalAirPocket, makeTile } from '../src/world';
+import { rand, naturalAirPocket, makeTile, starterOreForCoordinate } from '../src/world';
 import { SURFACE_HEIGHT, WORLD_W, WORLD_H } from '../src/constants';
 
 describe('rand', () => {
@@ -22,6 +22,39 @@ describe('rand', () => {
 describe('naturalAirPocket', () => {
   it('is deterministic', () => {
     expect(naturalAirPocket(10, 50)).toBe(naturalAirPocket(10, 50));
+  });
+});
+
+describe('starterOreForCoordinate', () => {
+  it('places a compact low-tier starter seam near the starting shaft', () => {
+    const shaftX = Math.floor(WORLD_W / 2);
+    const expected = [
+      {x: shaftX, y: SURFACE_HEIGHT + 3, name: 'Coal'},
+      {x: shaftX - 2, y: SURFACE_HEIGHT + 4, name: 'Coal'},
+      {x: shaftX + 2, y: SURFACE_HEIGHT + 5, name: 'Copper'},
+      {x: shaftX - 1, y: SURFACE_HEIGHT + 7, name: 'Copper'}
+    ];
+
+    for (const {x, y, name} of expected) {
+      const ore = starterOreForCoordinate(x, y);
+      expect(ore?.name).toBe(name);
+      expect(ore?.min).toBeLessThanOrEqual(y);
+    }
+  });
+
+  it('does not turn the whole opening around the shaft into ore', () => {
+    const shaftX = Math.floor(WORLD_W / 2);
+    let starterOreTiles = 0;
+    let nonStarterTiles = 0;
+    for (let y = SURFACE_HEIGHT; y <= SURFACE_HEIGHT + 8; y++) {
+      for (let x = shaftX - 4; x <= shaftX + 4; x++) {
+        if (starterOreForCoordinate(x, y)) starterOreTiles++;
+        else nonStarterTiles++;
+      }
+    }
+
+    expect(starterOreTiles).toBe(4);
+    expect(nonStarterTiles).toBeGreaterThan(starterOreTiles * 12);
   });
 });
 
@@ -60,5 +93,34 @@ describe('makeTile', () => {
       }
     }
     expect(foundOre).toBe(true);
+  });
+
+  it('guarantees several reachable Coal/Copper tiles in the first 40-80 meters', () => {
+    const shaftX = Math.floor(WORLD_W / 2);
+    const earlyTiles = [];
+    for (let y = SURFACE_HEIGHT; y <= SURFACE_HEIGHT + 8; y++) {
+      for (let x = shaftX - 3; x <= shaftX + 3; x++) {
+        const tile = makeTile(x, y);
+        if (tile.type === 'ore') earlyTiles.push({x, y, name: tile.ore.name});
+      }
+    }
+
+    const lowTierStarterOres = earlyTiles.filter(tile =>
+      (tile.name === 'Coal' || tile.name === 'Copper') &&
+      tile.y >= SURFACE_HEIGHT + 3 &&
+      tile.y <= SURFACE_HEIGHT + 7
+    );
+    expect(lowTierStarterOres.length).toBeGreaterThanOrEqual(4);
+    expect(lowTierStarterOres.some(tile => tile.x === shaftX && tile.y === SURFACE_HEIGHT + 3)).toBe(true);
+  });
+
+  it('keeps late-game landmarks and hazards intact', () => {
+    const artifactXs = [Math.floor(WORLD_W / 2) - 1, Math.floor(WORLD_W / 2), Math.floor(WORLD_W / 2) + 1];
+    for (const x of artifactXs) {
+      expect(makeTile(x, WORLD_H - 2).type).toBe('artifact');
+    }
+
+    expect(makeTile(24, 151).type).toBe('hazard');
+    expect(makeTile(36, 17).type).toBe('enemy');
   });
 });
