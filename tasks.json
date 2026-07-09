@@ -1,21 +1,40 @@
 [
   {
-    "category": "hud-feedback",
-    "description": "Show clearer cargo value and next-upgrade feedback during early mining runs.",
+    "category": "audio-ux",
+    "description": "Make sound startup permission-safe so starting or playing the game no longer emits autoplay warnings when audio is blocked.",
     "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh and observe the HUD/cargo flow before editing.",
-      "Inspect src/ui.tsx, src/game.ts, src/economy.ts, src/dom.ts, and the UI/startup tests to locate HUD hooks and existing cargoValue/cargo-detail behavior.",
-      "Add a compact always-visible or easily discoverable HUD readout for current cargo value and/or the amount needed for the cheapest affordable next upgrade so mining rewards are understandable without opening the info dialog repeatedly.",
-      "Update the readout after mining, selling, buying upgrades, save/load, reset, and empty/full cargo transitions without breaking existing DOM IDs/classes consumed by the game runtime.",
-      "Add or update tests for the new HUD hooks and any DOM-free formatting/helper logic used to compute cargo value or upgrade guidance.",
-      "Run ./init.sh and perform a live smoke that mines/sells or manipulates cargo enough to see the new feedback change."
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh and reproduce the current startup/play smoke before editing.",
+      "Inspect src/audio.ts, src/game.ts, src/ui.tsx, and existing startup/UI tests to understand the Sound button, intro start path, pointer/touch audio activation, and console warning behavior.",
+      "Refactor audio startup so the game does not attempt AudioContext resume or media playback from untrusted/synthetic startup paths; only explicit Sound button clicks or browser-trusted pointer/touch gestures should enable sound.",
+      "Keep keyboard movement and intro dismissal independent of audio permission, preserve the existing Sound: off/on button contract, and avoid regressing procedural sound/music fallback behavior.",
+      "Add or update tests for the audio enable/auto-audio decision logic using DOM-free helpers or mocked audio where practical.",
+      "Run ./init.sh and perform a live browser/CDP smoke that starts the game, moves with keyboard, optionally toggles sound via pointer/click, and records console/runtime exceptions or warnings."
     ],
     "acceptance": [
-      "During play, the HUD or info surface clearly communicates current cargo value and useful next-upgrade affordability/progress feedback.",
-      "The feedback updates correctly after cargo changes, selling, upgrades, save/load, and reset flows.",
-      "Existing HUD meters, alert flashing, controls, and React startup behavior remain intact.",
+      "A live startup/play smoke can dismiss the intro and move the ship with no Runtime.exceptionThrown events and no autoplay AudioContext warnings from normal keyboard-only play.",
+      "Explicit Sound button or trusted pointer/touch activation still enables sound when the browser allows it, and blocked playback fails silently with the icon/state remaining accurate.",
+      "Keyboard controls, intro focus, touch controls, and existing HUD/shop behavior remain intact.",
       "Before marking complete, run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
     ],
-    "passes": true
+    "passes": false
+  },
+  {
+    "category": "audio-ux",
+    "description": "Clarify the in-game sound affordance so players understand sound is opt-in and browser-permission dependent.",
+    "steps": [
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh and inspect the intro/HUD sound affordance before editing.",
+      "Inspect src/ui.tsx, src/styles.css, src/dom.ts, src/audio.ts, and UI tests for the existing Sound button, intro copy, and accessible labels.",
+      "Add concise player-facing copy or button state text that explains sound can be enabled intentionally, without crowding the HUD or mobile layout.",
+      "Ensure the affordance updates consistently when sound is enabled, disabled, blocked, or unavailable, while preserving current DOM IDs/classes consumed by the runtime.",
+      "Add or update tests that assert the sound control renders with accessible labeling and any new status text or helper output.",
+      "Run ./init.sh and perform a live smoke at desktop and narrow/mobile viewport sizes to confirm the sound guidance is visible, non-overlapping, and does not interfere with play."
+    ],
+    "acceptance": [
+      "Players can tell from the intro/HUD that sound is optional and should be enabled through the Sound control or a trusted tap/click gesture.",
+      "The sound affordance remains readable on mobile-sized layouts and does not overlap critical fuel, hull, cargo, shop, or intro content.",
+      "Existing Sound button behavior, keyboard controls, intro flow, and live gameplay remain intact with no runtime exceptions.",
+      "Before marking complete, run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
+    ],
+    "passes": false
   }
 ]
