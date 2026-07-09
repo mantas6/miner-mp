@@ -1,24 +1,5 @@
 [
   {
-    "category": "balance",
-    "description": "Improve the first-minute mining loop by guaranteeing visible, reachable low-tier ore near the starting shaft.",
-    "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh to serve and observe the current game before editing.",
-      "Inspect src/world.ts, src/constants.ts, src/balance.ts, and the existing world/state tests to understand deterministic ore generation and starting-position constraints.",
-      "Adjust early-depth world generation so a new player can find and mine several Coal/Copper ore tiles within roughly the first 40-80 m around the starting area without making deeper ore progression trivial.",
-      "Keep the change deterministic and DOM-free; avoid hard-coding a brittle single route if a small starter seam or early-depth density rule is clearer.",
-      "Add or update unit tests that verify near-start early ore availability while preserving late-game special tiles, hazards, enemies, and the Motherlode core behavior.",
-      "Run ./init.sh and perform a live smoke where the intro is dismissed and the player mines enough early tiles to collect at least one ore item."
-    ],
-    "acceptance": [
-      "In a fresh live browser run, the player can reach and collect at least one low-tier ore within the first short descent from the surface without wandering blindly for multiple screens.",
-      "The top of the mine still contains dirt/air navigation decisions and does not become an all-ore tutorial corridor.",
-      "Automated tests cover deterministic early ore availability and guard against regressing the existing world-generation landmarks and hazards.",
-      "Before marking complete, run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
-    ],
-    "passes": true
-  },
-  {
     "category": "hud-feedback",
     "description": "Show clearer cargo value and next-upgrade feedback during early mining runs.",
     "steps": [
