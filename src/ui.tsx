@@ -20,6 +20,7 @@ export function MinerApp() {
             <div className="bar"><label>Fuel</label><meter id="fuel" min="0" max="100" value="100"></meter><span id="fuelLabel" className="bar-value">100/100</span></div>
             <div className="bar"><label>Hull</label><meter id="hull" min="0" max="100" value="100"></meter><span id="hullLabel" className="bar-value">100/100</span></div>
             <div className="bar"><label>Cargo</label><meter id="cargo" min="0" max="100" value="0"></meter><span id="cargoLabel" className="bar-value">0/10</span></div>
+            <div id="cargoFeedback" className="cargo-feedback" aria-live="polite">Cargo value $0 · Next Cargo +10 $120 (need $120 more)</div>
           </div>
 
           <div className="shop">

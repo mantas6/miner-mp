@@ -6,6 +6,8 @@ type FuelUpgradePlayer = Pick<Player, 'fuelMax'>;
 type RepairPlayer = Pick<Player, 'hullMax' | 'hull'>;
 type CargoUpgradePlayer = Pick<Player, 'cargoMax'>;
 type DrillUpgradePlayer = Pick<Player, 'drill'>;
+type CargoValueOre = { value: number };
+type UpgradeGuidancePlayer = Pick<Player, 'cargoMax' | 'fuelMax' | 'drill'>;
 
 /** @param {import('./state').Player} player @returns {number} */
 export function refuelCost(player: FuelUpgradePlayer): number {
@@ -30,6 +32,29 @@ export function tankCost(player: FuelUpgradePlayer): number {
 /** @param {import('./state').Player} player @returns {number} */
 export function drillCost(player: DrillUpgradePlayer): number {
   return Math.ceil(ECONOMY.drill.base * Math.pow(ECONOMY.drill.growth, Math.max(0, player.drill - STARTING.drill)));
+}
+
+export function cargoValue(cargo: CargoValueOre[]): number {
+  return cargo.reduce((sum, ore) => sum + ore.value, 0);
+}
+
+export function cheapestUpgrade(player: UpgradeGuidancePlayer): {label: string; cost: number} {
+  const upgrades = [
+    {label: `Cargo +${ECONOMY.cargo.step}`, cost: cargoCost(player)},
+    {label: `Tank +${ECONOMY.tank.step}`, cost: tankCost(player)},
+    {label: `Drill +${ECONOMY.drill.step}`, cost: drillCost(player)}
+  ];
+
+  return upgrades.reduce((best, candidate) => candidate.cost < best.cost ? candidate : best);
+}
+
+export function formatCargoUpgradeFeedback(player: UpgradeGuidancePlayer, cash: number, currentCargoValue: number): string {
+  const next = cheapestUpgrade(player);
+  const projectedCash = cash + currentCargoValue;
+  const remaining = Math.max(0, next.cost - projectedCash);
+  const upgradeStatus = remaining === 0 ? 'ready after sell' : `need $${remaining} more`;
+
+  return `Cargo value $${currentCargoValue} · Next ${next.label} $${next.cost} (${upgradeStatus})`;
 }
 
 /**

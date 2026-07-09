@@ -4,7 +4,7 @@ import { createAudio } from './audio';
 import { createInitialState } from './state';
 import { createRenderer } from './renderer';
 import { STARTING, FUEL, HULL, ECONOMY } from './balance';
-import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill } from './economy';
+import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill, cargoValue, formatCargoUpgradeFeedback } from './economy';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from './hud-alerts';
 import { load, save, DEFAULT_STATS } from './persistence';
 import { rand, makeTile } from './world';
@@ -51,7 +51,7 @@ function resetPlayer(full=true){
 function get(x,y){ return state.world[y]?.[x] || {type:'rock', hp:999}; }
 function set(x,y,t){ if(state.world[y]) state.world[y][x] = t; }
 function cargoUsed(){ return state.player.cargo.length; }
-function cargoValue(){ return state.player.cargo.reduce((s,o)=>s+o.value,0); }
+function currentCargoValue(){ return cargoValue(state.player.cargo); }
 function toast(msg){ ui.toast.textContent = msg; ui.toast.classList.add('show'); clearTimeout(toastTimer); toastTimer=window.setTimeout(()=>ui.toast.classList.remove('show'),1800); }
 function spawnDust(x,y,color='#9d6a42', amount=10){
   for (let i=0;i<amount;i++) state.particles.push({x:x+0.5,y:y+0.5,vx:(Math.random()-.5)*.08,vy:(Math.random()-.7)*.09,life:22+Math.random()*18,color,size:.035+Math.random()*.045});
@@ -240,7 +240,7 @@ function move(dx,dy){
   if (p.fuel <= 0) gameOver('Out of fuel — ship exploded. Tap anywhere to restart.');
 }
 function damage(n){ const p=state.player; p.hull = Math.max(0, p.hull - n); if(n > 1) audio.bump(); if(p.hull <= 0){ gameOver('Ship destroyed. Tap anywhere to restart.'); } }
-function sell(){ const v = cargoValue(); if (!atSurface()) return toast('Depot is on the surface.'); if(!v) return toast('Cargo is empty.'); addCash(v); state.player.cargo=[]; saveProgress(); toast(`Sold cargo for $${v}.`); audio.cash(v); }
+function sell(){ const v = currentCargoValue(); if (!atSurface()) return toast('Depot is on the surface.'); if(!v) return toast('Cargo is empty.'); addCash(v); state.player.cargo=[]; saveProgress(); toast(`Sold cargo for $${v}.`); audio.cash(v); }
 function spend(amount, fn, msg){ if (!atSurface()) return toast('Upgrades are at the surface.'); if (state.cash < amount) { audio.alarm(); return toast(`Need $${amount}.`); } state.cash -= amount; fn(); saveProgress(); toast(msg); audio.cash(amount); }
 function refuel(){
   const p = state.player;
@@ -271,7 +271,7 @@ function repair(){
 function surfaceService(){
   const p = state.player;
   if (!atSurface()) return toast('Service depot is on the surface.');
-  if (cargoValue() > 0) return sell();
+  if (currentCargoValue() > 0) return sell();
   if (p.fuel < p.fuelMax) return refuel();
   if (p.hull < p.hullMax) return repair();
   toast('Cargo empty, hull and fuel are full.');
@@ -315,7 +315,7 @@ function renderCargoDetails(){
 }
 function updateButtonStates(){
   const p = state.player, surf = atSurface();
-  ui.sell.disabled = !surf || cargoValue() <= 0;
+  ui.sell.disabled = !surf || currentCargoValue() <= 0;
   ui.fuelBtn.textContent = `Refuel $${refuelCost(p)}`;
   ui.repairBtn.textContent = `Repair $${repairCost(p)}`;
   ui.cargoBtn.textContent = `Cargo +10 $${cargoCost(p)}`;
@@ -469,6 +469,7 @@ function hud(){
   ui.fuelLabel.textContent = `${Math.ceil(Math.max(0, p.fuel))}/${p.fuelMax}`;
   ui.hullLabel.textContent = `${Math.ceil(Math.max(0, p.hull))}/${p.hullMax}`;
   ui.cargoLabel.textContent = `${cargoUsed()}/${p.cargoMax}`;
+  ui.cargoFeedback.textContent = formatCargoUpgradeFeedback(p, state.cash, currentCargoValue());
   const lowFuel = shouldFuelBarFlash(state);
   const lowHull = shouldHullBarFlash(state);
   const fullCargo = shouldCargoBarFlash(state);

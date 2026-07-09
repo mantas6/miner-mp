@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill } from '../src/economy';
+import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill, cargoValue, cheapestUpgrade, formatCargoUpgradeFeedback } from '../src/economy';
 import { STARTING, ECONOMY } from '../src/balance';
 
 describe('cost functions', () => {
@@ -25,6 +25,26 @@ describe('cost functions', () => {
   it('drillCost at baseline and one level up', () => {
     expect(drillCost({ drill: STARTING.drill })).toBe(200);
     expect(drillCost({ drill: STARTING.drill + 1 })).toBe(310);
+  });
+});
+
+describe('cargo and upgrade feedback', () => {
+  const baselinePlayer = { cargoMax: STARTING.cargoMax, fuelMax: STARTING.fuelMax, drill: STARTING.drill };
+
+  it('sums current cargo value from ore entries', () => {
+    expect(cargoValue([{ value: 6 }, { value: 12 }, { value: 6 }])).toBe(24);
+  });
+
+  it('selects the cheapest next ship upgrade', () => {
+    expect(cheapestUpgrade(baselinePlayer)).toEqual({ label: 'Cargo +10', cost: 120 });
+  });
+
+  it('formats remaining progress when cargo plus cash cannot yet afford the cheapest upgrade', () => {
+    expect(formatCargoUpgradeFeedback(baselinePlayer, 40, 25)).toBe('Cargo value $25 · Next Cargo +10 $120 (need $55 more)');
+  });
+
+  it('formats ready feedback when selling cargo would afford the next upgrade', () => {
+    expect(formatCargoUpgradeFeedback(baselinePlayer, 70, 55)).toBe('Cargo value $55 · Next Cargo +10 $120 (ready after sell)');
   });
 });
 

@@ -17,6 +17,7 @@ const GAME_DOM_IDS = [
   'hullLabel',
   'cargo',
   'cargoLabel',
+  'cargoFeedback',
   'sell',
   'fuelBtn',
   'repairBtn',
@@ -45,5 +46,6 @@ describe('React GUI shell', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
     expect(markup).toContain('0/10');
+    expect(markup).toContain('Cargo value $0');
   });
 });
