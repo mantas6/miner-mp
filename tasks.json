@@ -16,7 +16,7 @@
       "Keyboard controls, intro focus, touch controls, and existing HUD/shop behavior remain intact.",
       "Before marking complete, run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "audio-ux",

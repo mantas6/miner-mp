@@ -1,6 +1,7 @@
 import { ORES, START_Y, SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants';
 import { canvas, gamePanel, ctx, H, keys, ui, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom';
 import { createAudio } from './audio';
+import { shouldAttemptAutoAudio } from './audio-permission';
 import { createInitialState } from './state';
 import { createRenderer } from './renderer';
 import { STARTING, FUEL, HULL, ECONOMY } from './balance';
@@ -375,7 +376,6 @@ function input(){
 }
 function moveFromTouch(dx, dy, immediate=true) {
   if (!state.introStarted) return;
-  tryAutoAudio();
   if (immediate) state.input.lastTouchMove = performance.now();
   move(dx, dy);
 }
@@ -417,6 +417,7 @@ function bindTouchControls(){
     start = {x: e.clientX, y: e.clientY};
     const dir = directionFromPoint(e.clientX, e.clientY);
     state.input.touchHoldDir = dir;
+    tryAutoAudio(e);
     if (dir) moveFromTouch(dir[0], dir[1]);
     gamePanel.setPointerCapture?.(e.pointerId);
     e.preventDefault();
@@ -482,20 +483,25 @@ function hud(){
   updateButtonStates();
 }
 function loop(){ input(); if (state.introStarted) { drainHoverFuel(); updateEnemies(); } draw(); hud(); requestAnimationFrame(loop); }
-function tryAutoAudio() {
-  if (audio.wantsSound && !audio.enabled) audio.enable();
+function tryAutoAudio(event?: Event) {
+  if (shouldAttemptAutoAudio({
+    wantsSound: audio.wantsSound,
+    enabled: audio.enabled,
+    eventType: event?.type,
+    isTrusted: event?.isTrusted
+  })) audio.enable();
 }
 function focusGame(){
   try { (gamePanel || canvas).focus({preventScroll:true}); }
   catch (_) { try { (gamePanel || canvas).focus(); } catch (_) {} }
 }
-function startIntro(){
+function startIntro(event?: Event){
   if (state.introStarted) return;
   state.introStarted = true;
   ui.intro?.classList.add('hidden');
   setTimeout(() => { if (ui.intro) ui.intro.style.display = 'none'; }, 320);
   focusGame();
-  tryAutoAudio();
+  tryAutoAudio(event);
   toast('Drill ready. Mine ore, sell it, and watch your fuel.');
 }
 function handleKeyDown(e){
@@ -540,12 +546,12 @@ export function initGame(){
   addEventListener('focus', focusGame);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) focusGame(); });
   ui.intro?.addEventListener('pointerdown', e => {
-    startIntro();
+    startIntro(e);
     e.preventDefault();
     e.stopPropagation();
   }, {capture:true});
   ui.intro?.addEventListener('touchstart', e => {
-    startIntro();
+    startIntro(e);
     e.preventDefault();
     e.stopPropagation();
   }, {capture:true, passive:false});
@@ -555,9 +561,9 @@ export function initGame(){
   addEventListener('pointerdown', e => {
     const target = e.target as Element;
     if (target.closest && target.closest('#info-screen')) return;
-    if (!state.introStarted) { startIntro(); e.preventDefault(); e.stopPropagation(); return; }
+    if (!state.introStarted) { startIntro(e); e.preventDefault(); e.stopPropagation(); return; }
     if (!state.gameOver) return;
-    tryAutoAudio();
+    tryAutoAudio(e);
     restartGame();
     e.preventDefault();
     e.stopPropagation();
@@ -565,9 +571,9 @@ export function initGame(){
   addEventListener('touchstart', e => {
     const target = e.target as Element;
     if (target.closest && target.closest('#info-screen')) return;
-    if (!state.introStarted) { startIntro(); e.preventDefault(); e.stopPropagation(); return; }
+    if (!state.introStarted) { startIntro(e); e.preventDefault(); e.stopPropagation(); return; }
     if (!state.gameOver) return;
-    tryAutoAudio();
+    tryAutoAudio(e);
     restartGame();
     e.preventDefault();
     e.stopPropagation();
@@ -575,3 +581,4 @@ export function initGame(){
   addEventListener('pointerdown', tryAutoAudio);
   bindButtons(); bindTouchControls(); generate(); setInterval(saveProgress, 60000); addEventListener('beforeunload', saveProgress); focusGame(); setTimeout(focusGame, 60); loop();
 }
+
