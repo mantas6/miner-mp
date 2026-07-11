@@ -8,7 +8,8 @@ export function MinerApp() {
 
         <div id="hud" aria-label="Game status and actions">
           <div className="hud-top">
-            <button id="soundBtn" className="sound" aria-label="Toggle sound" title="Toggle sound">🔇</button>
+            <button id="soundBtn" className="sound" aria-label="Enable optional sound" title="Enable optional sound">🔇</button>
+            <span id="soundStatus" className="sound-status" aria-live="polite">Sound off — press Sound to enable</span>
           </div>
 
           <div className="stats-grid">
@@ -83,6 +84,7 @@ export function MinerApp() {
                 <li><strong>Enemies:</strong> drilling nearby blocks wakes them; drill them back before they chew the hull.</li>
                 <li><strong>Goal:</strong> reach the Motherlode core at the bottom, crack it, and get home alive.</li>
                 <li><strong>Upgrade:</strong> prices rise, so choose tank, cargo, and drill upgrades carefully.</li>
+                <li><strong>Sound:</strong> optional soundtrack starts only after the Sound button or a trusted tap/click.</li>
               </ul>
               <p className="intro-warning">Low fuel below 25% means return to the surface immediately.</p>
             </div>

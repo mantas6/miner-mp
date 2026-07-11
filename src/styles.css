@@ -18,7 +18,8 @@ canvas { width: 100%; max-height: calc(100vh - 28px); max-height: calc(100dvh - 
 #hud { position: absolute; inset: 14px; pointer-events: none; display: grid; grid-template-rows: auto 1fr auto; gap: 10px; }
 #hud > * { pointer-events: auto; }
 .hud-top, .shop, .bar-row, .stats-grid { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); background: linear-gradient(135deg, rgba(8,12,20,.74), rgba(19,28,45,.52)); border: 1px solid rgba(255,255,255,.13); box-shadow: 0 16px 45px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08); }
-.hud-top { justify-self: start; display: flex; align-items: center; padding: 7px; border-radius: 14px; }
+.hud-top { justify-self: start; display: flex; align-items: center; padding: 7px; border-radius: 14px; gap: 8px; max-width: min(360px, 46%); }
+.sound-status { color: #ffe39a; font-size: 12px; font-weight: 850; letter-spacing: .04em; line-height: 1.18; text-shadow: 0 1px 0 rgba(0,0,0,.5); }
 h1 { margin: 0; letter-spacing: .04em; font-size: clamp(25px, 3vw, 40px); line-height: .9; color: var(--gold); text-shadow: 0 2px 0 #5b3610, 0 0 22px rgba(255,200,87,.25); }
 .subtitle { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
 .stats-grid { position: absolute; top: 0; right: 0; display: grid; grid-template-columns: repeat(2, minmax(115px, 1fr)); gap: 1px; overflow: hidden; border-radius: 18px; }
@@ -96,7 +97,8 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
   #game-panel { width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; }
   canvas { width: 100vw; height: 100vh; height: 100dvh; max-height: none; border-radius: 0; border: 0; object-fit: cover; }
   #hud { inset: max(6px, env(safe-area-inset-top)) 6px max(6px, env(safe-area-inset-bottom)) 6px; }
-  .hud-top { max-width: calc(100% - 126px); padding: 8px 9px; gap: 8px; border-radius: 14px; }
+  .hud-top { max-width: calc(100% - 126px); padding: 8px 9px; gap: 7px; border-radius: 14px; }
+  .sound-status { max-width: 158px; font-size: 10px; letter-spacing: .02em; }
   h1 { font-size: 22px; }
   .subtitle { display: none; }
   .stats-grid { grid-template-columns: 1fr; border-radius: 14px; }

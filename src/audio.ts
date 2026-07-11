@@ -1,4 +1,4 @@
-import { setSoundIcon } from './dom';
+import { setSoundBlockedStatus, setSoundIcon, setSoundUnavailableStatus } from './dom';
 import type { GameUi } from './dom';
 import type { AudioController } from './types';
 
@@ -19,7 +19,10 @@ export function createAudio(ui: GameUi, toast: ToastFn): AudioController {
     init() {
       if (this.ctx) return;
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return toast('Audio is not supported in this browser.');
+      if (!AudioCtx) {
+        setSoundUnavailableStatus();
+        return toast('Audio is not supported in this browser.');
+      }
       this.ctx = new AudioCtx();
       this.master = this.ctx.createGain();
       this.master.gain.value = 0.55;
@@ -48,7 +51,8 @@ export function createAudio(ui: GameUi, toast: ToastFn): AudioController {
         return true;
       } catch (err) {
         this.enabled = false;
-        setSoundIcon(false);
+        setSoundBlockedStatus();
+        toast('Sound blocked by browser — press Sound after a tap/click.');
         return false;
       }
     },

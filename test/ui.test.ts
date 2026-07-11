@@ -9,6 +9,7 @@ const GAME_DOM_IDS = [
   'game',
   'hud',
   'soundBtn',
+  'soundStatus',
   'cash',
   'depth',
   'fuel',
@@ -47,5 +48,13 @@ describe('React GUI shell', () => {
 
     expect(markup).toContain('0/10');
     expect(markup).toContain('Cargo value $0');
+  });
+
+  it('explains that sound is optional and permission-gated', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('Enable optional sound');
+    expect(markup).toContain('Sound off — press Sound to enable');
+    expect(markup).toContain('optional soundtrack starts only after the Sound button or a trusted tap/click');
   });
 });

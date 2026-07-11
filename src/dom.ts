@@ -40,6 +40,7 @@ export const ui = {
   toast: requireElement<HTMLElement>('toast'),
   fuelWarning: requireElement<HTMLElement>('fuel-warning'),
   soundBtn: requireElement<HTMLButtonElement>('soundBtn'),
+  soundStatus: requireElement<HTMLElement>('soundStatus'),
   intro: requireElement<HTMLElement>('intro'),
   sell: requireElement<HTMLButtonElement>('sell'),
   fuelBtn: requireElement<HTMLButtonElement>('fuelBtn'),
@@ -56,4 +57,18 @@ export type GameUi = typeof ui;
 
 export function setSoundIcon(on: boolean): void {
   ui.soundBtn.textContent = on ? '🔊' : '🔇';
+  ui.soundBtn.setAttribute('aria-label', on ? 'Disable sound' : 'Enable optional sound');
+  ui.soundBtn.title = on ? 'Disable sound' : 'Enable optional sound';
+  ui.soundStatus.textContent = on ? 'Sound on' : 'Sound off — press Sound to enable';
+}
+
+export function setSoundUnavailableStatus(message = 'Sound unavailable in this browser'): void {
+  ui.soundBtn.setAttribute('aria-label', message);
+  ui.soundBtn.title = message;
+  ui.soundStatus.textContent = message;
+}
+
+export function setSoundBlockedStatus(): void {
+  setSoundIcon(false);
+  ui.soundStatus.textContent = 'Sound blocked — press Sound after a tap/click';
 }
