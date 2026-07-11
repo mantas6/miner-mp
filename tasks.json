@@ -1,25 +1,6 @@
 [
   {
     "category": "audio-ux",
-    "description": "Make sound startup permission-safe so starting or playing the game no longer emits autoplay warnings when audio is blocked.",
-    "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh and reproduce the current startup/play smoke before editing.",
-      "Inspect src/audio.ts, src/game.ts, src/ui.tsx, and existing startup/UI tests to understand the Sound button, intro start path, pointer/touch audio activation, and console warning behavior.",
-      "Refactor audio startup so the game does not attempt AudioContext resume or media playback from untrusted/synthetic startup paths; only explicit Sound button clicks or browser-trusted pointer/touch gestures should enable sound.",
-      "Keep keyboard movement and intro dismissal independent of audio permission, preserve the existing Sound: off/on button contract, and avoid regressing procedural sound/music fallback behavior.",
-      "Add or update tests for the audio enable/auto-audio decision logic using DOM-free helpers or mocked audio where practical.",
-      "Run ./init.sh and perform a live browser/CDP smoke that starts the game, moves with keyboard, optionally toggles sound via pointer/click, and records console/runtime exceptions or warnings."
-    ],
-    "acceptance": [
-      "A live startup/play smoke can dismiss the intro and move the ship with no Runtime.exceptionThrown events and no autoplay AudioContext warnings from normal keyboard-only play.",
-      "Explicit Sound button or trusted pointer/touch activation still enables sound when the browser allows it, and blocked playback fails silently with the icon/state remaining accurate.",
-      "Keyboard controls, intro focus, touch controls, and existing HUD/shop behavior remain intact.",
-      "Before marking complete, run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
-    ],
-    "passes": true
-  },
-  {
-    "category": "audio-ux",
     "description": "Clarify the in-game sound affordance so players understand sound is opt-in and browser-permission dependent.",
     "steps": [
       "Use and consult miner-daily-task-runner before implementing; run ./init.sh and inspect the intro/HUD sound affordance before editing.",
