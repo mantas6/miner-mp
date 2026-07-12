@@ -1,4 +1,7 @@
 import React from 'react';
+import { PROSPECTING_TIP, buildProspectingGuideRows } from './prospecting';
+
+const prospectingRows = buildProspectingGuideRows();
 
 export function MinerApp() {
   return (
@@ -44,6 +47,20 @@ export function MinerApp() {
             <section>
               <h3>Cargo Bay</h3>
               <ul id="cargoList" className="cargo-detail-list"><li className="empty-cargo">Empty</li></ul>
+            </section>
+            <section aria-labelledby="prospecting-title">
+              <h3 id="prospecting-title">Prospecting Guide</h3>
+              <p className="prospecting-tip">{PROSPECTING_TIP}</p>
+              <ul id="prospectingGuide" className="prospecting-guide" aria-label="Ore values and approximate unlock depths">
+                {prospectingRows.map(row => (
+                  <li key={row.name}>
+                    <span className="ore-icon" style={{ background: row.color }} aria-hidden="true"></span>
+                    <span className="ore-name">{row.name}</span>
+                    <span className="ore-value">{row.valueLabel}</span>
+                    <span className="ore-depth">{row.depthLabel}</span>
+                  </li>
+                ))}
+              </ul>
             </section>
             <section>
               <h3>Controls</h3>

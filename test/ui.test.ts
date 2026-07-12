@@ -29,6 +29,7 @@ const GAME_DOM_IDS = [
   'info-screen',
   'infoCloseBtn',
   'cargoList',
+  'prospectingGuide',
   'fuel-warning',
   'toast',
   'intro'
@@ -56,5 +57,17 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Enable optional sound');
     expect(markup).toContain('Sound off — press Sound to enable');
     expect(markup).toContain('optional soundtrack starts only after the Sound button or a trusted tap/click');
+  });
+
+  it('renders prospecting guide copy from ore data', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('Prospecting Guide');
+    expect(markup).toContain('Coal');
+    expect(markup).toContain('$8');
+    expect(markup).toContain('starter seam');
+    expect(markup).toContain('Copper');
+    expect(markup).toContain('≈50 m+');
+    expect(markup).toContain('first Coal/Copper seam');
   });
 });

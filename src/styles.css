@@ -56,12 +56,15 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
 .info-header h2, .info-card h3 { margin: 0; color: var(--gold); }
 .info-card h3 { margin-top: 16px; font-size: 17px; letter-spacing: .04em; text-transform: uppercase; }
 .close-btn { width: 42px; height: 42px; padding: 0; border-radius: 50%; font-size: 28px; line-height: 1; }
-.control-list, .cargo-detail-list { display: grid; gap: 8px; margin-top: 10px; }
-.control-list li, .cargo-detail-list li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 13px; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.08); }
+.control-list, .cargo-detail-list, .prospecting-guide { display: grid; gap: 8px; margin-top: 10px; }
+.control-list li, .cargo-detail-list li, .prospecting-guide li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 13px; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.08); }
+.prospecting-guide li { grid-template-columns: auto minmax(88px, 1fr) auto auto; }
+.prospecting-tip { margin: 8px 0 0; padding: 10px 12px; border-radius: 13px; background: rgba(255,200,87,.10); border: 1px solid rgba(255,200,87,.22); color: #ffe39a; font-size: 13px; font-weight: 800; line-height: 1.35; }
 .control-list li span { color: #dbe8ff; }
 .ore-icon { width: 22px; height: 22px; border-radius: 50% 48% 45% 52%; display: inline-block; box-shadow: inset -4px -5px 0 rgba(0,0,0,.22), inset 3px 3px 0 rgba(255,255,255,.24), 0 0 0 2px rgba(255,255,255,.12); }
 .ore-name { font-weight: 900; color: #eef4ff; }
-.ore-count, .ore-value { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ore-count, .ore-value, .ore-depth { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ore-depth { color: #dbe8ff; font-size: 12px; font-weight: 850; text-align: right; }
 .empty-cargo { grid-template-columns: 1fr !important; color: var(--muted); text-align: center; }
 #fuel-warning { position: absolute; left: 50%; top: 18px; translate: -50% 0; z-index: 5; display: none; padding: 11px 18px; border-radius: 999px; background: linear-gradient(135deg, rgba(124,22,22,.94), rgba(246,99,30,.90)); border: 2px solid rgba(255,235,150,.92); color: #fff6d1; font-size: 18px; font-weight: 950; letter-spacing: .04em; text-shadow: 0 2px 0 rgba(0,0,0,.35); box-shadow: 0 0 0 4px rgba(255,65,65,.18), 0 15px 36px rgba(0,0,0,.45); pointer-events: none; animation: lowFuelPulse .85s ease-in-out infinite alternate; }
 #fuel-warning.show { display: block; }
@@ -118,7 +121,9 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
   #info-screen { padding: 10px; }
   .info-card { max-height: 86vh; padding: 14px; border-radius: 18px; }
   .control-list li, .cargo-detail-list li { grid-template-columns: auto 1fr; padding: 8px 9px; }
-  .ore-value { grid-column: 2; }
+  .prospecting-guide li { grid-template-columns: auto 1fr auto; padding: 8px 9px; gap: 8px; }
+  .ore-value, .ore-depth { grid-column: 2; text-align: left; }
+  .prospecting-tip { font-size: 12px; padding: 8px 9px; }
   #intro { padding: 12px; }
   .intro-card { grid-template-columns: 1fr; gap: 10px; padding: 18px 16px; text-align: center; max-height: 94vh; overflow: auto; }
   .soviet-badge { width: 138px; height: 138px; }
