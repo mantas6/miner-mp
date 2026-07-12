@@ -1,21 +1,22 @@
 [
   {
-    "category": "audio-ux",
-    "description": "Clarify the in-game sound affordance so players understand sound is opt-in and browser-permission dependent.",
+    "category": "gameplay-ux",
+    "description": "Add a prospecting guide to the Info / Cargo overlay so players can understand ore values, unlock depths, and early mining goals without leaving the game.",
     "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh and inspect the intro/HUD sound affordance before editing.",
-      "Inspect src/ui.tsx, src/styles.css, src/dom.ts, src/audio.ts, and UI tests for the existing Sound button, intro copy, and accessible labels.",
-      "Add concise player-facing copy or button state text that explains sound can be enabled intentionally, without crowding the HUD or mobile layout.",
-      "Ensure the affordance updates consistently when sound is enabled, disabled, blocked, or unavailable, while preserving current DOM IDs/classes consumed by the runtime.",
-      "Add or update tests that assert the sound control renders with accessible labeling and any new status text or helper output.",
-      "Run ./init.sh and perform a live smoke at desktop and narrow/mobile viewport sizes to confirm the sound guidance is visible, non-overlapping, and does not interfere with play."
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh and inspect the current Info / Cargo overlay and early-game HUD before editing.",
+      "Inspect src/ui.tsx, src/dom.ts, src/game.ts, src/constants.ts, src/styles.css, and existing UI/economy tests for the current info dialog, ore constants, cargo detail rendering, and mobile layout constraints.",
+      "Add a DOM-free helper that formats the ORES table into concise prospecting-guide rows, converting ore minimum rows into player-facing depth labels using START_Y and preserving ore value/color data for UI rendering.",
+      "Extend the Info / Cargo overlay with a compact Prospecting Guide section that lists each ore's name, value, approximate starting depth, and color marker, plus one short tip that the first Coal/Copper seam appears near the starting shaft.",
+      "Keep existing DOM IDs/classes consumed by the runtime intact; add any new stable DOM hooks to src/dom.ts only if the runtime needs them, and ensure the overlay stays readable on narrow/mobile layouts without covering critical HUD controls when closed.",
+      "Add or update tests for the prospecting-guide helper and React shell markup so future changes catch stale ore values/depth labels and preserve the new in-game guidance.",
+      "Run ./init.sh and perform a live browser/CDP smoke that opens Info / Cargo after starting the game, confirms the guide is visible, mines or moves briefly, and reports no runtime exceptions."
     ],
     "acceptance": [
-      "Players can tell from the intro/HUD that sound is optional and should be enabled through the Sound control or a trusted tap/click gesture.",
-      "The sound affordance remains readable on mobile-sized layouts and does not overlap critical fuel, hull, cargo, shop, or intro content.",
-      "Existing Sound button behavior, keyboard controls, intro flow, and live gameplay remain intact with no runtime exceptions.",
+      "From live gameplay, opening Info / Cargo shows a readable Prospecting Guide with ore names, cash values, approximate depth thresholds, and color markers derived from the current ORES constants.",
+      "The guide gives early players a clear next goal after the current observed state of $60 cash, 20 m depth, empty cargo, and next Cargo +10 needing $60 more, without requiring external README knowledge.",
+      "Existing cargo list, controls help, Sound affordance, intro flow, keyboard/touch movement, and HUD feedback remain intact with no runtime exceptions.",
       "Before marking complete, run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
     ],
-    "passes": true
+    "passes": false
   }
 ]
