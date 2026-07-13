@@ -36,6 +36,9 @@ export function MinerApp() {
             <button id="drillBtn">Drill +1 $200</button>
             <button id="infoBtn">Info / Cargo</button>
           </div>
+          <div id="serviceStatus" className="service-status" aria-live="polite">
+            At depot: cargo empty, fuel full, hull repaired — upgrades are available when you have enough cash.
+          </div>
         </div>
 
         <div id="info-screen" className="hidden" role="dialog" aria-modal="true" aria-labelledby="info-title">

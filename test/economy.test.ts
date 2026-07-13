@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill, cargoValue, cheapestUpgrade, formatCargoUpgradeFeedback } from '../src/economy';
+import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill, cargoValue, cheapestUpgrade, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from '../src/economy';
 import { STARTING, ECONOMY } from '../src/balance';
 
 describe('cost functions', () => {
@@ -45,6 +45,35 @@ describe('cargo and upgrade feedback', () => {
 
   it('formats ready feedback when selling cargo would afford the next upgrade', () => {
     expect(formatCargoUpgradeFeedback(baselinePlayer, 70, 55)).toBe('Cargo value $55 · Next Cargo +10 $120 (ready after sell)');
+  });
+});
+
+describe('surface service guidance', () => {
+  const servicedPlayer = { fuel: 100, fuelMax: 100, hull: 100, hullMax: 100 };
+
+  it('explains disabled depot and shop actions while underground', () => {
+    expect(formatSurfaceServiceGuidance({ player: servicedPlayer, cash: 60, currentCargoValue: 0, atSurface: false }))
+      .toBe('Underground: return to the surface depot to sell cargo, repair, refuel, and buy upgrades.');
+  });
+
+  it('prioritizes selling cargo at the surface', () => {
+    expect(formatSurfaceServiceGuidance({ player: { ...servicedPlayer, fuel: 40, hull: 65 }, cash: 60, currentCargoValue: 32, atSurface: true }))
+      .toBe('At depot: press Enter or Sell to unload cargo for $32.');
+  });
+
+  it('prioritizes refueling before repairs after cargo is empty', () => {
+    expect(formatSurfaceServiceGuidance({ player: { ...servicedPlayer, fuel: 72, hull: 50 }, cash: 60, currentCargoValue: 0, atSurface: true }))
+      .toBe('At depot: press Space or Refuel to top up fuel for $20.');
+  });
+
+  it('prompts repair when fuel is full and hull is damaged', () => {
+    expect(formatSurfaceServiceGuidance({ player: { ...servicedPlayer, hull: 70 }, cash: 60, currentCargoValue: 0, atSurface: true }))
+      .toBe('At depot: press Space or Repair to fix hull for $44.');
+  });
+
+  it('confirms full service state at the depot', () => {
+    expect(formatSurfaceServiceGuidance({ player: servicedPlayer, cash: 60, currentCargoValue: 0, atSurface: true }))
+      .toBe('At depot: cargo empty, fuel full, hull repaired — upgrades are available when you have enough cash.');
   });
 });
 

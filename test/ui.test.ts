@@ -10,6 +10,7 @@ const GAME_DOM_IDS = [
   'hud',
   'soundBtn',
   'soundStatus',
+  'serviceStatus',
   'cash',
   'depth',
   'fuel',
@@ -49,6 +50,13 @@ describe('React GUI shell', () => {
 
     expect(markup).toContain('0/10');
     expect(markup).toContain('Cargo value $0');
+  });
+
+  it('renders an always-visible surface service status hook and startup copy', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('id="serviceStatus"');
+    expect(markup).toContain('At depot: cargo empty, fuel full, hull repaired');
   });
 
   it('explains that sound is optional and permission-gated', () => {

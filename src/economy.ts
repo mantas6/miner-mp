@@ -8,6 +8,14 @@ type CargoUpgradePlayer = Pick<Player, 'cargoMax'>;
 type DrillUpgradePlayer = Pick<Player, 'drill'>;
 type CargoValueOre = { value: number };
 type UpgradeGuidancePlayer = Pick<Player, 'cargoMax' | 'fuelMax' | 'drill'>;
+type ServiceGuidancePlayer = Pick<Player, 'fuel' | 'fuelMax' | 'hull' | 'hullMax'>;
+
+export interface ServiceGuidanceInput {
+  player: ServiceGuidancePlayer;
+  cash: number;
+  currentCargoValue: number;
+  atSurface: boolean;
+}
 
 /** @param {import('./state').Player} player @returns {number} */
 export function refuelCost(player: FuelUpgradePlayer): number {
@@ -55,6 +63,28 @@ export function formatCargoUpgradeFeedback(player: UpgradeGuidancePlayer, cash: 
   const upgradeStatus = remaining === 0 ? 'ready after sell' : `need $${remaining} more`;
 
   return `Cargo value $${currentCargoValue} · Next ${next.label} $${next.cost} (${upgradeStatus})`;
+}
+
+export function formatSurfaceServiceGuidance({ player, cash, currentCargoValue, atSurface }: ServiceGuidanceInput): string {
+  if (!atSurface) {
+    return 'Underground: return to the surface depot to sell cargo, repair, refuel, and buy upgrades.';
+  }
+
+  if (currentCargoValue > 0) {
+    return `At depot: press Enter or Sell to unload cargo for $${currentCargoValue}.`;
+  }
+
+  if (player.fuel < player.fuelMax) {
+    if (cash <= 0) return 'At depot: fuel is low, but you need cash before refueling.';
+    return `At depot: press Space or Refuel to top up fuel for $${refuelCost(player)}.`;
+  }
+
+  if (player.hull < player.hullMax) {
+    if (cash <= 0) return 'At depot: hull needs repairs, but you need cash first.';
+    return `At depot: press Space or Repair to fix hull for $${repairCost(player)}.`;
+  }
+
+  return 'At depot: cargo empty, fuel full, hull repaired — upgrades are available when you have enough cash.';
 }
 
 /**

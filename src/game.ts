@@ -5,7 +5,7 @@ import { shouldAttemptAutoAudio } from './audio-permission';
 import { createInitialState } from './state';
 import { createRenderer } from './renderer';
 import { STARTING, FUEL, HULL, ECONOMY } from './balance';
-import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill, cargoValue, formatCargoUpgradeFeedback } from './economy';
+import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill, cargoValue, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from './hud-alerts';
 import { load, save, DEFAULT_STATS } from './persistence';
 import { rand, makeTile } from './world';
@@ -470,7 +470,14 @@ function hud(){
   ui.fuelLabel.textContent = `${Math.ceil(Math.max(0, p.fuel))}/${p.fuelMax}`;
   ui.hullLabel.textContent = `${Math.ceil(Math.max(0, p.hull))}/${p.hullMax}`;
   ui.cargoLabel.textContent = `${cargoUsed()}/${p.cargoMax}`;
-  ui.cargoFeedback.textContent = formatCargoUpgradeFeedback(p, state.cash, currentCargoValue());
+  const displayedCargoValue = currentCargoValue();
+  ui.cargoFeedback.textContent = formatCargoUpgradeFeedback(p, state.cash, displayedCargoValue);
+  ui.serviceStatus.textContent = formatSurfaceServiceGuidance({
+    player: p,
+    cash: state.cash,
+    currentCargoValue: displayedCargoValue,
+    atSurface: atSurface()
+  });
   const lowFuel = shouldFuelBarFlash(state);
   const lowHull = shouldHullBarFlash(state);
   const fullCargo = shouldCargoBarFlash(state);

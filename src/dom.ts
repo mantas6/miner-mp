@@ -41,6 +41,7 @@ export const ui = {
   fuelWarning: requireElement<HTMLElement>('fuel-warning'),
   soundBtn: requireElement<HTMLButtonElement>('soundBtn'),
   soundStatus: requireElement<HTMLElement>('soundStatus'),
+  serviceStatus: requireElement<HTMLElement>('serviceStatus'),
   intro: requireElement<HTMLElement>('intro'),
   sell: requireElement<HTMLButtonElement>('sell'),
   fuelBtn: requireElement<HTMLButtonElement>('fuelBtn'),
