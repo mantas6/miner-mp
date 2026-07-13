@@ -1,22 +1,22 @@
 [
   {
     "category": "gameplay-ux",
-    "description": "Add a prospecting guide to the Info / Cargo overlay so players can understand ore values, unlock depths, and early mining goals without leaving the game.",
+    "description": "Add an always-visible surface service guidance readout so players understand why depot/shop actions are disabled underground and what Enter/Space will do at the surface.",
     "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh and inspect the current Info / Cargo overlay and early-game HUD before editing.",
-      "Inspect src/ui.tsx, src/dom.ts, src/game.ts, src/constants.ts, src/styles.css, and existing UI/economy tests for the current info dialog, ore constants, cargo detail rendering, and mobile layout constraints.",
-      "Add a DOM-free helper that formats the ORES table into concise prospecting-guide rows, converting ore minimum rows into player-facing depth labels using START_Y and preserving ore value/color data for UI rendering.",
-      "Extend the Info / Cargo overlay with a compact Prospecting Guide section that lists each ore's name, value, approximate starting depth, and color marker, plus one short tip that the first Coal/Copper seam appears near the starting shaft.",
-      "Keep existing DOM IDs/classes consumed by the runtime intact; add any new stable DOM hooks to src/dom.ts only if the runtime needs them, and ensure the overlay stays readable on narrow/mobile layouts without covering critical HUD controls when closed.",
-      "Add or update tests for the prospecting-guide helper and React shell markup so future changes catch stale ore values/depth labels and preserve the new in-game guidance.",
-      "Run ./init.sh and perform a live browser/CDP smoke that opens Info / Cargo after starting the game, confirms the guide is visible, mines or moves briefly, and reports no runtime exceptions."
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh, play the current game, and confirm the underground state where Sell/Refuel/Repair/upgrade buttons are disabled without an explicit depot-distance/status explanation.",
+      "Inspect src/ui.tsx, src/dom.ts, src/game.ts, src/economy.ts, src/balance.ts, src/styles.css, and existing UI/economy tests for current HUD text, shop-button state, surfaceService(), sell(), refuel(), repair(), and atSurface() behavior.",
+      "Add a DOM-free helper that formats a concise service-status message from player/cash/cargo/surface state, covering at-surface actions (sell cargo, refuel, repair, or all serviced) and underground guidance (return to the surface depot for selling, repairs, refuel, and upgrades).",
+      "Extend the React HUD with a stable service-status DOM hook near the shop or cargo feedback, wire src/dom.ts and the HUD update loop to refresh it each frame, and keep existing DOM IDs/classes consumed by the runtime intact.",
+      "Style the readout so it is readable on desktop and narrow/mobile layouts without overlapping the stats, sound status, bars, shop, toast, or Info / Cargo overlay.",
+      "Add or update unit tests for the service-status helper and React shell markup, including an underground disabled-shop guidance case and at-surface action cases for cargo sale and service/refuel/repair priority.",
+      "Run ./init.sh and perform a live browser/CDP smoke that starts the game, moves underground, observes the guidance while shop buttons are disabled, returns or resets to surface to observe the surface action copy, and reports no runtime exceptions."
     ],
     "acceptance": [
-      "From live gameplay, opening Info / Cargo shows a readable Prospecting Guide with ore names, cash values, approximate depth thresholds, and color markers derived from the current ORES constants.",
-      "The guide gives early players a clear next goal after the current observed state of $60 cash, 20 m depth, empty cargo, and next Cargo +10 needing $60 more, without requiring external README knowledge.",
-      "Existing cargo list, controls help, Sound affordance, intro flow, keyboard/touch movement, and HUD feedback remain intact with no runtime exceptions.",
+      "During live gameplay underground, the HUD clearly explains that depot services and upgrades require returning to the surface instead of only showing disabled shop buttons.",
+      "At the surface, the readout changes to the next useful action, such as selling loaded cargo, pressing Space/using buttons to refuel or repair, or confirming the ship is fully serviced when cargo is empty and fuel/hull are full.",
+      "Keyboard shortcuts Enter and Space, existing button enable/disable logic, Info / Cargo guide, sound affordance, intro flow, and mobile HUD readability remain intact with no runtime exceptions.",
       "Before marking complete, run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
     ],
-    "passes": true
+    "passes": false
   }
 ]
