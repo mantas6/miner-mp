@@ -7,6 +7,7 @@ import { createRenderer } from './renderer';
 import { STARTING, FUEL, HULL, ECONOMY } from './balance';
 import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill, cargoValue, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from './hud-alerts';
+import { formatExpeditionObjective } from './objective';
 import { load, save, DEFAULT_STATS } from './persistence';
 import { rand, makeTile } from './world';
 
@@ -471,6 +472,15 @@ function hud(){
   ui.hullLabel.textContent = `${Math.ceil(Math.max(0, p.hull))}/${p.hullMax}`;
   ui.cargoLabel.textContent = `${cargoUsed()}/${p.cargoMax}`;
   const displayedCargoValue = currentCargoValue();
+  const objectiveCopy = formatExpeditionObjective({
+    player: p,
+    cash: state.cash,
+    cargoCount: cargoUsed(),
+    currentCargoValue: displayedCargoValue,
+    atSurface: atSurface()
+  });
+  ui.objectiveStatus.textContent = objectiveCopy;
+  ui.objectiveInfoStatus.textContent = objectiveCopy;
   ui.cargoFeedback.textContent = formatCargoUpgradeFeedback(p, state.cash, displayedCargoValue);
   ui.serviceStatus.textContent = formatSurfaceServiceGuidance({
     player: p,

@@ -19,6 +19,8 @@ const GAME_DOM_IDS = [
   'hullLabel',
   'cargo',
   'cargoLabel',
+  'objectiveStatus',
+  'objectiveInfoStatus',
   'cargoFeedback',
   'sell',
   'fuelBtn',
@@ -49,7 +51,17 @@ describe('React GUI shell', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
     expect(markup).toContain('0/10');
+    expect(markup).toContain('Objective: mine the starter Coal/Copper seam below the depot, then return to sell.');
     expect(markup).toContain('Cargo value $0');
+  });
+
+  it('renders objective readout hooks in the HUD and Info / Cargo overlay', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('id="objectiveStatus"');
+    expect(markup).toContain('class="objective-status"');
+    expect(markup).toContain('id="objectiveInfoStatus"');
+    expect(markup).toContain('class="objective-info-status"');
   });
 
   it('renders an always-visible surface service status hook and startup copy', () => {
