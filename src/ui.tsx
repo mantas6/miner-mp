@@ -53,6 +53,21 @@ export function MinerApp() {
               <p id="objectiveInfoStatus" className="objective-info-status">Objective: mine the starter Coal/Copper seam below the depot, then return to sell.</p>
               <ul id="cargoList" className="cargo-detail-list"><li className="empty-cargo">Empty</li></ul>
             </section>
+            <section aria-labelledby="expedition-stats-title">
+              <h3 id="expedition-stats-title">Expedition Stats</h3>
+              <ul id="expeditionStats" className="expedition-stats" aria-label="Saved career progress">
+                <li>
+                  <span className="stat-label">Max depth</span>
+                  <strong>0 m</strong>
+                  <span className="stat-detail">Start digging to set a record</span>
+                </li>
+                <li>
+                  <span className="stat-label">Cash earned</span>
+                  <strong>$0</strong>
+                  <span className="stat-detail">Sell your first haul to begin</span>
+                </li>
+              </ul>
+            </section>
             <section aria-labelledby="prospecting-title">
               <h3 id="prospecting-title">Prospecting Guide</h3>
               <p className="prospecting-tip">{PROSPECTING_TIP}</p>

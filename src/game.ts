@@ -9,6 +9,7 @@ import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill, ca
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from './hud-alerts';
 import { formatExpeditionObjective } from './objective';
 import { load, save, DEFAULT_STATS } from './persistence';
+import { formatExpeditionStats } from './stats';
 import { rand, makeTile } from './world';
 
 const state = createInitialState();
@@ -295,6 +296,7 @@ function bindButtons(){
 function openInfoScreen(){
   ui.infoScreen.classList.remove('hidden');
   renderCargoDetails();
+  renderExpeditionStats();
 }
 function closeInfoScreen(){
   ui.infoScreen.classList.add('hidden');
@@ -314,6 +316,14 @@ function renderCargoDetails(){
         <span class="ore-count">× ${count}</span>
         <span class="ore-value">$${ore.value * count}</span>
       </li>`).join('') : '<li class="empty-cargo">Cargo bay empty</li>';
+}
+function renderExpeditionStats(){
+  ui.expeditionStats.innerHTML = formatExpeditionStats(state.stats).map(row => `
+      <li>
+        <span class="stat-label">${row.label}</span>
+        <strong>${row.value}</strong>
+        <span class="stat-detail">${row.detail}</span>
+      </li>`).join('');
 }
 function updateButtonStates(){
   const p = state.player, surf = atSurface();
@@ -496,7 +506,7 @@ function hud(){
   ui.cargo.closest('.bar')?.classList.toggle('bar-alert', fullCargo);
   ui.fuelWarning.classList.toggle('show', lowFuel);
   if (lowFuel && !atSurface() && performance.now() - audio.lastLowFuel > FUEL.lowFuelWarnMs) { audio.lowFuel(); audio.lastLowFuel = performance.now(); }
-  if (!ui.infoScreen.classList.contains('hidden')) renderCargoDetails();
+  if (!ui.infoScreen.classList.contains('hidden')) { renderCargoDetails(); renderExpeditionStats(); }
   updateButtonStates();
 }
 function loop(){ input(); if (state.introStarted) { drainHoverFuel(); updateEnemies(); } draw(); hud(); requestAnimationFrame(loop); }

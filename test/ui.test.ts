@@ -32,6 +32,7 @@ const GAME_DOM_IDS = [
   'info-screen',
   'infoCloseBtn',
   'cargoList',
+  'expeditionStats',
   'prospectingGuide',
   'fuel-warning',
   'toast',
@@ -89,5 +90,16 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Copper');
     expect(markup).toContain('≈50 m+');
     expect(markup).toContain('first Coal/Copper seam');
+  });
+
+  it('renders expedition stats hooks and fresh-career copy', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('Expedition Stats');
+    expect(markup).toContain('id="expeditionStats"');
+    expect(markup).toContain('Saved career progress');
+    expect(markup).toContain('Max depth');
+    expect(markup).toContain('Cash earned');
+    expect(markup).toContain('Start digging to set a record');
   });
 });

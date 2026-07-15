@@ -39,6 +39,7 @@ export const ui = {
   objectiveInfoStatus: requireElement<HTMLElement>('objectiveInfoStatus'),
   cargoFeedback: requireElement<HTMLElement>('cargoFeedback'),
   cargoList: requireElement<HTMLElement>('cargoList'),
+  expeditionStats: requireElement<HTMLElement>('expeditionStats'),
   toast: requireElement<HTMLElement>('toast'),
   fuelWarning: requireElement<HTMLElement>('fuel-warning'),
   soundBtn: requireElement<HTMLButtonElement>('soundBtn'),
