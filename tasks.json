@@ -1,22 +1,22 @@
 [
   {
     "category": "gameplay-ux",
-    "description": "Add a persistent expedition stats panel to the Info / Cargo overlay so players can see saved career progress such as max depth, ore mined, enemies destroyed, deaths, cash earned, and Motherlode claims.",
+    "description": "Add a danger guide to the Info / Cargo overlay that explains deep hazards, tunnel fiends, enemy bounties, and survival tactics before players encounter them.",
     "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh, play the current game, and confirm the Info / Cargo overlay currently shows the objective, cargo list, prospecting guide, and controls but not the persisted stats tracked in state.stats.",
-      "Inspect src/ui.tsx, src/dom.ts, src/game.ts, src/persistence.ts, src/types.ts, src/state.ts, src/styles.css, and existing tests for current Info / Cargo hooks, save/load behavior, stats updates, and responsive overlay layout.",
-      "Add a DOM-free stats formatting helper that accepts GameStats plus current cash/upgrades if useful and returns concise labels for max depth, total cash earned, ore mined, enemies destroyed, deaths, and Motherlode claims; cover zero/fresh-start and progressed-career cases with unit tests.",
-      "Extend the React Info / Cargo overlay with a stable DOM hook for an Expedition Stats or Career Progress section, preserving existing IDs/classes consumed by the runtime and adding React shell coverage for the new hook and startup copy.",
-      "Wire src/dom.ts and the game HUD/info update path so the stats panel refreshes when the overlay opens and after gameplay events that mine ore, sell cargo, destroy enemies, die, or claim the Motherlode, without duplicating persistence math in the DOM layer.",
-      "Style the stats section so it remains readable on desktop and narrow/mobile overlays without crowding the prospecting guide, cargo list, controls, close button, objective, or HUD elements behind the dialog.",
-      "Run ./init.sh and perform a live browser/CDP smoke that starts the game, opens Info / Cargo, observes the stats panel, mines at least one starter ore or otherwise changes a tracked stat, reopens Info / Cargo, and reports no runtime exceptions."
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh, play the current game, and confirm that the Info / Cargo overlay currently shows cargo, expedition stats, prospecting, and controls but no dedicated hazard/enemy survival guidance despite the intro and code mentioning magma pockets and tunnel fiends.",
+      "Inspect src/ui.tsx, src/dom.ts, src/game.ts, src/world.ts, src/renderer.ts, src/balance.ts, src/constants.ts, src/styles.css, and existing tests to ground the copy in actual hazard/enemy spawn depths, damage scaling, enemy bounties, drill behavior, and surface-return loop.",
+      "Add a DOM-free danger-guide helper that returns concise rows or tips for rock, magma pockets, dormant/active tunnel fiends, enemy bounties, low-fuel return timing, and Motherlode-core survival based on existing balance/world constants; cover the helper with unit tests.",
+      "Extend the React Info / Cargo overlay with a stable DOM hook and accessible Hazard / Fiend Survival section, preserving existing IDs/classes consumed by the runtime and adding React shell coverage for the new hook and startup copy.",
+      "Style the new section so it remains readable on desktop and narrow/mobile overlays without crowding cargo details, expedition stats, prospecting guide, controls, close button, objective, or HUD elements behind the dialog.",
+      "Run ./init.sh and perform a live browser/CDP smoke that starts the game, opens Info / Cargo, observes the new danger guide alongside existing sections, moves underground, and reports no runtime exceptions."
     ],
     "acceptance": [
-      "The Info / Cargo overlay exposes a clear Expedition Stats/Career Progress section showing saved progress metrics already tracked by the game, including max depth, total cash earned, ore mined, enemies destroyed, deaths, and Motherlode claims.",
-      "The stats copy handles a fresh save gracefully, updates after relevant gameplay events, and does not regress the objective readout, cargo value guidance, prospecting guide, surface service guidance, controls, save/load behavior, sound affordance, or mobile overlay readability.",
-      "The implementation keeps stats formatting DOM-free and covered by unit tests, with React/runtime DOM-hook coverage for the rendered panel.",
+      "The Info / Cargo overlay exposes a clear Hazard / Fiend Survival guide explaining what magma pockets, rock blocks, dormant tunnel fiends, active fiends, bounties, fuel pressure, and the Motherlode core mean for the player.",
+      "Guide copy is grounded in existing world/balance constants and gameplay rules rather than duplicated magic numbers, and handles early-game players who have not yet encountered hazards or enemies.",
+      "The implementation keeps danger-guide formatting DOM-free and covered by unit tests, with React/runtime DOM-hook coverage for the rendered section.",
+      "The added UI does not regress the objective readout, cargo value guidance, service status, prospecting guide, expedition stats, controls, sound affordance, save/load behavior, or mobile overlay readability.",
       "Before marking complete, run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
     ],
-    "passes": true
+    "passes": false
   }
 ]
