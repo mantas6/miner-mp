@@ -1,6 +1,6 @@
 // Pure deterministic world generation. DOM-free / testable.
 // No imports from dom.js, game.js, or balance.js.
-import { ORES, SURFACE_HEIGHT, WORLD_W, WORLD_H } from './constants';
+import { DANGER, ORES, SURFACE_HEIGHT, WORLD_W, WORLD_H } from './constants';
 import type { Tile } from './types';
 
 /**
@@ -67,12 +67,12 @@ export function makeTile(x: number, y: number): Tile {
   if (y === WORLD_H - 2 && Math.abs(x - Math.floor(WORLD_W/2)) <= 1) return {type:'artifact', hp:24, maxHp:24};
   if (ore) { const hp = Math.max(3, Math.ceil((depth/28)+4)); return {type:'ore', ore, hp, maxHp: hp}; }
   const rockChance = y > 190 ? .036 : .018;
-  if (rand(x+9,y-3) < rockChance && y > 12) return {type:'rock', hp: 999};
-  if (y > 150 && rand(x+51,y-91) < Math.min(.026, .007 + y / 13000)) {
+  if (rand(x+9,y-3) < rockChance && y >= DANGER.rockMinRow) return {type:'rock', hp: 999};
+  if (y >= DANGER.hazardMinRow && rand(x+51,y-91) < Math.min(.026, .007 + y / 13000)) {
     const hp = Math.max(4, Math.ceil(3 + y / 55));
     return {type:'hazard', hp, maxHp: hp};
   }
-  if (y > 14 && rand(x-37,y+83) < Math.min(.046, .008 + y / 6500)) {
+  if (y >= DANGER.enemyMinRow && rand(x-37,y+83) < Math.min(.046, .008 + y / 6500)) {
     const hp = Math.max(4, Math.ceil(3 + y / 35));
     return {type:'enemy', hp, maxHp: hp};
   }

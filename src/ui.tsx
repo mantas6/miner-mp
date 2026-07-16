@@ -1,7 +1,9 @@
 import React from 'react';
+import { buildDangerGuideRows } from './danger';
 import { PROSPECTING_TIP, buildProspectingGuideRows } from './prospecting';
 
 const prospectingRows = buildProspectingGuideRows();
+const dangerRows = buildDangerGuideRows();
 
 export function MinerApp() {
   return (
@@ -78,6 +80,18 @@ export function MinerApp() {
                     <span className="ore-name">{row.name}</span>
                     <span className="ore-value">{row.valueLabel}</span>
                     <span className="ore-depth">{row.depthLabel}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <section aria-labelledby="danger-guide-title">
+              <h3 id="danger-guide-title">Hazard / Fiend Survival</h3>
+              <p className="danger-guide-tip">Plan a return route before the mine gets hostile: deep rewards bring rock, magma, and tunnel fiends.</p>
+              <ul id="dangerGuide" className="danger-guide" aria-label="Hazard and tunnel fiend survival guide">
+                {dangerRows.map(row => (
+                  <li key={row.title}>
+                    <strong>{row.title}</strong>
+                    <span>{row.detail}</span>
                   </li>
                 ))}
               </ul>

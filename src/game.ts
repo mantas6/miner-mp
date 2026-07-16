@@ -4,7 +4,7 @@ import { createAudio } from './audio';
 import { shouldAttemptAutoAudio } from './audio-permission';
 import { createInitialState } from './state';
 import { createRenderer } from './renderer';
-import { STARTING, FUEL, HULL, ECONOMY } from './balance';
+import { STARTING, FUEL, HULL, ENEMY, ECONOMY } from './balance';
 import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill, cargoValue, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from './hud-alerts';
 import { formatExpeditionObjective } from './objective';
@@ -86,7 +86,7 @@ function wakeEnemiesNear(x,y){
     if (Math.abs(xx-x) + Math.abs(yy-y) <= 1) wakeEnemy(xx, yy);
   }
 }
-function enemyBounty(y){ return 12 + Math.floor(y / 35) * 4; }
+function enemyBounty(y){ return ENEMY.bounty.base + Math.floor(y / ENEMY.bounty.depthDivisor) * ENEMY.bounty.step; }
 function damageEnemy(enemy, amount=state.player.drill){
   if (!enemy || !enemy.alive) return;
   enemy.hp -= amount;

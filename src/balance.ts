@@ -47,6 +47,10 @@ export const HULL = Object.freeze({
   })
 });
 
+export const ENEMY = Object.freeze({
+  bounty: Object.freeze({ base: 12, depthDivisor: 35, step: 4 })
+});
+
 export const ECONOMY = Object.freeze({
   refuel: Object.freeze({ base: 20, perTank: 0.35 }),
   repair: Object.freeze({ base: 30, perHull: 0.45 }),

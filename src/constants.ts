@@ -6,6 +6,14 @@ export const WORLD_H = 320;
 export const SURFACE_HEIGHT = 3;
 export const START_Y = SURFACE_HEIGHT - 1;
 
+// World-generation thresholds shared with player-facing danger guidance.
+// Row values are world coordinates; distance below the depot is derived from START_Y.
+export const DANGER = Object.freeze({
+  rockMinRow: 13,
+  enemyMinRow: 15,
+  hazardMinRow: 151
+});
+
 export const ORES: Ore[] = [
   {name:'Coal', color:'#343434', value:8, min:2, chance:.10},
   {name:'Copper', color:'#c47b45', value:16, min:7, chance:.08},

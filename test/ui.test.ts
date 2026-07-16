@@ -34,6 +34,7 @@ const GAME_DOM_IDS = [
   'cargoList',
   'expeditionStats',
   'prospectingGuide',
+  'dangerGuide',
   'fuel-warning',
   'toast',
   'intro'
@@ -101,5 +102,15 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Max depth');
     expect(markup).toContain('Cash earned');
     expect(markup).toContain('Start digging to set a record');
+  });
+
+  it('renders the hazard and fiend survival guide with its stable hook', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('Hazard / Fiend Survival');
+    expect(markup).toContain('id="dangerGuide"');
+    expect(markup).toContain('Magma pockets');
+    expect(markup).toContain('Dormant tunnel fiends');
+    expect(markup).toContain('Motherlode core');
   });
 });
