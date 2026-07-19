@@ -1,22 +1,21 @@
 [
   {
-    "category": "gameplay-ux",
-    "description": "Add a danger guide to the Info / Cargo overlay that explains deep hazards, tunnel fiends, enemy bounties, and survival tactics before players encounter them.",
+    "category": "mobile-controls",
+    "description": "Add compact, accessible section navigation to the long Info / Cargo overlay so mobile players can jump directly to their objective, cargo/stats, prospecting, hazards, or controls without manually scrolling through the full guide.",
     "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh, play the current game, and confirm that the Info / Cargo overlay currently shows cargo, expedition stats, prospecting, and controls but no dedicated hazard/enemy survival guidance despite the intro and code mentioning magma pockets and tunnel fiends.",
-      "Inspect src/ui.tsx, src/dom.ts, src/game.ts, src/world.ts, src/renderer.ts, src/balance.ts, src/constants.ts, src/styles.css, and existing tests to ground the copy in actual hazard/enemy spawn depths, damage scaling, enemy bounties, drill behavior, and surface-return loop.",
-      "Add a DOM-free danger-guide helper that returns concise rows or tips for rock, magma pockets, dormant/active tunnel fiends, enemy bounties, low-fuel return timing, and Motherlode-core survival based on existing balance/world constants; cover the helper with unit tests.",
-      "Extend the React Info / Cargo overlay with a stable DOM hook and accessible Hazard / Fiend Survival section, preserving existing IDs/classes consumed by the runtime and adding React shell coverage for the new hook and startup copy.",
-      "Style the new section so it remains readable on desktop and narrow/mobile overlays without crowding cargo details, expedition stats, prospecting guide, controls, close button, objective, or HUD elements behind the dialog.",
-      "Run ./init.sh and perform a live browser/CDP smoke that starts the game, opens Info / Cargo, observes the new danger guide alongside existing sections, moves underground, and reports no runtime exceptions."
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh, then perform a live desktop and phone-size browser/CDP smoke that starts the game and opens Info / Cargo to reproduce the current long mobile overlay.",
+      "Inspect src/ui.tsx, src/dom.ts, src/game.ts, src/styles.css, and the existing ui/startup tests; preserve all runtime IDs/classes and keep current objective, cargo, stats, prospecting, hazard, and control content intact.",
+      "Add stable semantic section IDs plus a compact in-overlay navigation control that can move focus/scroll to Objective/Cargo, Stats, Prospecting, Hazards, and Controls; make it keyboard-operable with clear accessible labels and a visible current/target affordance where practical.",
+      "Style the navigator and destinations for narrow phone screens as well as desktop, ensuring the close action remains reachable, no HUD controls leak through the modal, long guide rows remain readable, and reduced-motion/normal scrolling behavior is not disruptive.",
+      "Add DOM-free or happy-dom test coverage for section navigation targets and React shell hooks, including preservation of the runtime DOM hooks required before initGame().",
+      "Run ./init.sh and verify with a live CDP smoke at a phone viewport that starts play, opens Info / Cargo, uses each navigation control, observes the intended section in view, closes the overlay, moves again, and reports no runtime exceptions."
     ],
     "acceptance": [
-      "The Info / Cargo overlay exposes a clear Hazard / Fiend Survival guide explaining what magma pockets, rock blocks, dormant tunnel fiends, active fiends, bounties, fuel pressure, and the Motherlode core mean for the player.",
-      "Guide copy is grounded in existing world/balance constants and gameplay rules rather than duplicated magic numbers, and handles early-game players who have not yet encountered hazards or enemies.",
-      "The implementation keeps danger-guide formatting DOM-free and covered by unit tests, with React/runtime DOM-hook coverage for the rendered section.",
-      "The added UI does not regress the objective readout, cargo value guidance, service status, prospecting guide, expedition stats, controls, sound affordance, save/load behavior, or mobile overlay readability.",
-      "Before marking complete, run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
+      "On a narrow phone viewport, Info / Cargo exposes clearly labelled, keyboard-accessible navigation to Objective/Cargo, Expedition Stats, Prospecting Guide, Hazard / Fiend Survival, and Controls instead of requiring players to discover those sections by scrolling a multi-screen dialog.",
+      "Each navigation action lands on the corresponding visible section, keeps the overlay usable and closable, and does not regress desktop layout, existing guide content, cargo details, objective/service HUD copy, sound controls, or keyboard movement after closing the dialog.",
+      "React/runtime hook coverage and navigation-target tests pass, and a phone-size live browser smoke reports no runtime exceptions.",
+      "Before marking complete, follow miner-daily-task-runner and run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
     ],
-    "passes": true
+    "passes": false
   }
 ]
