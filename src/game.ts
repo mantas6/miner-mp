@@ -11,6 +11,7 @@ import { formatExpeditionObjective } from './objective';
 import { load, save, DEFAULT_STATS } from './persistence';
 import { formatExpeditionStats } from './stats';
 import { rand, makeTile } from './world';
+import { getInfoNavigationSection } from './info-navigation';
 
 const state = createInitialState();
 let audio;
@@ -292,9 +293,25 @@ function bindButtons(){
   ui.infoBtn.onclick = e => { e.stopPropagation(); openInfoScreen(); };
   ui.infoCloseBtn.onclick = e => { e.stopPropagation(); closeInfoScreen(); };
   ui.infoScreen.addEventListener('pointerdown', e => { if (e.target === ui.infoScreen) closeInfoScreen(); });
+  ui.infoScreen.addEventListener('click', e => {
+    const button = (e.target as Element).closest<HTMLButtonElement>('[data-info-section]');
+    if (!button) return;
+    const section = getInfoNavigationSection(button.dataset.infoSection || '');
+    const target = section && document.getElementById(section.id);
+    if (!target) return;
+    target.focus({preventScroll:true});
+    target.scrollIntoView({block:'start'});
+    for (const navButton of ui.infoScreen.querySelectorAll<HTMLButtonElement>('[data-info-section]')) {
+      navButton.toggleAttribute('aria-current', navButton === button);
+    }
+  });
 }
 function openInfoScreen(){
   ui.infoScreen.classList.remove('hidden');
+  const firstInfoSection = ui.infoScreen.querySelector<HTMLButtonElement>('[data-info-section]');
+  for (const navButton of ui.infoScreen.querySelectorAll<HTMLButtonElement>('[data-info-section]')) {
+    navButton.toggleAttribute('aria-current', navButton === firstInfoSection);
+  }
   renderCargoDetails();
   renderExpeditionStats();
 }
@@ -537,6 +554,11 @@ function handleKeyDown(e){
   // Keyboard movement must work even before the browser grants audio permission.
   // Sound can still be enabled with the Sound button or any pointer/touch input.
   const key = e.key.toLowerCase();
+  const target = e.target as Element | null;
+  if (target?.closest?.('#info-screen')) {
+    if (key === 'escape') { closeInfoScreen(); e.preventDefault(); e.stopPropagation(); }
+    return;
+  }
   const dir = movementKeys[key];
   if (!state.introStarted) {
     if (key === 'enter' || key === ' ') { startIntro(); e.preventDefault(); }

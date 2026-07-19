@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MinerApp } from '../src/ui';
+import { INFO_NAVIGATION_SECTIONS, getInfoNavigationSection } from '../src/info-navigation';
 
 const GAME_DOM_IDS = [
   'shell',
@@ -112,5 +113,18 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Magma pockets');
     expect(markup).toContain('Dormant tunnel fiends');
     expect(markup).toContain('Motherlode core');
+  });
+
+  it('renders keyboard-operable navigation for every long Info / Cargo section', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('aria-label="Info sections"');
+    for (const section of INFO_NAVIGATION_SECTIONS) {
+      expect(getInfoNavigationSection(section.id)).toEqual(section);
+      expect(markup).toContain(`data-info-section="${section.id}"`);
+      expect(markup).toContain(`aria-controls="${section.id}"`);
+      expect(markup).toContain(`id="${section.id}"`);
+    }
+    expect(getInfoNavigationSection('not-a-section')).toBeUndefined();
   });
 });

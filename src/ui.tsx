@@ -1,5 +1,6 @@
 import React from 'react';
 import { buildDangerGuideRows } from './danger';
+import { INFO_NAVIGATION_SECTIONS } from './info-navigation';
 import { PROSPECTING_TIP, buildProspectingGuideRows } from './prospecting';
 
 const prospectingRows = buildProspectingGuideRows();
@@ -50,12 +51,19 @@ export function MinerApp() {
               <h2 id="info-title">Cargo &amp; Controls</h2>
               <button id="infoCloseBtn" className="close-btn" aria-label="Close info screen">×</button>
             </div>
-            <section>
-              <h3>Cargo Bay</h3>
+            <nav className="info-navigation" aria-label="Info sections">
+              {INFO_NAVIGATION_SECTIONS.map(section => (
+                <button key={section.id} type="button" data-info-section={section.id} aria-controls={section.id}>
+                  {section.label}
+                </button>
+              ))}
+            </nav>
+            <section id="info-objective" tabIndex={-1} aria-labelledby="cargo-bay-title">
+              <h3 id="cargo-bay-title">Cargo Bay</h3>
               <p id="objectiveInfoStatus" className="objective-info-status">Objective: mine the starter Coal/Copper seam below the depot, then return to sell.</p>
               <ul id="cargoList" className="cargo-detail-list"><li className="empty-cargo">Empty</li></ul>
             </section>
-            <section aria-labelledby="expedition-stats-title">
+            <section id="info-stats" tabIndex={-1} aria-labelledby="expedition-stats-title">
               <h3 id="expedition-stats-title">Expedition Stats</h3>
               <ul id="expeditionStats" className="expedition-stats" aria-label="Saved career progress">
                 <li>
@@ -70,7 +78,7 @@ export function MinerApp() {
                 </li>
               </ul>
             </section>
-            <section aria-labelledby="prospecting-title">
+            <section id="info-prospecting" tabIndex={-1} aria-labelledby="prospecting-title">
               <h3 id="prospecting-title">Prospecting Guide</h3>
               <p className="prospecting-tip">{PROSPECTING_TIP}</p>
               <ul id="prospectingGuide" className="prospecting-guide" aria-label="Ore values and approximate unlock depths">
@@ -84,7 +92,7 @@ export function MinerApp() {
                 ))}
               </ul>
             </section>
-            <section aria-labelledby="danger-guide-title">
+            <section id="info-hazards" tabIndex={-1} aria-labelledby="danger-guide-title">
               <h3 id="danger-guide-title">Hazard / Fiend Survival</h3>
               <p className="danger-guide-tip">Plan a return route before the mine gets hostile: deep rewards bring rock, magma, and tunnel fiends.</p>
               <ul id="dangerGuide" className="danger-guide" aria-label="Hazard and tunnel fiend survival guide">
@@ -96,8 +104,8 @@ export function MinerApp() {
                 ))}
               </ul>
             </section>
-            <section>
-              <h3>Controls</h3>
+            <section id="info-controls" tabIndex={-1} aria-labelledby="controls-title">
+              <h3 id="controls-title">Controls</h3>
               <ul className="control-list">
                 <li><kbd>WASD</kbd> / <kbd>Arrows</kbd><span>Move, fly, and dig</span></li>
                 <li><kbd>Tap / hold</kbd><span>Move toward the touched side of the ship</span></li>
