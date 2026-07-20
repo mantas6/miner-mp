@@ -21,6 +21,7 @@ const GAME_DOM_IDS = [
   'cargo',
   'cargoLabel',
   'objectiveStatus',
+  'terrainScanner',
   'objectiveInfoStatus',
   'cargoFeedback',
   'sell',
@@ -58,11 +59,13 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Cargo value $0');
   });
 
-  it('renders objective readout hooks in the HUD and Info / Cargo overlay', () => {
+  it('renders objective and terrain scanner readout hooks in the HUD and Info / Cargo overlay', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
     expect(markup).toContain('id="objectiveStatus"');
     expect(markup).toContain('class="objective-status"');
+    expect(markup).toContain('id="terrainScanner"');
+    expect(markup).toContain('class="terrain-scanner"');
     expect(markup).toContain('id="objectiveInfoStatus"');
     expect(markup).toContain('class="objective-info-status"');
   });

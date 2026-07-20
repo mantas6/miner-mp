@@ -12,6 +12,7 @@ import { load, save, DEFAULT_STATS } from './persistence';
 import { formatExpeditionStats } from './stats';
 import { rand, makeTile } from './world';
 import { getInfoNavigationSection } from './info-navigation';
+import { formatTerrainScanner } from './scanner';
 
 const state = createInitialState();
 let audio;
@@ -211,7 +212,9 @@ function move(dx,dy){
   const flyCost = cost * FUEL.flyMult;             // moving/hovering uses 50% less fuel
   const dig = extra => (cost + extra) * FUEL.digMult; // digging uses 50% more fuel
   p.facing = dx ? Math.sign(dx) : p.facing;
-  if (activeEnemy) { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; p.fuel -= dig(FUEL.dig.enemy); damageEnemy(activeEnemy); return; }
+  p.drillDx = dx;
+  p.drillDy = dy;
+  if (activeEnemy) { p.drillAnim = 1.65; p.fuel -= dig(FUEL.dig.enemy); damageEnemy(activeEnemy); return; }
   if (tile.type !== 'air' && dy < 0) { p.drillDx = 0; p.drillDy = -1; p.drillAnim = 0.75; audio.bump(); toast('The drill cannot dig upward. Use tunnels to fly up.'); return; }
   if (tile.type !== 'air' && dx !== 0 && dy === 0 && !grounded()) { p.drillDx = dx; p.drillDy = 0; p.drillAnim = 0.55; audio.bump(); toast('Side drilling needs solid ground underneath.'); return; }
   if (tile.type === 'rock') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.2; damage(HULL.rockBump); p.fuel -= dig(0); spawnDust(nx, ny, '#444857', 8); audio.bump(); toast('Solid rock blocks the drill.'); return; }
@@ -508,6 +511,14 @@ function hud(){
   });
   ui.objectiveStatus.textContent = objectiveCopy;
   ui.objectiveInfoStatus.textContent = objectiveCopy;
+  const scannerDirection: [number, number] = p.drillDx || p.drillDy ? [p.drillDx, p.drillDy] : [p.facing || 1, 0];
+  const scannerX = p.x + scannerDirection[0];
+  const scannerY = p.y + scannerDirection[1];
+  ui.terrainScanner.textContent = formatTerrainScanner({
+    tile: get(scannerX, scannerY),
+    direction: scannerDirection,
+    activeEnemy: Boolean(enemyAt(scannerX, scannerY))
+  });
   ui.cargoFeedback.textContent = formatCargoUpgradeFeedback(p, state.cash, displayedCargoValue);
   ui.serviceStatus.textContent = formatSurfaceServiceGuidance({
     player: p,
