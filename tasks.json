@@ -1,21 +1,20 @@
 [
   {
-    "category": "mobile-controls",
-    "description": "Add compact, accessible section navigation to the long Info / Cargo overlay so mobile players can jump directly to their objective, cargo/stats, prospecting, hazards, or controls without manually scrolling through the full guide.",
+    "category": "gameplay-ux",
+    "description": "Add a context-sensitive terrain scanner readout that identifies the tile directly in the ship's movement/drill direction before players commit fuel or hull to it.",
     "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh, then perform a live desktop and phone-size browser/CDP smoke that starts the game and opens Info / Cargo to reproduce the current long mobile overlay.",
-      "Inspect src/ui.tsx, src/dom.ts, src/game.ts, src/styles.css, and the existing ui/startup tests; preserve all runtime IDs/classes and keep current objective, cargo, stats, prospecting, hazard, and control content intact.",
-      "Add stable semantic section IDs plus a compact in-overlay navigation control that can move focus/scroll to Objective/Cargo, Stats, Prospecting, Hazards, and Controls; make it keyboard-operable with clear accessible labels and a visible current/target affordance where practical.",
-      "Style the navigator and destinations for narrow phone screens as well as desktop, ensuring the close action remains reachable, no HUD controls leak through the modal, long guide rows remain readable, and reduced-motion/normal scrolling behavior is not disruptive.",
-      "Add DOM-free or happy-dom test coverage for section navigation targets and React shell hooks, including preservation of the runtime DOM hooks required before initGame().",
-      "Run ./init.sh and verify with a live CDP smoke at a phone viewport that starts play, opens Info / Cargo, uses each navigation control, observes the intended section in view, closes the overlay, moves again, and reports no runtime exceptions."
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh before development and retain the existing React-before-runtime startup order and DOM IDs/classes consumed by src/dom.ts and src/game.ts.",
+      "Inspect src/game.ts movement/drilling decisions, src/world.ts tile shapes, src/constants.ts and src/balance.ts thresholds, src/ui.tsx HUD hooks, src/dom.ts, src/styles.css, and relevant Vitest coverage to define a small DOM-free scanner formatter/classifier for air, dirt, ore, solid rock, magma, dormant fiends, and the Motherlode.",
+      "Add one stable, always-visible HUD scanner hook near the objective/service guidance and update it from the current intended movement/drill direction (or a safe default adjacent direction), showing a concise actionable distinction such as clear route, drillable target and hits/value when available, solid-rock detour, magma hull/fuel risk, or fiend warning without exposing stale values after reset, game over, or load.",
+      "Keep scanner copy derived from the real tile/balance data instead of duplicating thresholds, preserve keyboard and touch movement behavior, and style the readout to stay readable without crowding the phone HUD or leaking through the Info / Cargo modal.",
+      "Add unit tests for the DOM-free scanner decisions/formatting plus React/runtime-hook coverage; run ./init.sh and a live desktop and phone-size CDP smoke that starts the game, drills toward starter terrain, observes scanner changes for a mined/clear target and a dangerous or blocked target, opens/closes Info / Cargo, moves again, and collects runtime exceptions."
     ],
     "acceptance": [
-      "On a narrow phone viewport, Info / Cargo exposes clearly labelled, keyboard-accessible navigation to Objective/Cargo, Expedition Stats, Prospecting Guide, Hazard / Fiend Survival, and Controls instead of requiring players to discover those sections by scrolling a multi-screen dialog.",
-      "Each navigation action lands on the corresponding visible section, keeps the overlay usable and closable, and does not regress desktop layout, existing guide content, cargo details, objective/service HUD copy, sound controls, or keyboard movement after closing the dialog.",
-      "React/runtime hook coverage and navigation-target tests pass, and a phone-size live browser smoke reports no runtime exceptions.",
-      "Before marking complete, follow miner-daily-task-runner and run ./test.sh plus canonical verification npm test, npm run typecheck, and npm run build."
+      "Before drilling, players can see an always-visible concise scanner readout for the current adjacent target that clearly differentiates a clear route, ordinary drillable terrain/ore, solid rock, magma, and tunnel-fiend danger using real game state.",
+      "The scanner updates as the player changes direction or mines, remains correct after load/reset/game-over paths, does not replace or regress the existing objective, cargo-value, service guidance, Info / Cargo navigation, keyboard/touch controls, or responsive HUD layout, and remains usable at a phone viewport.",
+      "DOM-free scanner logic and React/runtime hook coverage pass, and live desktop/phone browser smokes report no runtime exceptions while confirming the scanner reacts to gameplay.",
+      "Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
     ],
-    "passes": true
+    "passes": false
   }
 ]
