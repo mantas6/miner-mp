@@ -13,6 +13,7 @@ import { formatExpeditionStats } from './stats';
 import { rand, makeTile } from './world';
 import { getInfoNavigationSection } from './info-navigation';
 import { formatTerrainScanner } from './scanner';
+import { formatFuelReserveForecast } from './fuel-reserve';
 
 const state = createInitialState();
 let audio;
@@ -518,6 +519,13 @@ function hud(){
     tile: get(scannerX, scannerY),
     direction: scannerDirection,
     activeEnemy: Boolean(enemyAt(scannerX, scannerY))
+  });
+  ui.fuelReserve.textContent = formatFuelReserveForecast({
+    fuel: p.fuel,
+    playerY: p.y,
+    startY: START_Y,
+    atSurface: atSurface(),
+    gameOver: state.gameOver
   });
   ui.cargoFeedback.textContent = formatCargoUpgradeFeedback(p, state.cash, displayedCargoValue);
   ui.serviceStatus.textContent = formatSurfaceServiceGuidance({

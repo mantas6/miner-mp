@@ -29,6 +29,7 @@ export function MinerApp() {
             <div className="bar"><label>Cargo</label><meter id="cargo" min="0" max="100" value="0"></meter><span id="cargoLabel" className="bar-value">0/10</span></div>
             <div id="objectiveStatus" className="objective-status" aria-live="polite">Objective: mine the starter Coal/Copper seam below the depot, then return to sell.</div>
             <div id="terrainScanner" className="terrain-scanner" aria-live="polite">Scanner ↓: drillable starter terrain ahead.</div>
+            <div id="fuelReserve" className="fuel-reserve" aria-live="polite">Fuel reserve: SAFE — at depot; refuel before the next descent.</div>
             <div id="cargoFeedback" className="cargo-feedback" aria-live="polite">Cargo value $0 · Next Cargo +10 $120 (need $120 more)</div>
           </div>
 

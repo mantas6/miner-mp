@@ -22,6 +22,7 @@ const GAME_DOM_IDS = [
   'cargoLabel',
   'objectiveStatus',
   'terrainScanner',
+  'fuelReserve',
   'objectiveInfoStatus',
   'cargoFeedback',
   'sell',
@@ -66,6 +67,9 @@ describe('React GUI shell', () => {
     expect(markup).toContain('class="objective-status"');
     expect(markup).toContain('id="terrainScanner"');
     expect(markup).toContain('class="terrain-scanner"');
+    expect(markup).toContain('id="fuelReserve"');
+    expect(markup).toContain('class="fuel-reserve"');
+    expect(markup).toContain('Fuel reserve: SAFE — at depot');
     expect(markup).toContain('id="objectiveInfoStatus"');
     expect(markup).toContain('class="objective-info-status"');
   });
