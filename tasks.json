@@ -1,20 +1,20 @@
 [
   {
     "category": "gameplay-ux",
-    "description": "Add a context-sensitive terrain scanner readout that identifies the tile directly in the ship's movement/drill direction before players commit fuel or hull to it.",
+    "description": "Add an always-visible fuel reserve forecast that tells miners whether their current fuel can cover a safe return from the present depth before they commit to a deeper drill or route.",
     "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh before development and retain the existing React-before-runtime startup order and DOM IDs/classes consumed by src/dom.ts and src/game.ts.",
-      "Inspect src/game.ts movement/drilling decisions, src/world.ts tile shapes, src/constants.ts and src/balance.ts thresholds, src/ui.tsx HUD hooks, src/dom.ts, src/styles.css, and relevant Vitest coverage to define a small DOM-free scanner formatter/classifier for air, dirt, ore, solid rock, magma, dormant fiends, and the Motherlode.",
-      "Add one stable, always-visible HUD scanner hook near the objective/service guidance and update it from the current intended movement/drill direction (or a safe default adjacent direction), showing a concise actionable distinction such as clear route, drillable target and hits/value when available, solid-rock detour, magma hull/fuel risk, or fiend warning without exposing stale values after reset, game over, or load.",
-      "Keep scanner copy derived from the real tile/balance data instead of duplicating thresholds, preserve keyboard and touch movement behavior, and style the readout to stay readable without crowding the phone HUD or leaking through the Info / Cargo modal.",
-      "Add unit tests for the DOM-free scanner decisions/formatting plus React/runtime-hook coverage; run ./init.sh and a live desktop and phone-size CDP smoke that starts the game, drills toward starter terrain, observes scanner changes for a mined/clear target and a dangerous or blocked target, opens/closes Info / Cargo, moves again, and collects runtime exceptions."
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh before development, preserve the React-before-runtime startup order, and retain the existing DOM IDs/classes consumed by src/dom.ts and src/game.ts.",
+      "Inspect src/game.ts movement, drilling, hover fuel drain, surface servicing, reset/game-over paths, src/balance.ts fuel constants, src/objective.ts, src/ui.tsx HUD hooks, src/dom.ts, src/styles.css, and existing Vitest coverage to define a small DOM-free fuel-reserve formatter/classifier based on real player depth, fuel, route assumptions, and balance values rather than duplicated magic numbers.",
+      "Add one stable HUD hook near the objective and terrain scanner that gives concise actionable return guidance such as a safe return reserve, a caution threshold, or an urgent turn-back warning, including a transparent conservative assumption when an exact tunnel route cannot be known. Recompute it after movement, drilling, load, reset, game-over, fuel upgrades/refuels, and surface return without exposing stale state.",
+      "Keep the new readout readable at desktop and phone sizes, avoid crowding or leaking through the Info / Cargo modal, and preserve existing scanner, objective, cargo-value, service guidance, keyboard, and touch behavior.",
+      "Add DOM-free unit tests for safe/caution/urgent reserve decisions and formatting plus React/runtime-hook coverage; run ./init.sh and live desktop and 390×844 CDP smokes that start the game, mine into the starter seam, observe the forecast change with depth/fuel, return to the depot or reset, open/close Info / Cargo, move again, and collect runtime exceptions."
     ],
     "acceptance": [
-      "Before drilling, players can see an always-visible concise scanner readout for the current adjacent target that clearly differentiates a clear route, ordinary drillable terrain/ore, solid rock, magma, and tunnel-fiend danger using real game state.",
-      "The scanner updates as the player changes direction or mines, remains correct after load/reset/game-over paths, does not replace or regress the existing objective, cargo-value, service guidance, Info / Cargo navigation, keyboard/touch controls, or responsive HUD layout, and remains usable at a phone viewport.",
-      "DOM-free scanner logic and React/runtime hook coverage pass, and live desktop/phone browser smokes report no runtime exceptions while confirming the scanner reacts to gameplay.",
+      "Before committing to deeper mining, players can see an always-visible concise fuel reserve forecast derived from real game fuel/balance state that clearly distinguishes a safe return, caution, and an urgent turn-back condition.",
+      "The forecast updates after movement, drilling, refueling/tank upgrades, surface return, load, reset, and game-over paths; it remains honest about route assumptions and does not regress the existing HUD guidance, Info / Cargo modal, keyboard/touch input, or responsive layout.",
+      "DOM-free reserve logic and React/runtime hook coverage pass, and live desktop/phone browser smokes confirm the readout reacts during gameplay with no runtime exceptions.",
       "Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
     ],
-    "passes": true
+    "passes": false
   }
 ]
