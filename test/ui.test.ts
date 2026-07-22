@@ -23,6 +23,7 @@ const GAME_DOM_IDS = [
   'objectiveStatus',
   'terrainScanner',
   'fuelReserve',
+  'depthMilestone',
   'objectiveInfoStatus',
   'cargoFeedback',
   'sell',
@@ -70,6 +71,9 @@ describe('React GUI shell', () => {
     expect(markup).toContain('id="fuelReserve"');
     expect(markup).toContain('class="fuel-reserve"');
     expect(markup).toContain('Fuel reserve: SAFE — at depot');
+    expect(markup).toContain('id="depthMilestone"');
+    expect(markup).toContain('class="depth-milestone"');
+    expect(markup).toContain('Depth target: starter Coal/Copper seam — 50 m deeper.');
     expect(markup).toContain('id="objectiveInfoStatus"');
     expect(markup).toContain('class="objective-info-status"');
   });

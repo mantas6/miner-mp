@@ -14,6 +14,7 @@ import { rand, makeTile } from './world';
 import { getInfoNavigationSection } from './info-navigation';
 import { formatTerrainScanner } from './scanner';
 import { formatFuelReserveForecast } from './fuel-reserve';
+import { formatDepthMilestone } from './depth-milestone';
 
 const state = createInitialState();
 let audio;
@@ -527,6 +528,7 @@ function hud(){
     atSurface: atSurface(),
     gameOver: state.gameOver
   });
+  ui.depthMilestone.textContent = formatDepthMilestone(p.y);
   ui.cargoFeedback.textContent = formatCargoUpgradeFeedback(p, state.cash, displayedCargoValue);
   ui.serviceStatus.textContent = formatSurfaceServiceGuidance({
     player: p,

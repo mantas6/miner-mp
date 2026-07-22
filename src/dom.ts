@@ -38,6 +38,7 @@ export const ui = {
   objectiveStatus: requireElement<HTMLElement>('objectiveStatus'),
   terrainScanner: requireElement<HTMLElement>('terrainScanner'),
   fuelReserve: requireElement<HTMLElement>('fuelReserve'),
+  depthMilestone: requireElement<HTMLElement>('depthMilestone'),
   objectiveInfoStatus: requireElement<HTMLElement>('objectiveInfoStatus'),
   cargoFeedback: requireElement<HTMLElement>('cargoFeedback'),
   cargoList: requireElement<HTMLElement>('cargoList'),
