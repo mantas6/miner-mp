@@ -1,20 +1,20 @@
 [
   {
     "category": "gameplay-ux",
-    "description": "Add an always-visible fuel reserve forecast that tells miners whether their current fuel can cover a safe return from the present depth before they commit to a deeper drill or route.",
+    "description": "Add a compact always-visible expedition depth milestone readout that shows the next ore band or Motherlode target and the remaining meters, so miners can judge progress without opening Info / Cargo or mentally subtracting approximate depths.",
     "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh before development, preserve the React-before-runtime startup order, and retain the existing DOM IDs/classes consumed by src/dom.ts and src/game.ts.",
-      "Inspect src/game.ts movement, drilling, hover fuel drain, surface servicing, reset/game-over paths, src/balance.ts fuel constants, src/objective.ts, src/ui.tsx HUD hooks, src/dom.ts, src/styles.css, and existing Vitest coverage to define a small DOM-free fuel-reserve formatter/classifier based on real player depth, fuel, route assumptions, and balance values rather than duplicated magic numbers.",
-      "Add one stable HUD hook near the objective and terrain scanner that gives concise actionable return guidance such as a safe return reserve, a caution threshold, or an urgent turn-back warning, including a transparent conservative assumption when an exact tunnel route cannot be known. Recompute it after movement, drilling, load, reset, game-over, fuel upgrades/refuels, and surface return without exposing stale state.",
-      "Keep the new readout readable at desktop and phone sizes, avoid crowding or leaking through the Info / Cargo modal, and preserve existing scanner, objective, cargo-value, service guidance, keyboard, and touch behavior.",
-      "Add DOM-free unit tests for safe/caution/urgent reserve decisions and formatting plus React/runtime-hook coverage; run ./init.sh and live desktop and 390×844 CDP smokes that start the game, mine into the starter seam, observe the forecast change with depth/fuel, return to the depot or reset, open/close Info / Cargo, move again, and collect runtime exceptions."
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh before development, preserve the React-before-runtime startup order, and retain existing DOM IDs/classes consumed by src/dom.ts and src/game.ts.",
+      "Inspect src/constants.ts ORES/WORLD_H/START_Y, src/prospecting.ts depth helpers, src/objective.ts milestone logic, src/game.ts HUD lifecycle, src/ui.tsx hooks, src/dom.ts, src/styles.css, and current Vitest coverage. Extract a small DOM-free formatter/classifier that derives the next meaningful depth landmark and non-negative remaining meters from shared world/ore data without duplicating depth literals.",
+      "Add one stable compact HUD hook near the objective/scanner/fuel guidance that distinguishes the starter seam, next locked ore band, and Motherlode approach with actionable copy such as the target name and meters deeper; keep it synchronized after movement, drilling, load, reset, game-over, and return-to-surface paths.",
+      "Make the readout readable on desktop and a 390×844 phone viewport without crowding existing objective, terrain scanner, fuel reserve, cargo value, or service guidance, and ensure Info / Cargo still visually covers the underlying HUD and keyboard/touch input remains unchanged.",
+      "Add DOM-free unit tests for starter/ore-band/Motherlode target selection and remaining-distance formatting plus React/runtime hook coverage. Run ./init.sh and live desktop and 390×844 CDP smokes that start the game, descend through the starter seam toward a later ore milestone, observe the readout update, open/close Info / Cargo, resume movement, and collect runtime exceptions."
     ],
     "acceptance": [
-      "Before committing to deeper mining, players can see an always-visible concise fuel reserve forecast derived from real game fuel/balance state that clearly distinguishes a safe return, caution, and an urgent turn-back condition.",
-      "The forecast updates after movement, drilling, refueling/tank upgrades, surface return, load, reset, and game-over paths; it remains honest about route assumptions and does not regress the existing HUD guidance, Info / Cargo modal, keyboard/touch input, or responsive layout.",
-      "DOM-free reserve logic and React/runtime hook coverage pass, and live desktop/phone browser smokes confirm the readout reacts during gameplay with no runtime exceptions.",
+      "Players can always see the next meaningful depth target and how many meters remain, with a clear transition from the starter seam through locked ore bands to the Motherlode approach; values are derived from live depth and shared game data rather than hard-coded UI numbers.",
+      "The milestone readout stays accurate after movement, drilling, load, reset, game-over, and surface-return paths and does not regress existing HUD guidance, modal layering, desktop/phone layout, or keyboard/touch controls.",
+      "DOM-free milestone logic and React/runtime hook coverage pass, and live desktop/phone browser smokes confirm the readout reacts during gameplay with no runtime exceptions.",
       "Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
     ],
-    "passes": true
+    "passes": false
   }
 ]
