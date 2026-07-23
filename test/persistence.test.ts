@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { numeric } from '../src/persistence';
+import { DEFAULT_STATS, numeric } from '../src/persistence';
 
 describe('numeric clamp', () => {
   it('passes through a finite value within range', () => {
@@ -28,5 +28,16 @@ describe('numeric clamp', () => {
 
   it('applies default min of 0', () => {
     expect(numeric(-3, 99)).toBe(0);
+  });
+});
+
+describe('Motherlode extraction save compatibility', () => {
+  it('gives legacy saves a zero completed-extraction counter', () => {
+    const legacyStats = { motherlodeClaims: 1 };
+
+    expect({ ...DEFAULT_STATS, ...legacyStats }).toMatchObject({
+      motherlodeClaims: 1,
+      motherlodeExtractions: 0
+    });
   });
 });

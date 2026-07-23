@@ -10,6 +10,8 @@ describe('starting cargo capacity', () => {
     expect(STARTING.cargoMax).toBe(10);
     expect(state.player.cargoMax).toBe(10);
     expect(state.player.cargo).toHaveLength(0);
+    expect(state.extractionPhase).toBe('none');
+    expect(state.stats.motherlodeExtractions).toBe(0);
   });
 
   it('uses 10 as the minimum saved cargo capacity while preserving upgrade increments', () => {

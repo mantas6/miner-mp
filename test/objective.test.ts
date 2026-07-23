@@ -57,6 +57,17 @@ describe('expedition objective helper', () => {
     })).toBe('Objective: dig toward Silver around 160 m while keeping fuel for the trip home.');
   });
 
+  it('prioritizes taking a secured Motherlode core back to the depot', () => {
+    expect(formatExpeditionObjective({
+      player: { ...player, y: START_Y + 100, fuel: 10 },
+      cash: 20,
+      cargoCount: 0,
+      currentCargoValue: 0,
+      atSurface: false,
+      extractionPhase: 'returning'
+    })).toBe('Objective: Motherlode core secured — return alive to the surface depot to complete extraction.');
+  });
+
   it('uses Motherlode progress once all ore bands are unlocked', () => {
     expect(motherlodeDepthMeters(WORLD_H, START_Y)).toBe(3160);
     expect(formatExpeditionObjective({

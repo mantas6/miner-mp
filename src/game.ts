@@ -15,6 +15,7 @@ import { getInfoNavigationSection } from './info-navigation';
 import { formatTerrainScanner } from './scanner';
 import { formatFuelReserveForecast } from './fuel-reserve';
 import { formatDepthMilestone } from './depth-milestone';
+import { beginExtraction, cancelExtraction, completeExtractionAtDepot } from './extraction-phase';
 
 const state = createInitialState();
 let audio;
@@ -48,6 +49,7 @@ function resetShipUpgradesAfterDeath(){
   saveProgress();
 }
 function resetPlayer(full=true){
+  state.extractionPhase = cancelExtraction();
   if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.stats = {...DEFAULT_STATS}; saveProgress(); }
   Object.assign(state.player, {x: Math.floor(WORLD_W/2), y: START_Y, drawX: Math.floor(WORLD_W/2), drawY: START_Y, fuel: state.player.fuelMax, hull: state.player.hullMax, cargo: []});
   state.camX = Math.max(0, state.player.x - Math.floor(W/2));
@@ -182,6 +184,7 @@ function restartGame(){
 function gameOver(msg='Game over. Tap anywhere or press R to restart.'){
   if (state.gameOver) return;
   state.gameOver = true;
+  state.extractionPhase = cancelExtraction();
   state.stats.deaths++;
   saveProgress();
   toast(msg);
@@ -222,7 +225,7 @@ function move(dx,dy){
   if (tile.type === 'rock') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.2; damage(HULL.rockBump); p.fuel -= dig(0); spawnDust(nx, ny, '#444857', 8); audio.bump(); toast('Solid rock blocks the drill.'); return; }
   if (tile.type === 'enemy') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; p.fuel -= dig(FUEL.dig.enemy); damageEnemyTile(nx, ny); return; }
   if (tile.type === 'hazard') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; tile.hp -= p.drill; p.fuel -= dig(FUEL.dig.hazard); damage(HULL.hazardBase + Math.floor(ny/HULL.hazardDepthDivisor)); spawnDust(nx, ny, '#ff5f24', 18); audio.alarm(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); spawnExplosion(nx,ny); wakeEnemiesNear(nx,ny); toast('Magma pocket vented — hull scorched!'); } else toast(`Venting magma... ${Math.ceil(tile.hp)} hits left`); return; }
-  if (tile.type === 'artifact') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; p.fuel -= dig(FUEL.dig.artifact); spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); addCash(ECONOMY.artifactReward); state.stats.motherlodeClaims++; saveProgress(); spawnExplosion(nx,ny); toast('Motherlode core claimed +$5000! Now get home alive.'); } else toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); return; }
+  if (tile.type === 'artifact') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; p.fuel -= dig(FUEL.dig.artifact); spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); const extraction = beginExtraction(state.extractionPhase); state.extractionPhase = extraction.phase; if (extraction.changed) { addCash(ECONOMY.artifactReward); state.stats.motherlodeClaims++; saveProgress(); } spawnExplosion(nx,ny); toast('Motherlode core secured +$5000! Return it to the depot alive.'); } else toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); return; }
   if (tile.type !== 'air') {
     p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65;
     tile.hp -= p.drill;
@@ -244,7 +247,16 @@ function move(dx,dy){
   p.x = nx; p.y = ny; p.bob = 1;
   state.stats.maxDepth = Math.max(state.stats.maxDepth, Math.max(0, p.y - START_Y) * 10);
   wakeEnemiesNear(p.x, p.y);
-  if (atSurface()) { p.fuel = Math.min(p.fuelMax, p.fuel + FUEL.surfaceRefuel); }
+  if (atSurface()) {
+    p.fuel = Math.min(p.fuelMax, p.fuel + FUEL.surfaceRefuel);
+    const extraction = completeExtractionAtDepot(state.extractionPhase, true);
+    state.extractionPhase = extraction.phase;
+    if (extraction.changed) {
+      state.stats.motherlodeExtractions++;
+      saveProgress();
+      toast('Motherlode extraction complete at the depot!');
+    }
+  }
   if (p.fuel < 0) p.fuel = 0;
   if (p.fuel <= 0) gameOver('Out of fuel — ship exploded. Tap anywhere to restart.');
 }
@@ -509,7 +521,8 @@ function hud(){
     cash: state.cash,
     cargoCount: cargoUsed(),
     currentCargoValue: displayedCargoValue,
-    atSurface: atSurface()
+    atSurface: atSurface(),
+    extractionPhase: state.extractionPhase
   });
   ui.objectiveStatus.textContent = objectiveCopy;
   ui.objectiveInfoStatus.textContent = objectiveCopy;

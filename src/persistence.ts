@@ -7,7 +7,8 @@ export const DEFAULT_STATS = {
   oreMined: 0,
   enemiesDestroyed: 0,
   deaths: 0,
-  motherlodeClaims: 0
+  motherlodeClaims: 0,
+  motherlodeExtractions: 0
 };
 
 export function numeric(value, fallback, min=0, max=Number.MAX_SAFE_INTEGER) {

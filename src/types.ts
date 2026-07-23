@@ -99,6 +99,7 @@ export interface GameStats {
   enemiesDestroyed: number;
   deaths: number;
   motherlodeClaims: number;
+  motherlodeExtractions: number;
 }
 
 export interface InputState {
@@ -123,6 +124,7 @@ export interface GameState {
   input: InputState;
   player: Player;
   stats: GameStats;
+  extractionPhase: import('./extraction-phase').ExtractionPhase;
 }
 
 export interface AudioController {

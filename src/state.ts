@@ -56,8 +56,10 @@ export function createInitialState(): GameState {
       oreMined: 0,
       enemiesDestroyed: 0,
       deaths: 0,
-      motherlodeClaims: 0
+      motherlodeClaims: 0,
+      motherlodeExtractions: 0
     },
+    extractionPhase: 'none',
     input: {
       keyImpulse: null,
       lastKeyboardMove: 0,
