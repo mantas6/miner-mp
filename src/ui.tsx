@@ -31,6 +31,7 @@ export function MinerApp() {
             <div id="terrainScanner" className="terrain-scanner" aria-live="polite">Scanner ↓: drillable starter terrain ahead.</div>
             <div id="fuelReserve" className="fuel-reserve" aria-live="polite">Fuel reserve: SAFE — at depot; refuel before the next descent.</div>
             <div id="depthMilestone" className="depth-milestone" aria-live="polite">Depth target: starter Coal/Copper seam — 50 m deeper.</div>
+            <div id="extractionStatus" className="extraction-status hidden" aria-live="polite"></div>
             <div id="cargoFeedback" className="cargo-feedback" aria-live="polite">Cargo value $0 · Next Cargo +10 $120 (need $120 more)</div>
           </div>
 
@@ -64,6 +65,7 @@ export function MinerApp() {
             <section id="info-objective" tabIndex={-1} aria-labelledby="cargo-bay-title">
               <h3 id="cargo-bay-title">Cargo Bay</h3>
               <p id="objectiveInfoStatus" className="objective-info-status">Objective: mine the starter Coal/Copper seam below the depot, then return to sell.</p>
+              <p id="extractionInfoStatus" className="extraction-info-status">Crack the Motherlode core at the bottom, then return alive to the surface depot to complete extraction.</p>
               <ul id="cargoList" className="cargo-detail-list"><li className="empty-cargo">Empty</li></ul>
             </section>
             <section id="info-stats" tabIndex={-1} aria-labelledby="expedition-stats-title">

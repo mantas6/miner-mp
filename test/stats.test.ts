@@ -9,7 +9,8 @@ describe('expedition stats formatting', () => {
       { label: 'Ore mined', value: '0 ores', detail: 'Coal and Copper await below' },
       { label: 'Enemies destroyed', value: '0 fiends', detail: 'No fiends defeated yet' },
       { label: 'Deaths', value: '0 losses', detail: 'No ships lost' },
-      { label: 'Motherlode claims', value: '0 claims', detail: 'Ultimate prize still waiting' }
+      { label: 'Motherlode claims', value: '0 claims', detail: 'Ultimate prize still waiting' },
+      { label: 'Completed extractions', value: '0 extractions', detail: 'Return a secured core to finish an extraction' }
     ]);
   });
 
@@ -20,14 +21,16 @@ describe('expedition stats formatting', () => {
       oreMined: 42,
       enemiesDestroyed: 1,
       deaths: 2,
-      motherlodeClaims: 3
+      motherlodeClaims: 3,
+      motherlodeExtractions: 2
     })).toEqual([
       { label: 'Max depth', value: '1,230 m', detail: 'Deepest descent saved' },
       { label: 'Cash earned', value: '$98,765', detail: 'From cargo, bounties, and relics' },
       { label: 'Ore mined', value: '42 ores', detail: 'Total pieces extracted' },
       { label: 'Enemies destroyed', value: '1 fiend', detail: 'Tunnel fiends defeated' },
       { label: 'Deaths', value: '2 losses', detail: 'Replacement ships deployed' },
-      { label: 'Motherlode claims', value: '3 claims', detail: 'Core cracked and banked' }
+      { label: 'Motherlode claims', value: '3 claims', detail: 'Core cracked and banked' },
+      { label: 'Completed extractions', value: '2 extractions', detail: 'Motherlode cores returned safely to the depot' }
     ]);
   });
 

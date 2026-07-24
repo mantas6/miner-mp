@@ -29,8 +29,10 @@ h1 { margin: 0; letter-spacing: .04em; font-size: clamp(25px, 3vw, 40px); line-h
 .bar-row { position: absolute; left: 0; bottom: 0; width: min(560px, 54%); border-radius: 18px; padding: 12px; display: grid; gap: 8px; }
 .bar { display: grid; grid-template-columns: 58px 1fr 72px; gap: 10px; align-items: center; border-radius: 12px; padding: 2px 4px; margin: -2px -4px; }
 .bar-value { color: #dbe8ff; text-align: right; font-variant-numeric: tabular-nums; }
-.objective-status, .terrain-scanner, .fuel-reserve, .depth-milestone, .cargo-feedback { margin-top: 2px; padding: 8px 10px; border-radius: 12px; font-size: 12px; font-weight: 850; letter-spacing: .03em; text-align: center; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.objective-status, .terrain-scanner, .fuel-reserve, .depth-milestone, .extraction-status, .cargo-feedback { margin-top: 2px; padding: 8px 10px; border-radius: 12px; font-size: 12px; font-weight: 850; letter-spacing: .03em; text-align: center; font-variant-numeric: tabular-nums; line-height: 1.25; }
 .objective-status { background: rgba(92,200,255,.12); border: 1px solid rgba(92,200,255,.28); color: #d9f3ff; }
+.extraction-status { background: rgba(255,200,87,.16); border: 1px solid rgba(255,216,108,.46); color: #fff0bb; }
+.extraction-status.hidden { display: none; }
 .terrain-scanner { background: rgba(105,219,124,.11); border: 1px solid rgba(105,219,124,.25); color: #ddffe2; }
 .fuel-reserve { background: rgba(255,151,78,.12); border: 1px solid rgba(255,151,78,.28); color: #ffe1ca; }
 .depth-milestone { background: rgba(173,124,255,.12); border: 1px solid rgba(173,124,255,.30); color: #eee2ff; }
@@ -74,9 +76,10 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
 .expedition-stats strong { color: #eef4ff; font-size: 18px; font-variant-numeric: tabular-nums; text-align: right; }
 .stat-label { color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
 .stat-detail { grid-column: 1 / -1; color: #dbe8ff; font-size: 12px; line-height: 1.25; }
-.prospecting-tip, .objective-info-status { margin: 8px 0 0; padding: 10px 12px; border-radius: 13px; font-size: 13px; font-weight: 800; line-height: 1.35; }
+.prospecting-tip, .objective-info-status, .extraction-info-status { margin: 8px 0 0; padding: 10px 12px; border-radius: 13px; font-size: 13px; font-weight: 800; line-height: 1.35; }
 .prospecting-tip { background: rgba(255,200,87,.10); border: 1px solid rgba(255,200,87,.22); color: #ffe39a; }
 .objective-info-status { background: rgba(92,200,255,.12); border: 1px solid rgba(92,200,255,.28); color: #d9f3ff; }
+.extraction-info-status { background: rgba(255,200,87,.11); border: 1px solid rgba(255,216,108,.26); color: #fff0bb; }
 .danger-guide-tip { margin: 8px 0 0; padding: 10px 12px; border-radius: 13px; background: rgba(255,93,115,.10); border: 1px solid rgba(255,93,115,.24); color: #ffdce2; font-size: 13px; font-weight: 800; line-height: 1.35; }
 .danger-guide li { grid-template-columns: minmax(132px, .42fr) 1fr; align-items: start; }
 .danger-guide strong { color: #ffe39a; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
@@ -132,7 +135,7 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
   .bar-row { width: calc(50% - 5px); padding: 8px; gap: 6px; border-radius: 14px; bottom: 4px; left: 0; z-index: 3; }
   .bar { grid-template-columns: 42px minmax(0, 1fr) 48px; gap: 6px; }
   .bar-value { font-size: 10px; }
-  .objective-status, .terrain-scanner, .fuel-reserve, .depth-milestone, .cargo-feedback { padding: 6px 7px; font-size: 9px; line-height: 1.25; }
+  .objective-status, .terrain-scanner, .fuel-reserve, .depth-milestone, .extraction-status, .cargo-feedback { padding: 6px 7px; font-size: 9px; line-height: 1.25; }
   meter { height: 15px; }
   .shop { width: calc(50% - 5px); grid-template-columns: 1fr; gap: 4px; padding: 6px; border-radius: 14px; bottom: 4px; right: 0; z-index: 2; }
   .service-status { width: calc(50% - 5px); right: 0; bottom: 268px; padding: 6px 7px; font-size: 9px; line-height: 1.25; z-index: 2; }

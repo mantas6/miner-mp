@@ -28,6 +28,7 @@ export function formatExpeditionStats(stats: Partial<GameStats> = {}): Expeditio
   const enemiesDestroyed = whole(stats.enemiesDestroyed);
   const deaths = whole(stats.deaths);
   const motherlodeClaims = whole(stats.motherlodeClaims);
+  const motherlodeExtractions = whole(stats.motherlodeExtractions);
 
   return [
     {
@@ -59,6 +60,11 @@ export function formatExpeditionStats(stats: Partial<GameStats> = {}): Expeditio
       label: 'Motherlode claims',
       value: count(motherlodeClaims, 'claim'),
       detail: motherlodeClaims > 0 ? 'Core cracked and banked' : 'Ultimate prize still waiting'
+    },
+    {
+      label: 'Completed extractions',
+      value: count(motherlodeExtractions, 'extraction'),
+      detail: motherlodeExtractions > 0 ? 'Motherlode cores returned safely to the depot' : 'Return a secured core to finish an extraction'
     }
   ];
 }

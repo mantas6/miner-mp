@@ -16,6 +16,7 @@ import { formatTerrainScanner } from './scanner';
 import { formatFuelReserveForecast } from './fuel-reserve';
 import { formatDepthMilestone } from './depth-milestone';
 import { beginExtraction, cancelExtraction, completeExtractionAtDepot } from './extraction-phase';
+import { formatExtractionPresentation } from './extraction-presentation';
 
 const state = createInitialState();
 let audio;
@@ -526,6 +527,14 @@ function hud(){
   });
   ui.objectiveStatus.textContent = objectiveCopy;
   ui.objectiveInfoStatus.textContent = objectiveCopy;
+  const extractionPresentation = formatExtractionPresentation({
+    phase: state.extractionPhase,
+    motherlodeExtractions: state.stats.motherlodeExtractions,
+    reward: ECONOMY.artifactReward
+  });
+  ui.extractionStatus.textContent = extractionPresentation.hud || '';
+  ui.extractionStatus.classList.toggle('hidden', !extractionPresentation.hud);
+  ui.extractionInfoStatus.textContent = extractionPresentation.info;
   const scannerDirection: [number, number] = p.drillDx || p.drillDy ? [p.drillDx, p.drillDy] : [p.facing || 1, 0];
   const scannerX = p.x + scannerDirection[0];
   const scannerY = p.y + scannerDirection[1];

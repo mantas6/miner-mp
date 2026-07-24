@@ -24,7 +24,9 @@ const GAME_DOM_IDS = [
   'terrainScanner',
   'fuelReserve',
   'depthMilestone',
+  'extractionStatus',
   'objectiveInfoStatus',
+  'extractionInfoStatus',
   'cargoFeedback',
   'sell',
   'fuelBtn',
@@ -76,6 +78,10 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Depth target: starter Coal/Copper seam — 50 m deeper.');
     expect(markup).toContain('id="objectiveInfoStatus"');
     expect(markup).toContain('class="objective-info-status"');
+    expect(markup).toContain('id="extractionStatus"');
+    expect(markup).toContain('class="extraction-status hidden"');
+    expect(markup).toContain('id="extractionInfoStatus"');
+    expect(markup).toContain('return alive to the surface depot to complete extraction');
   });
 
   it('renders an always-visible surface service status hook and startup copy', () => {
