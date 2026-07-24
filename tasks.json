@@ -1,23 +1,5 @@
 [
   {
-    "category": "systems",
-    "description": "Turn a cracked Motherlode core into a persistent extraction-return phase that is completed only when the miner safely reaches the surface depot, rather than treating the instant core break as the entire finale.",
-    "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh before development, preserve the React-before-runtime startup order, and retain existing DOM IDs/classes consumed by src/dom.ts and src/game.ts.",
-      "Inspect src/game.ts artifact handling, reset/death/surface paths, src/state.ts and src/types.ts state shape, src/persistence.ts save/load schema, src/objective.ts, src/stats.ts, src/ui.tsx, and related Vitest coverage. Add a small DOM-free extraction-phase helper/state model that distinguishes no active core run, core claimed underground and awaiting extraction, successful depot extraction, and failed/death/reset handling without duplicating Motherlode reward or depth rules.",
-      "Wire the helper into live artifact, surface-arrival, restart, game-over, load, and save paths so the player receives a clear actionable return-to-depot goal after cracking the core; award/record the final career completion exactly once on a safe surface return, while preserving existing cash, Motherlode claim statistics, ordinary gameplay, and backwards-compatible saves.",
-      "Add unit tests for phase transitions, duplicate-award prevention, save/load compatibility, death/reset cancellation behavior, and surface completion. Add React/runtime hook coverage only if a new stable hook is required for the phase copy.",
-      "Run ./init.sh and a live headless CDP smoke that starts a fresh game or controlled test state, cracks a Motherlode core, verifies the extraction-return state persists through HUD refreshes, returns to the depot, verifies exactly one completion transition, and collects runtime exceptions."
-    ],
-    "acceptance": [
-      "Cracking the Motherlode changes the live game into an explicit return-to-depot extraction phase, and reaching the surface finalizes it once; death, reset, and repeated HUD frames cannot falsely complete or duplicate its reward/stat update.",
-      "The phase survives save/load as appropriate, does not regress normal ore selling, stats, objective guidance, keyboard/touch movement, or existing Motherlode cash behavior, and legacy saves load safely.",
-      "DOM-free transition/persistence tests and a live browser extraction smoke pass with no runtime exceptions.",
-      "Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
-    ],
-    "passes": true
-  },
-  {
     "category": "gameplay-ux",
     "description": "Add a concise endgame HUD and Info / Cargo presentation for the Motherlode extraction-return phase and successful depot return, so the game gives a satisfying, unambiguous finale instead of only transient toast text.",
     "steps": [
