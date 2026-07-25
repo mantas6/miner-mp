@@ -33,15 +33,30 @@ describe('dynamite blast targets', () => {
     expect(targets.every(target => Object.keys(target).sort().join(',') === 'x,y')).toBe(true);
   });
 
-  it('preserves rock, the Motherlode, the surface layer, and world edges', () => {
+  it('removes ordinary undrillable rock', () => {
     const world: Tile[][] = Array.from({length: 9}, () => Array.from({length: 9}, dirt));
     world[5][4] = {type: 'rock', hp: 999};
+
+    const targets = getDynamiteBlastTargets(world, 5, 5, 2);
+    for (const {x, y} of targets) world[y][x] = {type: 'air'};
+
+    expect(targets).toContainEqual({x: 4, y: 5});
+    expect(world[5][4]).toEqual({type: 'air'});
+  });
+
+  it('preserves the Motherlode, protected surface/base tiles, and world boundaries', () => {
+    const world: Tile[][] = Array.from({length: 9}, () => Array.from({length: 9}, dirt));
     world[5][5] = {type: 'motherlode', hp: 24, maxHp: 24};
+    world[SURFACE_HEIGHT][1] = {type: 'rock', hp: 999};
+    world[SURFACE_HEIGHT + 1][0] = {type: 'rock', hp: 999};
+    world[8][5] = {type: 'rock', hp: 999};
     const surfaceTargets = getDynamiteBlastTargets(world, 1, SURFACE_HEIGHT + 1, 2);
     const deepTargets = getDynamiteBlastTargets(world, 5, 5, 2);
+    const bottomTargets = getDynamiteBlastTargets(world, 5, 7, 2);
 
-    expect(surfaceTargets.every(({x, y}) => x > 0 && y > SURFACE_HEIGHT)).toBe(true);
-    expect(deepTargets).not.toContainEqual({x: 4, y: 5});
+    expect(surfaceTargets).not.toContainEqual({x: 1, y: SURFACE_HEIGHT});
+    expect(surfaceTargets).not.toContainEqual({x: 0, y: SURFACE_HEIGHT + 1});
     expect(deepTargets).not.toContainEqual({x: 5, y: 5});
+    expect(bottomTargets).not.toContainEqual({x: 5, y: 8});
   });
 });
