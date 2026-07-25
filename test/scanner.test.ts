@@ -21,7 +21,7 @@ describe('terrain scanner helper', () => {
       .toBe('Scanner ↑: solid rock — detour; drill blocked.');
     expect(formatTerrainScanner({ tile: { type: 'hazard', hp: 5, maxHp: 5 }, direction: [0, 1] }))
       .toBe('Scanner ↓: magma — hull risk, 5 hits to vent.');
-    expect(formatTerrainScanner({ tile: { type: 'enemy', hp: 4, maxHp: 4 }, direction: [1, 0] }))
+    expect(formatTerrainScanner({ tile: { type: 'enemy', kind:'tunnelFiend', hp: 4, maxHp: 4 }, direction: [1, 0] }))
       .toBe('Scanner →: dirt — drillable, 4 hits.');
     expect(formatTerrainScanner({ tile: { type: 'air' }, direction: [-1, 0], activeEnemy: true }))
       .toBe('Scanner ←: active fiend — drill it before it chews hull.');

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { HULL } from '../src/balance';
 import { expandReachableAir } from '../src/enemy-exposure';
 import { findClosestEnemyTarget, findEnemyPathStep, type EnemyPosition } from '../src/enemy-movement';
+import { enemyBiteCooldown, enemyBiteDamage, enemyMoveDelay } from '../src/enemy-types';
 import type { Enemy, Tile } from '../src/types';
 
 function dirt(): Tile {
@@ -35,7 +35,7 @@ describe('enemy movement', () => {
     const enemyTile = {x: 10, y: 5};
     const reachableAir = new Set<string>();
     world[guest.y][guest.x] = {type: 'air'};
-    world[enemyTile.y][enemyTile.x] = {type: 'enemy', hp: 4, maxHp: 4};
+    world[enemyTile.y][enemyTile.x] = {type: 'enemy', kind:'tunnelFiend', hp: 4, maxHp: 4};
 
     expect(expandReachableAir(world, reachableAir, [guest], true)).toEqual([]);
     for (let x = guest.x + 1; x < enemyTile.x; x++) world[guest.y][x] = {type: 'air'};
@@ -44,6 +44,7 @@ describe('enemy movement', () => {
     world[enemyTile.y][enemyTile.x] = {type: 'air'};
     const enemy: Enemy = {
       id: 1,
+      kind: 'tunnelFiend',
       ...enemyTile,
       drawX: enemyTile.x,
       drawY: enemyTile.y,
@@ -61,14 +62,14 @@ describe('enemy movement', () => {
       expect(target?.local).toBe(false);
       const distance = Math.abs(enemy.x - target!.x) + Math.abs(enemy.y - target!.y);
       if (distance <= 1) {
-        if (tick - enemy.biteTick > 22) {
+        if (tick - enemy.biteTick > enemyBiteCooldown(enemy.kind)) {
           enemy.biteTick = tick;
-          guestHull -= HULL.enemyBite.base + Math.floor(enemy.y / HULL.enemyBite.perDepth) * HULL.enemyBite.step;
+          guestHull -= enemyBiteDamage(enemy.kind, enemy.y);
           break;
         }
         continue;
       }
-      const moveDelay = Math.max(7, 14 - Math.floor(enemy.y / 70));
+      const moveDelay = enemyMoveDelay(enemy.kind, enemy.y);
       if (tick - enemy.moveTick < moveDelay) continue;
       enemy.moveTick = tick;
       const step = findEnemyPathStep(world, enemy, target!, [enemy], 24);

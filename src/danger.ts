@@ -1,5 +1,6 @@
 import { ECONOMY, ENEMY, FUEL, HULL } from './balance';
 import { DANGER, MOTHERLODE_ROW, START_Y } from './constants';
+import { ENEMY_TYPES } from './enemy-types';
 
 export interface DangerGuideRow {
   title: string;
@@ -31,7 +32,7 @@ export function buildDangerGuideRows(): DangerGuideRow[] {
     },
     {
       title: 'Active fiends',
-      detail: `Drill them back before they chew the hull. Their bites start at ${HULL.enemyBite.base} hull damage and grow deeper down.`
+      detail: `Drill them back before they chew the hull. Bites start at ${HULL.enemyBite.base} hull damage; faster ${ENEMY_TYPES.skitterling.name}s appear near ${depthLabel(ENEMY_TYPES.skitterling.minRow)}, armored ${ENEMY_TYPES.ironback.name}s near ${depthLabel(ENEMY_TYPES.ironback.minRow)}, and ${ENEMY_TYPES.abyssStalker.name}s beyond ${depthLabel(ENEMY_TYPES.abyssStalker.minRow)}.`
     },
     {
       title: 'Fiend bounties',

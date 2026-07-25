@@ -74,7 +74,7 @@ describe('player-data reset', () => {
     vi.stubGlobal('localStorage', storage);
     const state = createInitialState();
     const world = [[{type:'air'}]] as typeof state.world;
-    const enemies = [{id:9,x:1,y:2,drawX:1,drawY:2,hp:3,maxHp:4,alive:true,moveTick:2,biteTick:1,flash:0}];
+    const enemies = [{id:9,kind:'tunnelFiend' as const,x:1,y:2,drawX:1,drawY:2,hp:3,maxHp:4,alive:true,moveTick:2,biteTick:1,flash:0}];
     state.world = world;
     state.enemies = enemies;
 

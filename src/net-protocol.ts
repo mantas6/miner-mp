@@ -6,7 +6,7 @@
 // carried inside the relay envelope (`{ t: 'relay', payload }`); the envelope
 // itself is handled in `net.ts`.
 
-import type { Tile, Ore, Artifact, Player, Enemy, RemotePlayer } from './types';
+import type { Tile, Ore, Artifact, Player, Enemy, EnemyKind, RemotePlayer } from './types';
 import { MAX_WORLD_ROW, SURFACE_HEIGHT, WORLD_CHUNK_ROWS, WORLD_W } from './constants';
 
 // --- Message types ---------------------------------------------------------
@@ -44,6 +44,7 @@ export interface WakeNearMsg {
 /** One enemy as carried in snapshots and world sync. */
 export interface EnemySnapshotEntry {
   id: number;
+  kind: EnemyKind;
   x: number;
   y: number;
   drawX: number;
@@ -64,6 +65,7 @@ export interface EnemySnapshotMsg {
 export interface EnemySpawnMsg {
   type: 'enemySpawn';
   id: number;
+  kind: EnemyKind;
   x: number;
   y: number;
   hp: number;
@@ -209,6 +211,11 @@ const MAX_EXPLORED_TILES = 90 * 1004;
 const MAX_ENEMIES = 2048;
 
 const TILE_TYPES = new Set(['air', 'dirt', 'rock', 'ore', 'hazard', 'artifact', 'motherlode', 'enemy']);
+const ENEMY_KINDS = new Set<EnemyKind>(['tunnelFiend', 'skitterling', 'ironback', 'abyssStalker']);
+
+function isEnemyKind(v: unknown): v is EnemyKind {
+  return typeof v === 'string' && ENEMY_KINDS.has(v as EnemyKind);
+}
 
 function isOre(v: unknown): v is Ore {
   return (
@@ -248,8 +255,9 @@ export function isTile(v: unknown): v is Tile {
     case 'dirt':
     case 'hazard':
     case 'motherlode':
-    case 'enemy':
       return isNum(v.hp) && isNum(v.maxHp);
+    case 'enemy':
+      return isEnemyKind(v.kind) && isNum(v.hp) && isNum(v.maxHp);
     default:
       return false;
   }
@@ -259,6 +267,7 @@ function isEnemyEntry(v: unknown): v is EnemySnapshotEntry {
   return (
     isObj(v) &&
     isInt(v.id) &&
+    isEnemyKind(v.kind) &&
     isNum(v.x) &&
     isNum(v.y) &&
     isNum(v.drawX) &&
@@ -323,7 +332,7 @@ export function validateMessage(v: unknown): NetMessage | null {
         ? (v as unknown as EnemySnapshotMsg)
         : null;
     case 'enemySpawn':
-      return isInt(v.id) && isNum(v.x) && isNum(v.y) && isNum(v.hp) && isNum(v.maxHp)
+      return isInt(v.id) && isEnemyKind(v.kind) && isNum(v.x) && isNum(v.y) && isNum(v.hp) && isNum(v.maxHp)
         ? (v as unknown as EnemySpawnMsg)
         : null;
     case 'enemyDead':
@@ -459,6 +468,7 @@ export function interpolateRemotePlayers(players: RemotePlayer[], amount: number
 export function enemyEntryFrom(e: Enemy): EnemySnapshotEntry {
   return {
     id: e.id,
+    kind: e.kind,
     x: e.x,
     y: e.y,
     drawX: e.drawX,
@@ -551,6 +561,7 @@ export function mergeEnemySnapshot(
 export function applyEnemySpawn(list: EnemySnapshotEntry[], msg: EnemySpawnMsg): EnemySnapshotEntry[] {
   const entry: EnemySnapshotEntry = {
     id: msg.id,
+    kind: msg.kind,
     x: msg.x,
     y: msg.y,
     drawX: msg.x,

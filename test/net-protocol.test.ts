@@ -53,11 +53,11 @@ const messages: NetMessage[] = [
     type: 'enemySnapshot',
     revision: 1,
     enemies: [
-      { id: 1, x: 3, y: 4, drawX: 3, drawY: 4, hp: 5, maxHp: 6, alive: true },
-      { id: 2, x: 9, y: 2, drawX: 8.5, drawY: 2.1, hp: 1, maxHp: 6, alive: true }
+      { id: 1, kind:'tunnelFiend', x: 3, y: 4, drawX: 3, drawY: 4, hp: 5, maxHp: 6, alive: true },
+      { id: 2, kind:'skitterling', x: 9, y: 2, drawX: 8.5, drawY: 2.1, hp: 1, maxHp: 6, alive: true }
     ]
   },
-  { type: 'enemySpawn', id: 7, x: 12, y: 30, hp: 6, maxHp: 6 },
+  { type: 'enemySpawn', id: 7, kind:'ironback', x: 12, y: 30, hp: 6, maxHp: 6 },
   { type: 'enemyDead', id: 7, bounty: 42, killerIsGuest: true },
   { type: 'enemyDamage', id: 7, amount: 3, by: 'guest' },
   { type: 'enemyTileShot', x: 12, y: 30, by: 'guest' },
@@ -72,7 +72,7 @@ const messages: NetMessage[] = [
       { x: 1, y: 1, tile: { type: 'air' } },
       { x: 2, y: 2, tile: { type: 'dirt', hp: 1, maxHp: 2 } }
     ],
-    enemies: [{ id: 3, x: 0, y: 0, drawX: 0, drawY: 0, hp: 4, maxHp: 4, alive: true }],
+    enemies: [{ id: 3, kind:'abyssStalker', x: 0, y: 0, drawX: 0, drawY: 0, hp: 4, maxHp: 4, alive: true }],
     explored: '270-278'
   },
   { type: 'worldState', version: 1, revision: 4, initialized: true, tiles: [{x:3,y:7,tile:{type:'air'}}], enemies: [], explored: '270-278' },
@@ -146,6 +146,14 @@ describe('decodeMessage / validateMessage rejection', () => {
   it('rejects a non-integer enemy id', () => {
     expect(validateMessage({ type: 'enemySpawn', id: 1.5, x: 0, y: 0, hp: 1, maxHp: 1 })).toBeNull();
   });
+
+  it('requires a recognized enemy kind on tiles, spawns, and snapshots', () => {
+    expect(isTile({type:'enemy', kind:'ironback', hp:8, maxHp:8})).toBe(true);
+    expect(isTile({type:'enemy', kind:'unknown', hp:8, maxHp:8})).toBe(false);
+    expect(validateMessage({type:'enemySpawn', id:2, kind:'unknown', x:1, y:500, hp:8, maxHp:8})).toBeNull();
+    expect(validateMessage({type:'enemySnapshot', revision:1, enemies:[{id:2,kind:'abyssStalker',x:1,y:1002,drawX:1,drawY:1002,hp:8,maxHp:8,alive:true}]}))
+      .not.toBeNull();
+  });
 });
 
 describe('isTile', () => {
@@ -158,7 +166,7 @@ describe('isTile', () => {
       { type: 'hazard', hp: 4, maxHp: 4 },
       { type: 'artifact', artifact: {name:'Ancient Coin Cache', color:'#ffd166', value:180, min:202, max:502, chance:.00045}, hp:5, maxHp:5 },
       { type: 'motherlode', hp: 24, maxHp: 24 },
-      { type: 'enemy', hp: 4, maxHp: 4 }
+      { type: 'enemy', kind:'tunnelFiend', hp: 4, maxHp: 4 }
     ];
     for (const t of tiles) expect(isTile(t)).toBe(true);
   });
@@ -246,8 +254,8 @@ describe('builders', () => {
   });
 
   it('snapshots an enemy list', () => {
-    const enemy = { id: 9, x: 1, y: 2, drawX: 1, drawY: 2, hp: 4, maxHp: 4, alive: true, moveTick: 3, biteTick: 4, flash: 0.5 } as Enemy;
-    expect(enemyEntryFrom(enemy)).toEqual({ id: 9, x: 1, y: 2, drawX: 1, drawY: 2, hp: 4, maxHp: 4, alive: true });
+    const enemy = { id: 9, kind:'ironback', x: 1, y: 2, drawX: 1, drawY: 2, hp: 4, maxHp: 4, alive: true, moveTick: 3, biteTick: 4, flash: 0.5 } as Enemy;
+    expect(enemyEntryFrom(enemy)).toEqual({ id: 9, kind:'ironback', x: 1, y: 2, drawX: 1, drawY: 2, hp: 4, maxHp: 4, alive: true });
     expect(enemySnapshotFrom([enemy])).toEqual({ type: 'enemySnapshot', revision: 1, enemies: [enemyEntryFrom(enemy)] });
   });
 
@@ -312,14 +320,14 @@ describe('tile diff reducers', () => {
 
   it('includes the host enemy list in a late-join world sync', () => {
     const enemy = {
-      id: 12, x: 7, y: 31, drawX: 6.8, drawY: 31, hp: 3, maxHp: 6,
+      id: 12, kind:'skitterling', x: 7, y: 31, drawX: 6.8, drawY: 31, hp: 3, maxHp: 6,
       alive: true, moveTick: 14, biteTick: 8, flash: 0.4
     } as Enemy;
 
     expect(worldSyncFrom({}, [enemy])).toEqual({
       type: 'worldSync',
       tiles: [],
-      enemies: [{ id: 12, x: 7, y: 31, drawX: 6.8, drawY: 31, hp: 3, maxHp: 6, alive: true }],
+      enemies: [{ id: 12, kind:'skitterling', x: 7, y: 31, drawX: 6.8, drawY: 31, hp: 3, maxHp: 6, alive: true }],
       explored: ''
     });
   });
@@ -327,19 +335,19 @@ describe('tile diff reducers', () => {
 
 describe('enemy list reducers', () => {
   const base: EnemySnapshotEntry[] = [
-    { id: 1, x: 1, y: 1, drawX: 0.8, drawY: 1.1, hp: 5, maxHp: 6, alive: true },
-    { id: 2, x: 2, y: 2, drawX: 2, drawY: 2, hp: 6, maxHp: 6, alive: true }
+    { id: 1, kind:'tunnelFiend', x: 1, y: 1, drawX: 0.8, drawY: 1.1, hp: 5, maxHp: 6, alive: true },
+    { id: 2, kind:'ironback', x: 2, y: 2, drawX: 2, drawY: 2, hp: 6, maxHp: 6, alive: true }
   ];
 
   it('mergeEnemySnapshot preserves local interpolation and drops absent ids', () => {
     const snapshot: EnemySnapshotEntry[] = [
-      { id: 1, x: 3, y: 1, drawX: 3, drawY: 1, hp: 4, maxHp: 6, alive: true },
-      { id: 5, x: 9, y: 9, drawX: 9, drawY: 9, hp: 6, maxHp: 6, alive: true }
+      { id: 1, kind:'tunnelFiend', x: 3, y: 1, drawX: 3, drawY: 1, hp: 4, maxHp: 6, alive: true },
+      { id: 5, kind:'abyssStalker', x: 9, y: 9, drawX: 9, drawY: 9, hp: 6, maxHp: 6, alive: true }
     ];
     const merged = mergeEnemySnapshot(base, snapshot);
     expect(merged).toHaveLength(2);
     // id 1 keeps local drawX/drawY but takes authoritative logical fields.
-    expect(merged[0]).toEqual({ id: 1, x: 3, y: 1, drawX: 0.8, drawY: 1.1, hp: 4, maxHp: 6, alive: true });
+    expect(merged[0]).toEqual({ id: 1, kind:'tunnelFiend', x: 3, y: 1, drawX: 0.8, drawY: 1.1, hp: 4, maxHp: 6, alive: true });
     // id 5 is new; id 2 dropped (not in snapshot).
     expect(merged[1].id).toBe(5);
     expect(merged.some((e) => e.id === 2)).toBe(false);
@@ -348,11 +356,11 @@ describe('enemy list reducers', () => {
   });
 
   it('applyEnemySpawn adds a new enemy and updates an existing one', () => {
-    const added = applyEnemySpawn(base, { type: 'enemySpawn', id: 3, x: 4, y: 4, hp: 6, maxHp: 6 });
+    const added = applyEnemySpawn(base, { type: 'enemySpawn', id: 3, kind:'abyssStalker', x: 4, y: 4, hp: 6, maxHp: 6 });
     expect(added).toHaveLength(3);
-    expect(added[2]).toEqual({ id: 3, x: 4, y: 4, drawX: 4, drawY: 4, hp: 6, maxHp: 6, alive: true });
+    expect(added[2]).toEqual({ id: 3, kind:'abyssStalker', x: 4, y: 4, drawX: 4, drawY: 4, hp: 6, maxHp: 6, alive: true });
 
-    const updated = applyEnemySpawn(base, { type: 'enemySpawn', id: 1, x: 7, y: 7, hp: 6, maxHp: 6 });
+    const updated = applyEnemySpawn(base, { type: 'enemySpawn', id: 1, kind:'skitterling', x: 7, y: 7, hp: 6, maxHp: 6 });
     expect(updated).toHaveLength(2);
     expect(updated[0].x).toBe(7);
     expect(base[0].x).toBe(1); // pure
@@ -384,7 +392,7 @@ describe('mergeWorldSync', () => {
     let diff: TileDiff = {};
     diff = applyTileDiff(diff, { x: 0, y: 0, tile: { type: 'rock', hp: 999 } });
     const enemies: EnemySnapshotEntry[] = [
-      { id: 1, x: 0, y: 0, drawX: 0, drawY: 0, hp: 1, maxHp: 6, alive: true }
+      { id: 1, kind:'tunnelFiend', x: 0, y: 0, drawX: 0, drawY: 0, hp: 1, maxHp: 6, alive: true }
     ];
 
     const result = mergeWorldSync(diff, enemies, {
@@ -393,7 +401,7 @@ describe('mergeWorldSync', () => {
         { x: 0, y: 0, tile: { type: 'air' } }, // overwrites existing
         { x: 1, y: 2, tile: { type: 'dirt', hp: 1, maxHp: 2 } }
       ],
-      enemies: [{ id: 2, x: 5, y: 5, drawX: 5, drawY: 5, hp: 6, maxHp: 6, alive: true }],
+      enemies: [{ id: 2, kind:'ironback', x: 5, y: 5, drawX: 5, drawY: 5, hp: 6, maxHp: 6, alive: true }],
       explored: '270-278'
     });
 

@@ -3,6 +3,8 @@ import { canvas, ctx, H, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom';
 import { getPartnerIndicator } from './partner-indicator';
 import { getVisibleTileRange, type VisibleTileRange } from './visible-tile-range';
 import { isTileExplored } from './exploration';
+import { getEnemyType } from './enemy-types';
+import type { EnemyKind } from './types';
 
 const TERRAIN_CHUNK_TILES = 1;
 const TERRAIN_CHUNK_PADDING = 52;
@@ -283,19 +285,20 @@ export function createRenderer({ state, get, rand }) {
       if (!isExplored(Math.round(e.x), Math.round(e.y))) continue;
       const sx = (e.drawX - camX) * TILE, sy = (e.drawY - camY) * TILE;
       if (sx < -TILE || sy < -TILE || sx > VIEW_WIDTH + TILE || sy > VIEW_HEIGHT + TILE) continue;
-      drawEnemyBody(sx, sy, e.hp / e.maxHp, e.flash);
+      drawEnemyBody(sx, sy, e.kind, e.hp / e.maxHp, e.flash);
     }
   }
-  function drawEnemyBody(sx, sy, hpPct=1, flash=0) {
+  function drawEnemyBody(sx, sy, kind: EnemyKind, hpPct=1, flash=0) {
+    const enemyType = getEnemyType(kind);
     ctx.save();
     ctx.translate(sx + TILE*.5, sy + TILE*.5 + Math.sin(state.tick*.34)*TILE*.05);
     ctx.rotate(Math.sin(state.tick*.18) * .08);
-    ctx.shadowColor = flash > .1 ? '#fff6a8' : '#72ff4a';
+    ctx.shadowColor = flash > .1 ? '#fff6a8' : enemyType.glow;
     ctx.shadowBlur = flash > .1 ? 22 : 10;
     const body = ctx.createRadialGradient(-TILE*.12,-TILE*.16,TILE*.06,0,0,TILE*.45);
-    body.addColorStop(0, flash > .1 ? '#fff6a8' : '#c5ff62');
-    body.addColorStop(.45, '#4fa23d');
-    body.addColorStop(1, '#17391e');
+    body.addColorStop(0, flash > .1 ? '#fff6a8' : enemyType.colors[0]);
+    body.addColorStop(.45, enemyType.colors[1]);
+    body.addColorStop(1, enemyType.colors[2]);
     ctx.fillStyle = body;
     ctx.beginPath(); ctx.ellipse(0, 0, TILE*.34, TILE*.28, 0, 0, Math.PI*2); ctx.fill();
     ctx.shadowBlur = 0;
@@ -303,13 +306,13 @@ export function createRenderer({ state, get, rand }) {
     ctx.beginPath(); ctx.arc(-TILE*.12, -TILE*.06, TILE*.055, 0, Math.PI*2); ctx.arc(TILE*.12, -TILE*.06, TILE*.055, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#fff8c4';
     ctx.beginPath(); ctx.moveTo(-TILE*.12,TILE*.10); ctx.lineTo(-TILE*.05,TILE*.23); ctx.lineTo(TILE*.02,TILE*.10); ctx.lineTo(TILE*.09,TILE*.23); ctx.lineTo(TILE*.16,TILE*.10); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#1d4f24'; ctx.lineWidth = 5;
+    ctx.strokeStyle = enemyType.colors[2]; ctx.lineWidth = kind === 'ironback' ? 8 : 5;
     for (let i=-1;i<=1;i+=2) {
       ctx.beginPath(); ctx.moveTo(i*TILE*.24, TILE*.02); ctx.lineTo(i*TILE*.48, TILE*.14); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(i*TILE*.20, -TILE*.10); ctx.lineTo(i*TILE*.42, -TILE*.25); ctx.stroke();
     }
     ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(-TILE*.28, -TILE*.43, TILE*.56, TILE*.055);
-    ctx.fillStyle = '#8cff58'; ctx.fillRect(-TILE*.28, -TILE*.43, TILE*.56*Math.max(0,hpPct), TILE*.055);
+    ctx.fillStyle = enemyType.glow; ctx.fillRect(-TILE*.28, -TILE*.43, TILE*.56*Math.max(0,hpPct), TILE*.055);
     ctx.restore();
   }
   function drawTile(t, wx, wy, sx, sy) {

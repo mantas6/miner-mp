@@ -57,7 +57,7 @@ describe('gun shot resolution', () => {
 
   it('targets dormant enemies as eligible blocks', () => {
     const world = airWorld();
-    world[9][5] = {type:'enemy', hp:12, maxHp:12};
+    world[9][5] = {type:'enemy', kind:'ironback', hp:12, maxHp:12};
     expect(resolveShot(world, 5, 6, [0, 1], 8)?.target).toMatchObject({kind:'tile', x:5, y:9, tile:{type:'enemy'}});
   });
 

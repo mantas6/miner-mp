@@ -59,11 +59,13 @@ test('connections hydrate before pairing; late joins and reset broadcasts use se
   relay(first.socket, {type:'worldInit',revision:1,tiles:[{x:3,y:7,tile:{type:'dirt',hp:2,maxHp:2}}]});
   await first.next(message => message.payload?.type === 'worldState' && message.payload.initialized);
   relay(first.socket, {type:'tile',revision:1,x:3,y:7,tile:{type:'air'}});
+  relay(first.socket, {type:'enemySnapshot',revision:1,enemies:[{id:7,kind:'ironback',x:3,y:402,drawX:3,drawY:402,hp:20,maxHp:24,alive:true}]});
 
   second = await connect(url);
   const hydrated = await second.next(message => message.payload?.type === 'worldState');
   await second.next(message => message.t === 'paired');
   assert.deepEqual(hydrated.payload.tiles, [{x:3,y:7,tile:{type:'air'}}]);
+  assert.equal(hydrated.payload.enemies[0].kind, 'ironback');
 
   relay(second.socket, {type:'worldReset',revision:1});
   const reset = await first.next(message => message.payload?.type === 'worldReset');

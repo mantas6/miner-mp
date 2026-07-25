@@ -14,7 +14,7 @@ function world(): Tile[][] {
 describe('buried enemy exposure', () => {
   it('keeps a fully sealed enemy dormant', () => {
     const tiles = world();
-    tiles[3][5] = {type: 'enemy', hp: 4, maxHp: 4};
+    tiles[3][5] = {type: 'enemy', kind:'tunnelFiend', hp: 4, maxHp: 4};
 
     expect(expandReachableAir(tiles, new Set(), [{x: 1, y: 3}], true)).toEqual([]);
   });
@@ -23,7 +23,7 @@ describe('buried enemy exposure', () => {
     const tiles = world();
     tiles[3][1] = {type: 'air'};
     tiles[3][4] = {type: 'air'};
-    tiles[3][5] = {type: 'enemy', hp: 4, maxHp: 4};
+    tiles[3][5] = {type: 'enemy', kind:'tunnelFiend', hp: 4, maxHp: 4};
     const reachable = new Set<string>();
 
     expect(expandReachableAir(tiles, reachable, [{x: 1, y: 3}], true)).toEqual([]);
@@ -33,7 +33,7 @@ describe('buried enemy exposure', () => {
   it('exposes an enemy when air connects a traversable path to its edge', () => {
     const tiles = world();
     tiles[3][1] = {type: 'air'};
-    tiles[3][5] = {type: 'enemy', hp: 4, maxHp: 4};
+    tiles[3][5] = {type: 'enemy', kind:'tunnelFiend', hp: 4, maxHp: 4};
     const reachable = new Set<string>();
     expandReachableAir(tiles, reachable, [{x: 1, y: 3}], true);
 
@@ -48,9 +48,9 @@ describe('buried enemy exposure', () => {
     const tiles = world();
     tiles[3][1] = {type: 'air'};
     tiles[3][2] = {type: 'air'};
-    tiles[3][3] = {type: 'enemy', hp: 4, maxHp: 4};
+    tiles[3][3] = {type: 'enemy', kind:'skitterling', hp: 4, maxHp: 4};
     const exposed = expandReachableAir(tiles, new Set(), [{x: 1, y: 3}], true);
-    const spawn = {type: 'enemySpawn' as const, id: 7, ...exposed[0], hp: 4, maxHp: 4};
+    const spawn = {type: 'enemySpawn' as const, id: 7, kind:'skitterling' as const, ...exposed[0], hp: 4, maxHp: 4};
     const guestSpawn = applyEnemySpawn([], spawn);
     const hostEnemy: Enemy = {...guestSpawn[0], moveTick: 0, biteTick: 0, flash: 0};
     const sync = worldSyncFrom({}, [hostEnemy]);

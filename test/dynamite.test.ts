@@ -46,7 +46,7 @@ describe('dynamite blast targets', () => {
 
   it('includes directly hit dormant enemies among destroyed terrain', () => {
     const world: Tile[][] = Array.from({length: 9}, () => Array.from({length: 9}, dirt));
-    world[5][6] = {type: 'enemy', hp: 4, maxHp: 4};
+    world[5][6] = {type: 'enemy', kind:'tunnelFiend', hp: 4, maxHp: 4};
 
     const targets = getDynamiteBlastTargets(world, 5, 5, 2);
     for (const {x, y} of targets) world[y][x] = {type: 'air'};

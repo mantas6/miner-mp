@@ -17,7 +17,7 @@ describe('world state reset', () => {
     state.cash = 9999;
     state.stats.maxDepth = 900;
     state.world = [[{type:'air'}]];
-    state.enemies = [{id:1,x:1,y:1,drawX:1,drawY:1,hp:2,maxHp:2,alive:true,moveTick:0,biteTick:0,flash:0}];
+    state.enemies = [{id:1,kind:'tunnelFiend',x:1,y:1,drawX:1,drawY:1,hp:2,maxHp:2,alive:true,moveTick:0,biteTick:0,flash:0}];
     state.exploredTiles.add(400);
     state.extractionPhase = 'returning';
     state.teleportReturnPosition = {x: 17, y: 200};

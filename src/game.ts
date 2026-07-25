@@ -34,6 +34,7 @@ import { confirmPlayerDataReset, resetPlayerData } from './player-data-reset';
 import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDeveloperCash, updateDeveloperServiceControls, type DeveloperServiceId } from './developer';
 import { confirmWorldStateReset, resetWorldTerrain } from './world-state';
 import { findClosestEnemyTarget, findEnemyPathStep } from './enemy-movement';
+import { enemyBiteCooldown, enemyBiteDamage, enemyMoveDelay, getEnemyType } from './enemy-types';
 
 const state = createInitialState();
 let audio;
@@ -234,7 +235,7 @@ function startOnline(url: string){
         if (msg.type === 'enemySnapshot' && isGuestEnemyReplica()) mergeEnemyEntries(msg.enemies);
         if (msg.type === 'enemySpawn' && isGuestEnemyReplica()) {
           applyEnemyEntries(applyEnemySpawn(state.enemies.map(enemyEntryFrom), msg));
-          spawnDust(msg.x, msg.y, '#8aff5a', 18);
+          spawnDust(msg.x, msg.y, getEnemyType(msg.kind).glow, 18);
           audio.enemyWake();
         }
         if (msg.type === 'enemyDead' && isGuestEnemyReplica()) {
@@ -320,12 +321,12 @@ function wakeEnemy(x,y){
   const tile = get(x,y);
   if (tile.type !== 'enemy') return false;
   set(x,y,{type:'air'});
-  const enemy = {id: enemyIdCounter++, x, y, drawX:x, drawY:y, hp:tile.hp || 4, maxHp:tile.maxHp || tile.hp || 4, alive:true, moveTick:0, biteTick:0, flash:0};
+  const enemy = {id: enemyIdCounter++, kind:tile.kind, x, y, drawX:x, drawY:y, hp:tile.hp || 4, maxHp:tile.maxHp || tile.hp || 4, alive:true, moveTick:0, biteTick:0, flash:0};
   state.enemies.push(enemy);
-  if (isPairedHost()) net?.send({type:'enemySpawn', id:enemy.id, x, y, hp:enemy.hp, maxHp:enemy.maxHp});
-  spawnDust(x, y, '#8aff5a', 18);
+  if (isPairedHost()) net?.send({type:'enemySpawn', id:enemy.id, kind:enemy.kind, x, y, hp:enemy.hp, maxHp:enemy.maxHp});
+  spawnDust(x, y, getEnemyType(enemy.kind).glow, 18);
   audio.enemyWake();
-  toast('Tunnel fiend awakened! Drill it before it chews the hull.');
+  toast(`${getEnemyType(enemy.kind).name} awakened! Drill it before it chews the hull.`);
   return true;
 }
 function wakeEnemiesNear(x,y){
@@ -434,16 +435,16 @@ function updateEnemies(){
     if (!target) continue;
     const dist = Math.abs(e.x - target.x) + Math.abs(e.y - target.y);
     if (dist <= 1) {
-      if (target.local && state.tick - e.biteTick > 22) {
+      if (target.local && state.tick - e.biteTick > enemyBiteCooldown(e.kind)) {
         e.biteTick = state.tick;
-        const bite = HULL.enemyBite.base + Math.floor(e.y / HULL.enemyBite.perDepth) * HULL.enemyBite.step;
+        const bite = enemyBiteDamage(e.kind, e.y);
         damage(bite);
         spawnDust(target.x, target.y, '#ff5d45', 10);
-        toast(`Enemy chewing the hull! -${bite}`);
+        toast(`${getEnemyType(e.kind).name} chewing the hull! -${bite}`);
       }
       continue; // Bite from an adjacent tile; never step onto the ship's tile.
     }
-    const moveDelay = Math.max(7, 14 - Math.floor(e.y / 70));
+    const moveDelay = enemyMoveDelay(e.kind, e.y);
     if (state.tick - e.moveTick < moveDelay || dist > ENEMY_AGGRO_RANGE) continue;
     e.moveTick = state.tick;
     const step = findEnemyPathStep(state.world, e, target, state.enemies.filter(enemy => enemy.alive), ENEMY_AGGRO_RANGE);
@@ -464,12 +465,12 @@ function updateEnemyBites(){
   const p = state.player;
   for (const e of state.enemies) {
     if (!e.alive || Math.abs(e.x - p.x) + Math.abs(e.y - p.y) > 1) continue;
-    if (state.tick - e.biteTick <= 22) continue;
+    if (state.tick - e.biteTick <= enemyBiteCooldown(e.kind)) continue;
     e.biteTick = state.tick;
-    const bite = HULL.enemyBite.base + Math.floor(e.y / HULL.enemyBite.perDepth) * HULL.enemyBite.step;
+    const bite = enemyBiteDamage(e.kind, e.y);
     damage(bite);
     spawnDust(p.x, p.y, '#ff5d45', 10);
-    toast(`Enemy chewing the hull! -${bite}`);
+    toast(`${getEnemyType(e.kind).name} chewing the hull! -${bite}`);
   }
 }
 function grounded(){
@@ -1096,7 +1097,7 @@ function hud(){
   ui.terrainScanner.textContent = formatTerrainScanner({
     tile: get(scannerX, scannerY),
     direction: scannerDirection,
-    activeEnemy: Boolean(enemyAt(scannerX, scannerY)),
+    activeEnemy: enemyAt(scannerX, scannerY)?.kind,
     explored: isTileExplored(state.exploredTiles, scannerX, scannerY)
   });
   ui.fuelReserve.textContent = formatFuelReserveForecast({

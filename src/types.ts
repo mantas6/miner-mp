@@ -17,6 +17,7 @@ export interface Artifact {
 }
 
 export type Direction = [number, number];
+export type EnemyKind = 'tunnelFiend' | 'skitterling' | 'ironback' | 'abyssStalker';
 
 export interface AirTile {
   type: 'air';
@@ -61,6 +62,7 @@ export interface MotherlodeTile {
 
 export interface DormantEnemyTile {
   type: 'enemy';
+  kind: EnemyKind;
   hp: number;
   maxHp: number;
 }
@@ -93,6 +95,7 @@ export interface Player {
 
 export interface Enemy {
   id: number;
+  kind: EnemyKind;
   x: number;
   y: number;
   drawX: number;

@@ -24,7 +24,7 @@ test('generated blocks, dug air, enemies, and exploration survive restart', t =>
   assert.deepEqual(createWorldStore(temporary.file).snapshot(), {
     version:1, revision:1, initialized:true,
     tiles:[generated, {x:5,y:8,tile:{type:'air'}}],
-    enemies:[{id:2,x:5,y:8,drawX:5,drawY:8,hp:3,maxHp:4,alive:true}],
+    enemies:[{id:2,x:5,y:8,drawX:5,drawY:8,hp:3,maxHp:4,alive:true,kind:'tunnelFiend'}],
     explored:'270-278'
   });
 });
@@ -57,12 +57,13 @@ test('deep terrain, enemies, and exploration survive relay persistence', t => {
   const store = createWorldStore(temporary.file);
   assert.equal(store.initialize(1, []), true);
   assert.equal(store.setTile(1, {x:45,y:deepY,tile:{type:'air'}}), true);
-  assert.equal(store.setEnemies(1, [{id:2,x:45,y:deepY,drawX:45,drawY:deepY,hp:1200,maxHp:1200,alive:true}]), true);
+  assert.equal(store.setEnemies(1, [{id:2,kind:'abyssStalker',x:45,y:deepY,drawX:45,drawY:deepY,hp:1200,maxHp:1200,alive:true}]), true);
   assert.equal(store.setExplored(1, `${deepIndex}-${deepIndex + 1}`), true);
   store.flush();
 
   const restored = createWorldStore(temporary.file).snapshot();
   assert.deepEqual(restored.tiles, [{x:45,y:deepY,tile:{type:'air'}}]);
   assert.equal(restored.enemies[0].y, deepY);
+  assert.equal(restored.enemies[0].kind, 'abyssStalker');
   assert.equal(restored.explored, `${deepIndex}-${deepIndex + 1}`);
 });

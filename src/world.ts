@@ -2,6 +2,7 @@
 // No imports from dom.js, game.js, or balance.js.
 import { ARTIFACTS, DANGER, MAX_WORLD_ROW, MOTHERLODE_ROW, ORES, SURFACE_HEIGHT, WORLD_CHUNK_ROWS, WORLD_W } from './constants';
 import type { Tile } from './types';
+import { enemyHealth, enemyKindForDepthRoll } from './enemy-types';
 
 /**
  * Deterministic pseudo-random value in [0,1) for a tile coordinate.
@@ -97,8 +98,9 @@ export function makeTile(x: number, y: number): Tile {
     return {type:'hazard', hp, maxHp: hp};
   }
   if (y >= DANGER.enemyMinRow && rand(x-37,y+83) < Math.min(.046, .008 + y / 6500)) {
-    const hp = Math.max(4, Math.ceil(3 + y / 35));
-    return {type:'enemy', hp, maxHp: hp};
+    const kind = enemyKindForDepthRoll(y, rand(x+211,y-157));
+    const hp = enemyHealth(kind, Math.max(4, Math.ceil(3 + y / 35)));
+    return {type:'enemy', kind, hp, maxHp: hp};
   }
   { const hp = Math.max(2, Math.ceil(depth/42)+1 + (depth > 210 ? 2 : 0)); return {type:'dirt', hp, maxHp: hp}; }
 }

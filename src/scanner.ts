@@ -1,9 +1,10 @@
-import type { Direction, Tile } from './types';
+import { getEnemyType } from './enemy-types';
+import type { Direction, EnemyKind, Tile } from './types';
 
 export interface TerrainScannerInput {
   tile: Tile;
   direction: Direction;
-  activeEnemy?: boolean;
+  activeEnemy?: EnemyKind | boolean;
   explored?: boolean;
 }
 
@@ -23,7 +24,10 @@ function hitsLabel(hp: number): string {
 export function formatTerrainScanner({ tile, direction, activeEnemy = false, explored = true }: TerrainScannerInput): string {
   const prefix = `Scanner ${directionLabel(direction)}:`;
   if (!explored) return `${prefix} unexplored — advance to map terrain.`;
-  if (activeEnemy) return `${prefix} active fiend — drill it before it chews hull.`;
+  if (activeEnemy) {
+    const name = typeof activeEnemy === 'string' ? getEnemyType(activeEnemy).name.toLowerCase() : 'fiend';
+    return `${prefix} active ${name} — drill it before it chews hull.`;
+  }
 
   switch (tile.type) {
     case 'air':
