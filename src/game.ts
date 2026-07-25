@@ -31,6 +31,7 @@ import { expandReachableAir } from './enemy-exposure';
 import { encodeExploration, isTileExplored, mergeExploration, revealFootprint } from './exploration';
 import { consumeBulletForShot, gunKeyAction, resolveShot } from './weapon';
 import { confirmPlayerDataReset, resetPlayerData } from './player-data-reset';
+import { DEVELOPER_CASH_GRANT, grantDeveloperCash } from './developer';
 
 const state = createInitialState();
 let audio;
@@ -558,6 +559,12 @@ function grantDeveloperUpgrade(id: PlayerUpgradeId){
   updateDeveloperUpgradeControls(ui.developerUpgrades, state.player);
   toast('Developer action: upgrade granted for $0.');
 }
+function grantDeveloperMoney(){
+  grantDeveloperCash(state);
+  saveProgress();
+  ui.cash.textContent = `$${Math.floor(state.cash)}`;
+  toast(`Developer action: +$${DEVELOPER_CASH_GRANT.toLocaleString('en-US')} granted.`);
+}
 function refuel(){
   const p = state.player;
   if (!atSurface()) return toast('Service depot is on the surface.');
@@ -748,6 +755,11 @@ function bindButtons(){
   ui.infoScreen.addEventListener('pointerdown', e => { if (e.target === ui.infoScreen) closeInfoScreen(); });
   ui.infoCard.addEventListener('scroll', updateActiveInfoNavigation, {passive:true});
   ui.infoScreen.addEventListener('click', e => {
+    const cashButton = (e.target as Element).closest<HTMLButtonElement>('[data-developer-cash]');
+    if (cashButton) {
+      grantDeveloperMoney();
+      return;
+    }
     const developerButton = (e.target as Element).closest<HTMLButtonElement>('[data-developer-upgrade]');
     if (developerButton) {
       grantDeveloperUpgrade(developerButton.dataset.developerUpgrade as PlayerUpgradeId);
