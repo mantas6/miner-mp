@@ -1,0 +1,13 @@
+{
+  "name": "moleload-relay",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Dumb WebSocket relay for Moleload 2-player co-op (pairing + forwarding, no game logic).",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
