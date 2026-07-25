@@ -555,6 +555,7 @@ function renderExpeditionStats(){
 }
 function updateButtonStates(){
   const p = state.player, surf = atSurface();
+  for (const button of [ui.sell, ui.fuelBtn, ui.repairBtn, ui.cargoBtn, ui.tankBtn, ui.drillBtn]) button.hidden = !surf;
   ui.sell.disabled = !surf || currentCargoValue() <= 0;
   ui.fuelBtn.textContent = `Refuel $${refuelCost(p)}`;
   ui.repairBtn.textContent = `Repair $${repairCost(p)}`;
