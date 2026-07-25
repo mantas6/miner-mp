@@ -42,6 +42,8 @@ export function createRenderer({ state, get, rand }) {
       if (terrainCanvas.height !== pixelHeight) terrainCanvas.height = pixelHeight;
       const terrainContext = terrainCanvas.getContext('2d');
       if (!terrainContext) throw new Error('2D terrain cache context is unavailable.');
+      terrainContext.setTransform(1, 0, 0, 1, 0, 0);
+      terrainContext.clearRect(0, 0, terrainCanvas.width, terrainCanvas.height);
       terrainContext.setTransform(scale, 0, 0, scale, 0, 0);
 
       const mainContext = drawingContext;
