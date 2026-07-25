@@ -31,7 +31,8 @@ const mocks = vi.hoisted(() => {
   return {
     mainContext: createContext(),
     terrainContext: createContext(),
-    canvas: {width: 1920, height: 1280}
+    canvas: {width: 1920, height: 1280},
+    terrainCanvases: [] as Array<{width: number; height: number}>
   };
 });
 
@@ -49,16 +50,21 @@ import { createRenderer } from '../src/renderer';
 describe('terrain cache lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.terrainCanvases.length = 0;
     vi.stubGlobal('document', {
-      createElement: vi.fn(() => ({
-        width: 0,
-        height: 0,
-        getContext: vi.fn(() => mocks.terrainContext)
-      }))
+      createElement: vi.fn(() => {
+        const terrainCanvas = {
+          width: 0,
+          height: 0,
+          getContext: vi.fn(() => mocks.terrainContext)
+        };
+        mocks.terrainCanvases.push(terrainCanvas);
+        return terrainCanvas;
+      })
     });
   });
 
-  it('clears same-sized backing pixels on invalidation and tile-range changes', () => {
+  it('renders only newly exposed chunks while the camera moves', () => {
     const state = {
       world: {},
       camX: 10.2,
@@ -87,20 +93,62 @@ describe('terrain cache lifecycle', () => {
     });
 
     renderer.draw();
-    expect(mocks.terrainContext.setTransform).toHaveBeenNthCalledWith(1, 1, 0, 0, 1, 0, 0);
-    expect(mocks.terrainContext.clearRect).toHaveBeenLastCalledWith(0, 0, 2304, 1664);
-    expect(mocks.terrainContext.setTransform).toHaveBeenNthCalledWith(2, 2, 0, 0, 2, 0, 0);
+    const initialTileDraws = mocks.terrainContext.fillRect.mock.calls.length;
+    expect(initialTileDraws).toBeGreaterThan(0);
+    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.width))).toBe(68);
+    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.height))).toBe(68);
 
     renderer.draw();
-    expect(mocks.terrainContext.clearRect).toHaveBeenCalledTimes(1);
-
-    renderer.invalidateTerrain();
-    renderer.draw();
-    expect(mocks.terrainContext.clearRect).toHaveBeenCalledTimes(2);
+    expect(mocks.terrainContext.fillRect).toHaveBeenCalledTimes(initialTileDraws);
 
     state.camX = 11.2;
     renderer.draw();
-    expect(mocks.terrainContext.clearRect).toHaveBeenCalledTimes(3);
-    expect(mocks.terrainContext.setTransform).toHaveBeenLastCalledWith(2, 0, 0, 2, 0, 0);
+    expect(mocks.terrainContext.fillRect.mock.calls.length).toBeGreaterThan(initialTileDraws);
+
+    state.camX = 12.2;
+    renderer.draw();
+    const exposedTileDraws = mocks.terrainContext.fillRect.mock.calls.length - initialTileDraws;
+    expect(exposedTileDraws).toBeGreaterThan(0);
+    expect(exposedTileDraws).toBeLessThan(initialTileDraws / 4);
+  });
+
+  it('invalidates one changed tile chunk without rebuilding the viewport', () => {
+    const state = {
+      world: {},
+      camX: 10.2,
+      camY: 20.2,
+      tick: 0,
+      gameOver: false,
+      particles: [],
+      enemies: [],
+      remotePlayers: [],
+      player: {
+        x: 12,
+        y: 22,
+        drawX: 12,
+        drawY: 22,
+        facing: 1,
+        bob: 0,
+        drillAnim: 0,
+        drillDx: 0,
+        drillDy: 1
+      }
+    };
+    const renderer = createRenderer({
+      state,
+      get: () => ({type: 'air'}),
+      rand: () => 0
+    });
+
+    renderer.draw();
+    const initialTileDraws = mocks.terrainContext.fillRect.mock.calls.length;
+
+    renderer.invalidateTerrain(12, 22);
+    renderer.draw();
+    expect(mocks.terrainContext.fillRect).toHaveBeenCalledTimes(initialTileDraws + 1);
+
+    renderer.invalidateTerrain();
+    renderer.draw();
+    expect(mocks.terrainContext.fillRect.mock.calls.length).toBeGreaterThan(initialTileDraws * 1.5);
   });
 });

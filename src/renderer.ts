@@ -3,79 +3,104 @@ import { canvas, ctx, H, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom';
 import { getPartnerIndicator } from './partner-indicator';
 import { getVisibleTileRange, type VisibleTileRange } from './visible-tile-range';
 
+const TERRAIN_CHUNK_TILES = 1;
+const TERRAIN_CHUNK_PADDING = 2;
+const MAX_EXTRA_TERRAIN_CHUNKS = 32;
+
+interface TerrainChunk {
+  canvas: HTMLCanvasElement;
+  startX: number;
+  startY: number;
+  width: number;
+  height: number;
+}
+
 export function createRenderer({ state, get, rand }) {
   let drawingContext = ctx;
-  let terrainVersion = 0;
-  let cachedTerrain: {
-    canvas: HTMLCanvasElement;
-    range: VisibleTileRange;
-    viewWidth: number;
-    viewHeight: number;
-    scale: number;
-    version: number;
-    world: unknown;
-  } | null = null;
+  const terrainChunks = new Map<string, TerrainChunk>();
+  let cachedTerrainScale = 0;
+  let cachedTerrainWorld: unknown = null;
 
-  function invalidateTerrain(){ terrainVersion++; }
+  function terrainChunkKey(chunkX: number, chunkY: number){ return `${chunkX},${chunkY}`; }
+  function invalidateTerrain(x?: number, y?: number){
+    if (x === undefined || y === undefined) {
+      terrainChunks.clear();
+      return;
+    }
+    terrainChunks.delete(terrainChunkKey(
+      Math.floor(x / TERRAIN_CHUNK_TILES),
+      Math.floor(y / TERRAIN_CHUNK_TILES)
+    ));
+  }
+
+  function createTerrainChunk(chunkX: number, chunkY: number, scale: number): TerrainChunk {
+    const startX = chunkX * TERRAIN_CHUNK_TILES;
+    const startY = chunkY * TERRAIN_CHUNK_TILES;
+    const endX = Math.min(WORLD_W - 1, startX + TERRAIN_CHUNK_TILES - 1);
+    const endY = Math.min(WORLD_H - 1, startY + TERRAIN_CHUNK_TILES - 1);
+    const width = (endX - startX + 1) * TILE;
+    const height = (endY - startY + 1) * TILE;
+    const terrainCanvas = document.createElement('canvas');
+    terrainCanvas.width = Math.ceil((width + TERRAIN_CHUNK_PADDING * 2) * scale);
+    terrainCanvas.height = Math.ceil((height + TERRAIN_CHUNK_PADDING * 2) * scale);
+    const terrainContext = terrainCanvas.getContext('2d');
+    if (!terrainContext) throw new Error('2D terrain cache context is unavailable.');
+    terrainContext.setTransform(scale, 0, 0, scale, 0, 0);
+
+    const mainContext = drawingContext;
+    drawingContext = terrainContext;
+    try {
+      for(let wy=startY;wy<=endY;wy++) for(let wx=startX;wx<=endX;wx++) {
+        drawTile(
+          get(wx,wy), wx, wy,
+          TERRAIN_CHUNK_PADDING + (wx-startX)*TILE,
+          TERRAIN_CHUNK_PADDING + (wy-startY)*TILE
+        );
+      }
+    } finally {
+      drawingContext = mainContext;
+    }
+
+    return {canvas: terrainCanvas, startX, startY, width, height};
+  }
 
   function drawTerrain(camX, camY){
     const range = getVisibleTileRange(camX, camY, W, H, WORLD_W, WORLD_H);
-    const scale = canvas.width / VIEW_WIDTH;
-    const reusable = cachedTerrain
-      && cachedTerrain.range.startX === range.startX
-      && cachedTerrain.range.startY === range.startY
-      && cachedTerrain.range.endX === range.endX
-      && cachedTerrain.range.endY === range.endY
-      && cachedTerrain.viewWidth === VIEW_WIDTH
-      && cachedTerrain.viewHeight === VIEW_HEIGHT
-      && cachedTerrain.scale === scale
-      && cachedTerrain.version === terrainVersion
-      && cachedTerrain.world === state.world;
-
-    if (!reusable) {
-      const terrainCanvas = cachedTerrain?.canvas || document.createElement('canvas');
-      const width = (range.endX - range.startX + 1) * TILE;
-      const height = (range.endY - range.startY + 1) * TILE;
-      const pixelWidth = Math.ceil(width * scale);
-      const pixelHeight = Math.ceil(height * scale);
-      if (terrainCanvas.width !== pixelWidth) terrainCanvas.width = pixelWidth;
-      if (terrainCanvas.height !== pixelHeight) terrainCanvas.height = pixelHeight;
-      const terrainContext = terrainCanvas.getContext('2d');
-      if (!terrainContext) throw new Error('2D terrain cache context is unavailable.');
-      terrainContext.setTransform(1, 0, 0, 1, 0, 0);
-      terrainContext.clearRect(0, 0, terrainCanvas.width, terrainCanvas.height);
-      terrainContext.setTransform(scale, 0, 0, scale, 0, 0);
-
-      const mainContext = drawingContext;
-      drawingContext = terrainContext;
-      try {
-        for(let wy=range.startY;wy<=range.endY;wy++) for(let wx=range.startX;wx<=range.endX;wx++) {
-          drawTile(get(wx,wy), wx, wy, (wx-range.startX)*TILE, (wy-range.startY)*TILE);
-        }
-      } finally {
-        drawingContext = mainContext;
-      }
-
-      cachedTerrain = {
-        canvas: terrainCanvas,
-        range,
-        viewWidth: VIEW_WIDTH,
-        viewHeight: VIEW_HEIGHT,
-        scale,
-        version: terrainVersion,
-        world: state.world
-      };
+    // Cache at CSS-pixel resolution so high-DPI screens do not multiply terrain generation cost.
+    const scale = Math.min(1, canvas.width / VIEW_WIDTH);
+    if (cachedTerrainScale !== scale || cachedTerrainWorld !== state.world) {
+      terrainChunks.clear();
+      cachedTerrainScale = scale;
+      cachedTerrainWorld = state.world;
     }
 
-    const terrain = cachedTerrain;
-    const width = (terrain.range.endX - terrain.range.startX + 1) * TILE;
-    const height = (terrain.range.endY - terrain.range.startY + 1) * TILE;
-    drawingContext.drawImage(
-      terrain.canvas,
-      0, 0, terrain.canvas.width, terrain.canvas.height,
-      (terrain.range.startX-camX)*TILE, (terrain.range.startY-camY)*TILE,
-      width, height
-    );
+    const startChunkX = Math.floor(range.startX / TERRAIN_CHUNK_TILES);
+    const endChunkX = Math.floor(range.endX / TERRAIN_CHUNK_TILES);
+    const startChunkY = Math.floor(range.startY / TERRAIN_CHUNK_TILES);
+    const endChunkY = Math.floor(range.endY / TERRAIN_CHUNK_TILES);
+    let visibleChunkCount = 0;
+    for(let chunkY=startChunkY;chunkY<=endChunkY;chunkY++) for(let chunkX=startChunkX;chunkX<=endChunkX;chunkX++) {
+      const key = terrainChunkKey(chunkX, chunkY);
+      let terrain = terrainChunks.get(key);
+      if (!terrain) terrain = createTerrainChunk(chunkX, chunkY, scale);
+      else terrainChunks.delete(key);
+      terrainChunks.set(key, terrain);
+      visibleChunkCount++;
+      drawingContext.drawImage(
+        terrain.canvas,
+        0, 0, terrain.canvas.width, terrain.canvas.height,
+        (terrain.startX-camX)*TILE-TERRAIN_CHUNK_PADDING,
+        (terrain.startY-camY)*TILE-TERRAIN_CHUNK_PADDING,
+        terrain.width+TERRAIN_CHUNK_PADDING*2,
+        terrain.height+TERRAIN_CHUNK_PADDING*2
+      );
+    }
+
+    while (terrainChunks.size > visibleChunkCount + MAX_EXTRA_TERRAIN_CHUNKS) {
+      const oldestKey = terrainChunks.keys().next().value;
+      if (oldestKey === undefined) break;
+      terrainChunks.delete(oldestKey);
+    }
   }
 
   function drawTerrainDamage(camX, camY){
