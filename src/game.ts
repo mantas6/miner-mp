@@ -22,7 +22,7 @@ import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff,
 import { loadServerUrl, saveServerUrl } from './multiplayer-settings';
 import { fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs } from './movement';
 import { getDynamiteBlastTargets } from './dynamite';
-import { teleportPlayerToSurface } from './teleporter';
+import { advanceTeleportEffect, createTeleportEffect, teleportPlayerToSurface } from './teleporter';
 import { claimArtifact } from './artifacts';
 import type { Enemy } from './types';
 
@@ -73,6 +73,7 @@ function generate(){
 }
 function resetPlayer(full=true){
   state.extractionPhase = cancelExtraction();
+  state.teleportEffect = null;
   if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.player.dynamite=STARTING.dynamite; state.player.teleporters=STARTING.teleporters; state.stats = {...DEFAULT_STATS}; saveProgress(); }
   respawnPlayer(state.player);
   state.camX = Math.max(0, state.player.x - Math.floor(W/2));
@@ -387,6 +388,7 @@ function restartGame(){
 function gameOver(msg='Game over. Tap anywhere or press R to restart.'){
   if (state.gameOver) return;
   state.gameOver = true;
+  state.teleportEffect = null;
   state.extractionPhase = cancelExtraction();
   state.stats.deaths++;
   saveProgress();
@@ -519,7 +521,13 @@ function useTeleporter(){
   if (state.gameOver) return;
   if (atSurface()) return toast('Teleporter can only be used underground.');
   if (p.teleporters <= 0) { audio.alarm(); return toast('No teleporter. Buy one at the surface depot.'); }
+  const camX = Math.max(0, Math.min(WORLD_W-W, state.camX));
+  const camY = Math.max(0, Math.min(WORLD_H-H, state.camY));
+  const originScreenX = (p.drawX - camX + .5) * TILE;
+  const originScreenY = (p.drawY - camY + .5) * TILE;
   if (!teleportPlayerToSurface(p)) return;
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  state.teleportEffect = createTeleportEffect(originScreenX, originScreenY, p.x, p.y, reducedMotion);
   state.input.keyImpulse = null;
   state.input.touchHoldDir = null;
   state.camX = Math.max(0, p.x - Math.floor(W/2));
@@ -756,6 +764,7 @@ function updateAnimation(){
   p.bob *= 0.86;
   p.drillAnim *= 0.90;
   state.remotePlayers = interpolateRemotePlayers(state.remotePlayers, 0.23);
+  state.teleportEffect = advanceTeleportEffect(state.teleportEffect);
   const targetCamX = Math.max(0, Math.min(WORLD_W-W, p.drawX - W/2 + 0.5));
   const targetCamY = Math.max(0, Math.min(WORLD_H-H, p.drawY - H/2 + 0.5));
   state.camX += (targetCamX - state.camX) * 0.12;

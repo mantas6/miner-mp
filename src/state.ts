@@ -79,6 +79,7 @@ export function createInitialState(): GameState {
     role: null,
     connected: false,
     remotePlayers: [],
+    teleportEffect: null,
     input: {
       keyImpulse: null,
       lastKeyboardMove: 0,

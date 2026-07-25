@@ -169,4 +169,24 @@ describe('terrain cache lifecycle', () => {
     expect(mocks.terrainContext.fillText).toHaveBeenCalledWith('$', expect.any(Number), expect.any(Number));
     expect(mocks.terrainContext.createRadialGradient).toHaveBeenCalled();
   });
+
+  it('renders departure and arrival feedback across a camera jump', () => {
+    const state = {
+      world: {}, camX: 37.5, camY: 0, tick: 0, gameOver: false,
+      particles: [], enemies: [], remotePlayers: [],
+      teleportEffect: {
+        originScreenX: 480, originScreenY: 320,
+        destinationX: 45, destinationY: 2,
+        frame: 2, duration: 36, reducedMotion: false
+      },
+      player: {x:45, y:2, drawX:45, drawY:2, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+    const renderer = createRenderer({state, get: () => ({type:'air'}), rand: () => 0});
+
+    renderer.draw();
+
+    expect(mocks.mainContext.arc).toHaveBeenCalledWith(480, 320, expect.any(Number), 0, Math.PI*2);
+    expect(mocks.mainContext.createRadialGradient).toHaveBeenCalled();
+    expect(mocks.mainContext.fillRect).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 4, 4);
+  });
 });

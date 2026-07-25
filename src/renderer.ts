@@ -131,12 +131,15 @@ export function createRenderer({ state, get, rand }) {
     }
     drawRemotePlayers(camX, camY);
     const sx=(p.drawX-camX)*TILE, sy=(p.drawY-camY)*TILE;
+    drawTeleportEffect(camX, camY, false);
     ctx.save();
+    if (state.teleportEffect) ctx.globalAlpha = Math.min(1, .32 + state.teleportEffect.frame / Math.max(1, state.teleportEffect.duration * .42));
     ctx.translate(sx+TILE*.5, sy+TILE*.5 + Math.sin(state.tick*.45)*p.bob*TILE*.08);
     ctx.rotate((p.x - p.drawX) * -0.12 + (p.y - p.drawY) * 0.08 + (p.drillDy > 0 ? p.drillAnim * 0.10 : 0));
     ctx.scale(p.facing, 1);
     drawShip(p);
     ctx.restore();
+    drawTeleportEffect(camX, camY, true);
     drawPartnerIndicators(camX, camY, sx + TILE*.5, sy + TILE*.5);
     if(state.gameOver){
       ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
@@ -146,6 +149,56 @@ export function createRenderer({ state, get, rand }) {
       ctx.font='18px sans-serif'; ctx.fillText('or press R', VIEW_WIDTH/2, 370);
       ctx.textAlign='left';
     }
+  }
+  function drawTeleportEffect(camX, camY, foreground) {
+    const effect = state.teleportEffect;
+    if (!effect) return;
+    const progress = effect.frame / Math.max(1, effect.duration - 1);
+    const arrivalX = (effect.destinationX - camX + .5) * TILE;
+    const arrivalY = (effect.destinationY - camY + .5) * TILE;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.globalCompositeOperation = 'screen';
+
+    if (!foreground) {
+      const arrival = Math.min(1, progress * 2.4 + .12);
+      const beam = TILE * (1.7 - arrival * .85);
+      const glow = ctx.createRadialGradient(arrivalX, arrivalY, 0, arrivalX, arrivalY, beam);
+      glow.addColorStop(0, `rgba(225,250,255,${.5 * (1-progress) + .12})`);
+      glow.addColorStop(.25, `rgba(92,200,255,${.34 * (1-progress)})`);
+      glow.addColorStop(1, 'rgba(105,92,255,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(arrivalX, arrivalY, beam, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = `rgba(180,239,255,${.2 * (1-progress)})`;
+      ctx.fillRect(arrivalX-TILE*.17, arrivalY-TILE*2.1, TILE*.34, TILE*4.2);
+    } else {
+      const departure = Math.max(0, 1 - progress * 1.8);
+      if (departure > 0) {
+        const radius = TILE * (.18 + departure * .82);
+        ctx.globalAlpha = departure;
+        ctx.strokeStyle = '#8eeaff'; ctx.lineWidth = 3 + departure * 5;
+        ctx.shadowColor = '#805cff'; ctx.shadowBlur = 22;
+        ctx.beginPath(); ctx.arc(effect.originScreenX, effect.originScreenY, radius, 0, Math.PI*2); ctx.stroke();
+        ctx.strokeStyle = '#fff4b0'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(effect.originScreenX, effect.originScreenY, radius*.54, 0, Math.PI*2); ctx.stroke();
+      }
+
+      ctx.globalAlpha = 1 - progress;
+      ctx.strokeStyle = '#b7f3ff'; ctx.shadowColor = '#5cc8ff'; ctx.shadowBlur = 18;
+      for (let i=0;i<3;i++) {
+        const radius = TILE * (.42 + (1-progress)*(.72+i*.24));
+        const rotation = effect.reducedMotion ? 0 : progress * Math.PI * (i%2 ? -1.4 : 1.7);
+        ctx.lineWidth = Math.max(1, 5-i);
+        ctx.beginPath(); ctx.arc(arrivalX, arrivalY, radius, rotation+i*.7, rotation+i*.7+Math.PI*1.35); ctx.stroke();
+      }
+      ctx.fillStyle = '#fff6bd';
+      for (let i=0;i<8;i++) {
+        const angle = i*Math.PI/4 + (effect.reducedMotion ? 0 : progress*1.8);
+        const radius = TILE*(.48 + (i%3)*.16)*(1-progress*.5);
+        ctx.fillRect(arrivalX+Math.cos(angle)*radius-2, arrivalY+Math.sin(angle)*radius-2, 4, 4);
+      }
+    }
+    ctx.restore();
   }
   function drawRemotePlayers(camX, camY) {
     for (const remote of state.remotePlayers) {

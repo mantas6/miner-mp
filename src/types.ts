@@ -128,6 +128,16 @@ export interface Particle {
   size: number;
 }
 
+export interface TeleportEffect {
+  originScreenX: number;
+  originScreenY: number;
+  destinationX: number;
+  destinationY: number;
+  frame: number;
+  duration: number;
+  reducedMotion: boolean;
+}
+
 export interface GameStats {
   maxDepth: number;
   totalCashEarned: number;
@@ -168,6 +178,7 @@ export interface GameState {
   connected: boolean;
   /** Partner ships (transform-only). For 2-player co-op this holds 0 or 1. */
   remotePlayers: RemotePlayer[];
+  teleportEffect: TeleportEffect | null;
 }
 
 export interface AudioController {
