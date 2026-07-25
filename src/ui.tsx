@@ -242,6 +242,11 @@ export function MinerApp() {
                 <li><kbd>R</kbd> then <kbd>R</kbd><span>Confirm reset while alive</span></li>
               </ul>
             </section>
+            <section className="player-data-reset" aria-labelledby="player-data-reset-title">
+              <h3 id="player-data-reset-title">Player Data</h3>
+              <p>Start this player over without regenerating or repairing the shared mine terrain. Your saved relay URL is also preserved.</p>
+              <button id="resetPlayerDataBtn" type="button">Reset All Player Data</button>
+            </section>
           </div>
         </div>
 

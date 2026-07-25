@@ -52,6 +52,7 @@ const GAME_DOM_IDS = [
   'info-screen',
   'info-card',
   'infoCloseBtn',
+  'resetPlayerDataBtn',
   'cargoList',
   'expeditionStats',
   'developerUpgrades',
@@ -258,5 +259,15 @@ describe('React GUI shell', () => {
       expect(markup).toContain(`id="${section.id}"`);
     }
     expect(getInfoNavigationSection('not-a-section')).toBeUndefined();
+  });
+
+  it('places the confirmed player-data reset at the bottom of the info modal', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+    const infoCard = markup.slice(markup.indexOf('<div id="info-card"'), markup.indexOf('<div id="fuel-warning"'));
+
+    expect(infoCard).toContain('id="resetPlayerDataBtn"');
+    expect(infoCard).toContain('Reset All Player Data');
+    expect(infoCard).toContain('shared mine terrain');
+    expect(infoCard.indexOf('id="resetPlayerDataBtn"')).toBeGreaterThan(infoCard.indexOf('id="info-controls"'));
   });
 });

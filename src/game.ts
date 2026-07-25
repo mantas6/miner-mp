@@ -30,6 +30,7 @@ import { updateShopControls } from './shop';
 import { expandReachableAir } from './enemy-exposure';
 import { encodeExploration, isTileExplored, mergeExploration, revealFootprint } from './exploration';
 import { consumeBulletForShot, gunKeyAction, resolveShot } from './weapon';
+import { confirmPlayerDataReset, resetPlayerData } from './player-data-reset';
 
 const state = createInitialState();
 let audio;
@@ -40,6 +41,7 @@ let toastTimer = 0;
 let explorationSaveTimer = 0;
 let net: NetClient | null = null;
 let connectionIssue: string | null = null;
+let resettingPlayerData = false;
 let tileDiff: TileDiff = {};
 const reachableAir = new Set<string>();
 
@@ -215,7 +217,7 @@ function startOnline(url: string){
         state.role = null;
         state.remotePlayers = [];
         enemyIdCounter = nextEnemyId(state.enemies);
-        resetEnemyExposure();
+        if (!resettingPlayerData) resetEnemyExposure();
         setConnectionStatus(connectionIssue || 'Disconnected');
       }
     }
@@ -723,6 +725,23 @@ function bindButtons(){
   ui.soundBtn.onclick = e => { e.stopPropagation(); audio.toggle(); };
   ui.infoBtn.onclick = e => { e.stopPropagation(); openInfoScreen(); };
   ui.infoCloseBtn.onclick = e => { e.stopPropagation(); closeInfoScreen(); };
+  ui.resetPlayerDataBtn.onclick = e => {
+    e.stopPropagation();
+    if (!confirmPlayerDataReset(message => window.confirm(message))) return;
+    clearTimeout(explorationSaveTimer);
+    resettingPlayerData = true;
+    net?.disconnect();
+    resettingPlayerData = false;
+    net = null;
+    keys.clear();
+    resetPlayerData(state);
+    revealAtPlayer(false);
+    clearTimeout(explorationSaveTimer);
+    saveProgress();
+    setConnectionStatus('Solo');
+    closeInfoScreen();
+    toast('Player data reset. Shared mine terrain preserved.');
+  };
   ui.shopBtn.onclick = e => { e.stopPropagation(); openShopScreen(); };
   ui.shopCloseBtn.onclick = e => { e.stopPropagation(); closeShopScreen(); };
   ui.shopScreen.addEventListener('pointerdown', e => { if (e.target === ui.shopScreen) closeShopScreen(); });

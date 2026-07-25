@@ -90,7 +90,8 @@ export const ui = {
   infoBtn: requireElement<HTMLButtonElement>('infoBtn'),
   infoScreen: requireElement<HTMLElement>('info-screen'),
   infoCard: requireElement<HTMLElement>('info-card'),
-  infoCloseBtn: requireElement<HTMLButtonElement>('infoCloseBtn')
+  infoCloseBtn: requireElement<HTMLButtonElement>('infoCloseBtn'),
+  resetPlayerDataBtn: requireElement<HTMLButtonElement>('resetPlayerDataBtn')
 };
 
 export type GameUi = typeof ui;
