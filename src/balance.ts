@@ -23,7 +23,6 @@ export const FUEL = Object.freeze({
   vertical: 0.08,
   flyMult: 0.5,
   digMult: 1.5,
-  hover: 0.0375,
   dig: Object.freeze({
     enemy: 0.65,
     hazard: 1.15,

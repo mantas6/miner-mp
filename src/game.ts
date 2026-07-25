@@ -391,15 +391,6 @@ function gameOver(msg='Game over. Tap anywhere or press R to restart.'){
   audio.alarm();
   audio.bump();
 }
-function drainHoverFuel(){
-  const p = state.player;
-  if (state.gameOver || atSurface()) return;
-  if (!grounded()) {
-    p.fuel = Math.max(0, p.fuel - FUEL.hover); // hovering uses 50% less fuel
-    if (state.tick % 18 === 0) spawnDust(p.x, p.y + .35, '#ffb02e', 2);
-    if (p.fuel <= 0) gameOver('Out of fuel — ship exploded. Tap anywhere to restart.');
-  }
-}
 function move(dx,dy){
   if (state.gameOver) return;
   const p = state.player;
@@ -413,7 +404,7 @@ function move(dx,dy){
   const tile = get(nx,ny);
   const activeEnemy = enemyAt(nx, ny);
   let cost = FUEL.baseMove + Math.abs(dy)*FUEL.vertical;
-  const flyCost = cost * FUEL.flyMult;             // moving/hovering uses 50% less fuel
+  const flyCost = cost * FUEL.flyMult;             // flying uses 50% less fuel
   const dig = extra => (cost + extra) * FUEL.digMult; // digging uses 50% more fuel
   p.facing = dx ? Math.sign(dx) : p.facing;
   p.drillDx = dx;
@@ -784,7 +775,6 @@ function loop(){
   input();
   if (!state.gameOver && net?.paired && state.connected) net.sendPlayerState(playerStateFrom(state.player));
   if (state.introStarted) {
-    drainHoverFuel();
     if (isGuestEnemyReplica()) {
       updateEnemyPresentation();
       updateEnemyBites();
