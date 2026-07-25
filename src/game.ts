@@ -19,6 +19,7 @@ import { beginExtraction, cancelExtraction, completeExtractionAtDepot } from './
 import { formatExtractionPresentation } from './extraction-presentation';
 import { createNet, type NetClient } from './net';
 import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, mergeWorldSync, nextEnemyId, playerStateFrom, remotePlayerFrom, worldSyncFrom, type EnemySnapshotEntry, type TileDiff } from './net-protocol';
+import { loadServerUrl, saveServerUrl } from './multiplayer-settings';
 import type { Enemy } from './types';
 
 const state = createInitialState();
@@ -835,6 +836,7 @@ export function initGame(){
   audio = createAudio(ui, toast);
   renderer = createRenderer({ state, get, rand });
   loadProgress();
+  ui.serverUrl.value = loadServerUrl(ui.serverUrl.value);
   addEventListener('touchstart', tryAutoAudio, {passive:true});
   addEventListener('keydown', handleKeyDown, {capture:true});
   document.addEventListener('keydown', handleKeyDown, {capture:true});
@@ -863,6 +865,7 @@ export function initGame(){
     event.stopPropagation();
     const url = ui.serverUrl.value.trim();
     if (!url) { setConnectionStatus('Enter a server URL'); return; }
+    saveServerUrl(url);
     startOnline(url);
   };
   ui.soloBtn.onclick = event => {
