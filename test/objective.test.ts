@@ -69,13 +69,13 @@ describe('expedition objective helper', () => {
   });
 
   it('uses Motherlode progress once all ore bands are unlocked', () => {
-    expect(motherlodeDepthMeters(WORLD_H, START_Y)).toBe(3160);
+    expect(motherlodeDepthMeters(WORLD_H, START_Y)).toBe(10000);
     expect(formatExpeditionObjective({
       player: { ...player, y: START_Y + 260 },
       cash: 200,
       cargoCount: 0,
       currentCargoValue: 0,
       atSurface: false
-    })).toBe('Objective: push toward the Motherlode core at 3160 m (560 m deeper).');
+    })).toBe('Objective: push toward the Motherlode core at 10000 m (7400 m deeper).');
   });
 });

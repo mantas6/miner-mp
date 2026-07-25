@@ -2,7 +2,7 @@ import type { Ore } from './types';
 
 export const TILE = 64; // Show 50% more world in each viewport dimension.
 export const WORLD_W = 90;
-export const WORLD_H = 320;
+export const WORLD_H = 1004;
 export const SURFACE_HEIGHT = 3;
 export const START_Y = SURFACE_HEIGHT - 1;
 

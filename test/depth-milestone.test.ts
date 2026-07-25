@@ -27,8 +27,8 @@ describe('expedition depth milestone helper', () => {
     expect(getDepthMilestone(START_Y + 250, ORES, START_Y, WORLD_H)).toMatchObject({
       kind: 'motherlode',
       target: 'Motherlode core',
-      depthMeters: 3160,
-      remainingMeters: 660
+      depthMeters: 10000,
+      remainingMeters: 7500
     });
     expect(formatDepthMilestone(coreRow + 20)).toBe('Depth target: Motherlode core — 0 m deeper.');
   });
