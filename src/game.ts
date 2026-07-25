@@ -33,6 +33,7 @@ import { consumeBulletForShot, gunKeyAction, resolveShot } from './weapon';
 import { confirmPlayerDataReset, resetPlayerData } from './player-data-reset';
 import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDeveloperCash, updateDeveloperServiceControls, type DeveloperServiceId } from './developer';
 import { confirmWorldStateReset, generatedNonAirTiles, resetWorldTerrain } from './world-state';
+import { findEnemyPathStep } from './enemy-movement';
 
 const state = createInitialState();
 let audio;
@@ -47,6 +48,7 @@ let resettingPlayerData = false;
 let tileDiff: TileDiff = {};
 let worldRevision = 1;
 const reachableAir = new Set<string>();
+const ENEMY_AGGRO_RANGE = 24;
 
 state.stats = {...DEFAULT_STATS};
 
@@ -436,18 +438,10 @@ function updateEnemies(){
       continue; // Bite from an adjacent tile; never step onto the ship's tile.
     }
     const moveDelay = Math.max(7, 14 - Math.floor(e.y / 70));
-    if (state.tick - e.moveTick < moveDelay || dist > 24) continue;
+    if (state.tick - e.moveTick < moveDelay || dist > ENEMY_AGGRO_RANGE) continue;
     e.moveTick = state.tick;
-    const horizontal = [Math.sign(p.x - e.x), 0];
-    const vertical = [0, Math.sign(p.y - e.y)];
-    const options = Math.abs(p.x - e.x) >= Math.abs(p.y - e.y) ? [horizontal, vertical] : [vertical, horizontal];
-    for (const [dx,dy] of options) {
-      if (!dx && !dy) continue;
-      const nx = e.x + dx, ny = e.y + dy;
-      if (nx <= 0 || nx >= WORLD_W-1 || ny < SURFACE_HEIGHT || ny >= WORLD_H-1) continue;
-      if (nx === p.x && ny === p.y) continue;
-      if (get(nx,ny).type === 'air' && !enemyAt(nx,ny)) { e.x = nx; e.y = ny; break; }
-    }
+    const step = findEnemyPathStep(state.world, e, p, state.enemies.filter(enemy => enemy.alive), ENEMY_AGGRO_RANGE);
+    if (step && (step.x !== p.x || step.y !== p.y)) { e.x = step.x; e.y = step.y; }
   }
 }
 function updateEnemyPresentation(){
