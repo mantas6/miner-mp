@@ -1,5 +1,6 @@
 import { SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants';
 import { canvas, ctx, H, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom';
+import { getPartnerIndicator } from './partner-indicator';
 
 export function createRenderer({ state, get, rand }) {
   function draw(){
@@ -33,6 +34,7 @@ export function createRenderer({ state, get, rand }) {
     ctx.scale(p.facing, 1);
     drawShip(p);
     ctx.restore();
+    drawPartnerIndicators(camX, camY, sx + TILE*.5, sy + TILE*.5);
     if(state.gameOver){
       ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
       ctx.fillStyle='#fff'; ctx.textAlign='center';
@@ -58,6 +60,30 @@ export function createRenderer({ state, get, rand }) {
       ctx.font = `bold ${Math.max(10, Math.floor(TILE*.16))}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.fillText('PARTNER', sx + TILE*.5, sy - TILE*.16);
+      ctx.restore();
+    }
+  }
+  function drawPartnerIndicators(camX, camY, playerX, playerY) {
+    for (const remote of state.remotePlayers) {
+      const targetX = (remote.drawX - camX + .5) * TILE;
+      const targetY = (remote.drawY - camY + .5) * TILE;
+      const indicator = getPartnerIndicator(
+        playerX, playerY, targetX, targetY,
+        VIEW_WIDTH, VIEW_HEIGHT, TILE*.65, 64
+      );
+      if (!indicator) continue;
+
+      ctx.save();
+      ctx.translate(indicator.x, indicator.y);
+      ctx.fillStyle = 'rgba(7,20,34,.82)';
+      ctx.strokeStyle = '#bfeaff';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#5cc8ff';
+      ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.rotate(indicator.angle);
+      ctx.fillStyle = '#bfeaff';
+      ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-7, -9); ctx.lineTo(-3, 0); ctx.lineTo(-7, 9); ctx.closePath(); ctx.fill();
       ctx.restore();
     }
   }
