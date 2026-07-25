@@ -99,6 +99,14 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
 .danger-guide li { grid-template-columns: minmax(132px, .42fr) 1fr; align-items: start; }
 .danger-guide strong { color: #ffe39a; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
 .danger-guide span { color: #dbe8ff; font-size: 12px; line-height: 1.35; }
+.developer-section { margin: 18px -8px 0; padding: 4px 8px 12px; border: 2px solid rgba(255,93,115,.64); border-radius: 16px; background: rgba(105,14,29,.22); }
+.developer-warning { margin: 8px 0 0; color: #ffdce2; font-size: 13px; line-height: 1.4; }
+.developer-upgrades { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.developer-upgrade { display: grid; gap: 8px; padding: 10px; border: 1px solid rgba(255,120,140,.28); border-radius: 12px; background: rgba(0,0,0,.2); }
+.developer-upgrade > div { display: flex; justify-content: space-between; gap: 8px; }
+.developer-upgrade strong { color: #fff0bb; }
+.developer-upgrade span { color: #ffc2cb; font-size: 11px; font-weight: 850; font-variant-numeric: tabular-nums; }
+.developer-upgrade button { background: linear-gradient(#853047, #541c2c); color: #fff2f5; font-size: 12px; }
 .control-list li span { color: #dbe8ff; }
 .ore-icon { width: 22px; height: 22px; border-radius: 50% 48% 45% 52%; display: inline-block; box-shadow: inset -4px -5px 0 rgba(0,0,0,.22), inset 3px 3px 0 rgba(255,255,255,.24), 0 0 0 2px rgba(255,255,255,.12); }
 .ore-name { font-weight: 900; color: #eef4ff; }
@@ -171,6 +179,7 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
   .prospecting-guide li { grid-template-columns: auto 1fr auto; padding: 8px 9px; gap: 8px; }
   .danger-guide li { grid-template-columns: 1fr; padding: 8px 9px; gap: 4px; }
   .danger-guide-tip { font-size: 12px; padding: 8px 9px; }
+  .developer-upgrades { grid-template-columns: 1fr; }
   .ore-value, .ore-depth { grid-column: 2; text-align: left; }
   .prospecting-tip { font-size: 12px; padding: 8px 9px; }
   #lobby-screen { padding: 14px; }

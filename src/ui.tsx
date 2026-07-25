@@ -5,6 +5,7 @@ import { buildDangerGuideRows } from './danger';
 import { INFO_NAVIGATION_SECTIONS } from './info-navigation';
 import { DEFAULT_SERVER_URL } from './net';
 import { PROSPECTING_TIP, buildProspectingGuideRows } from './prospecting';
+import { PLAYER_UPGRADES } from './upgrades';
 
 const prospectingRows = buildProspectingGuideRows();
 const dangerRows = buildDangerGuideRows();
@@ -89,6 +90,24 @@ export function MinerApp() {
                   <span className="stat-detail">Sell your first haul to begin</span>
                 </li>
               </ul>
+            </section>
+            <section id="info-developer" className="developer-section" tabIndex={-1} aria-labelledby="developer-title">
+              <h3 id="developer-title">Debug / Developer</h3>
+              <p className="developer-warning"><strong>Developer actions:</strong> permanently grant normal player upgrades for exactly $0. These controls work above or below the surface and do not change shop prices.</p>
+              <div id="developerUpgrades" className="developer-upgrades" aria-label="Free developer upgrade controls">
+                {PLAYER_UPGRADES.map(upgrade => {
+                  const maxLevel = Math.ceil((upgrade.max - upgrade.start) / upgrade.step);
+                  return (
+                    <div key={upgrade.id} className="developer-upgrade" data-upgrade-row={upgrade.id}>
+                      <div>
+                        <strong>{upgrade.label}</strong>
+                        <span data-upgrade-level>Level 0/{maxLevel} · {upgrade.start}/{upgrade.max}</span>
+                      </div>
+                      <button type="button" data-developer-upgrade={upgrade.id}>Developer: Grant {upgrade.label} +{upgrade.step} · $0</button>
+                    </div>
+                  );
+                })}
+              </div>
             </section>
             <section id="info-prospecting" tabIndex={-1} aria-labelledby="prospecting-title">
               <h3 id="prospecting-title">Prospecting Guide</h3>

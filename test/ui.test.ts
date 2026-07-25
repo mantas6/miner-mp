@@ -44,6 +44,7 @@ const GAME_DOM_IDS = [
   'infoCloseBtn',
   'cargoList',
   'expeditionStats',
+  'developerUpgrades',
   'prospectingGuide',
   'dangerGuide',
   'fuel-warning',
@@ -163,6 +164,19 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Max depth');
     expect(markup).toContain('Cash earned');
     expect(markup).toContain('Start digging to set a record');
+  });
+
+  it('keeps clearly labeled developer upgrade controls visible in the info modal', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('id="info-developer"');
+    expect(markup).toContain('Debug / Developer');
+    expect(markup).toContain('permanently grant normal player upgrades for exactly $0');
+    expect(markup).toContain('data-developer-upgrade="cargo"');
+    expect(markup).toContain('data-developer-upgrade="tank"');
+    expect(markup).toContain('data-developer-upgrade="hull"');
+    expect(markup).toContain('data-developer-upgrade="drill"');
+    expect(markup).toContain('Level 0/198');
   });
 
   it('renders the hazard and fiend survival guide with its stable hook', () => {

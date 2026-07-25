@@ -25,6 +25,7 @@ import { getDynamiteBlastTargets } from './dynamite';
 import { advanceTeleportEffect, createTeleportEffect, teleportPlayerToSurface } from './teleporter';
 import { claimArtifact } from './artifacts';
 import type { Enemy } from './types';
+import { applyPlayerUpgrade, getPlayerUpgradeProgress, updateDeveloperUpgradeControls, type PlayerUpgradeId } from './upgrades';
 
 const state = createInitialState();
 let audio;
@@ -467,6 +468,16 @@ function move(dx,dy,sprinting=false){
 function damage(n){ const p=state.player; p.hull = Math.max(0, p.hull - n); if(n > 1) audio.bump(); if(p.hull <= 0){ gameOver('Ship destroyed. Tap anywhere to restart.'); } }
 function sell(){ const v = currentCargoValue(); if (!atSurface()) return toast('Depot is on the surface.'); if(!v) return toast('Cargo is empty.'); addCash(v); state.player.cargo=[]; saveProgress(); toast(`Sold cargo for $${v}.`); audio.cash(v); }
 function spend(amount, fn, msg){ if (!atSurface()) return toast('Upgrades are at the surface.'); if (state.cash < amount) { audio.alarm(); return toast(`Need $${amount}.`); } state.cash -= amount; fn(); saveProgress(); toast(msg); audio.cash(amount); }
+function buyPlayerUpgrade(id: PlayerUpgradeId, amount: number, msg: string){
+  if (getPlayerUpgradeProgress(state.player, id).atMax) return toast('Upgrade already at maximum level.');
+  spend(amount, () => applyPlayerUpgrade(state.player, id), msg);
+}
+function grantDeveloperUpgrade(id: PlayerUpgradeId){
+  if (!applyPlayerUpgrade(state.player, id)) return toast('Developer upgrade already at maximum level.');
+  saveProgress();
+  updateDeveloperUpgradeControls(ui.developerUpgrades, state.player);
+  toast('Developer action: upgrade granted for $0.');
+}
 function refuel(){
   const p = state.player;
   if (!atSurface()) return toast('Service depot is on the surface.');
@@ -562,10 +573,10 @@ function bindButtons(){
   ui.sell.onclick = sell;
   ui.fuelBtn.onclick = () => refuel();
   ui.repairBtn.onclick = () => repair();
-  ui.cargoBtn.onclick = () => spend(cargoCost(state.player),()=>state.player.cargoMax+=ECONOMY.cargo.step,'Cargo bay expanded.');
-  ui.tankBtn.onclick = () => spend(tankCost(state.player),()=>{state.player.fuelMax+=ECONOMY.tank.step; state.player.fuel=state.player.fuelMax;},'Fuel tank upgraded.');
-  ui.hullBtn.onclick = () => spend(hullCost(state.player),()=>{state.player.hullMax+=ECONOMY.hull.step; state.player.hull=state.player.hullMax;},'Hull reinforced.');
-  ui.drillBtn.onclick = () => spend(drillCost(state.player),()=>state.player.drill+=ECONOMY.drill.step,'Drill power increased.');
+  ui.cargoBtn.onclick = () => buyPlayerUpgrade('cargo', cargoCost(state.player), 'Cargo bay expanded.');
+  ui.tankBtn.onclick = () => buyPlayerUpgrade('tank', tankCost(state.player), 'Fuel tank upgraded.');
+  ui.hullBtn.onclick = () => buyPlayerUpgrade('hull', hullCost(state.player), 'Hull reinforced.');
+  ui.drillBtn.onclick = () => buyPlayerUpgrade('drill', drillCost(state.player), 'Drill power increased.');
   ui.dynamiteBtn.onclick = useDynamiteControl;
   ui.teleporterBtn.onclick = () => atSurface() ? buyTeleporter() : useTeleporter();
   ui.soundBtn.addEventListener('pointerdown', e => e.stopPropagation());
@@ -575,6 +586,11 @@ function bindButtons(){
   ui.infoScreen.addEventListener('pointerdown', e => { if (e.target === ui.infoScreen) closeInfoScreen(); });
   ui.infoCard.addEventListener('scroll', updateActiveInfoNavigation, {passive:true});
   ui.infoScreen.addEventListener('click', e => {
+    const developerButton = (e.target as Element).closest<HTMLButtonElement>('[data-developer-upgrade]');
+    if (developerButton) {
+      grantDeveloperUpgrade(developerButton.dataset.developerUpgrade as PlayerUpgradeId);
+      return;
+    }
     const button = (e.target as Element).closest<HTMLButtonElement>('[data-info-section]');
     if (!button) return;
     const section = getInfoNavigationSection(button.dataset.infoSection || '');
@@ -592,6 +608,7 @@ function openInfoScreen(){
   ui.infoScreen.classList.remove('hidden');
   renderCargoDetails();
   renderExpeditionStats();
+  updateDeveloperUpgradeControls(ui.developerUpgrades, state.player);
   updateActiveInfoNavigation();
 }
 function closeInfoScreen(){
@@ -636,9 +653,10 @@ function updateButtonStates(){
   ui.fuelBtn.disabled = !surf || state.cash <= 0 || p.fuel >= p.fuelMax;
   ui.repairBtn.disabled = !surf || state.cash <= 0 || p.hull >= p.hullMax;
   ui.cargoBtn.disabled = !surf || state.cash < cargoCost(p);
-  ui.tankBtn.disabled = !surf || state.cash < tankCost(p);
-  ui.hullBtn.disabled = !surf || state.cash < hullCost(p);
-  ui.drillBtn.disabled = !surf || state.cash < drillCost(p);
+  ui.cargoBtn.disabled ||= getPlayerUpgradeProgress(p, 'cargo').atMax;
+  ui.tankBtn.disabled = !surf || state.cash < tankCost(p) || getPlayerUpgradeProgress(p, 'tank').atMax;
+  ui.hullBtn.disabled = !surf || state.cash < hullCost(p) || getPlayerUpgradeProgress(p, 'hull').atMax;
+  ui.drillBtn.disabled = !surf || state.cash < drillCost(p) || getPlayerUpgradeProgress(p, 'drill').atMax;
   ui.dynamiteBtn.disabled = surf ? state.cash < ECONOMY.dynamite.price : p.dynamite <= 0 || state.gameOver;
   ui.teleporterBtn.disabled = surf ? state.cash < ECONOMY.teleporter.price : p.teleporters <= 0 || state.gameOver;
 }
@@ -838,7 +856,7 @@ function hud(){
   ui.cargo.closest('.bar')?.classList.toggle('bar-alert', fullCargo);
   ui.fuelWarning.classList.toggle('show', lowFuel);
   if (lowFuel && !atSurface() && performance.now() - audio.lastLowFuel > FUEL.lowFuelWarnMs) { audio.lowFuel(); audio.lastLowFuel = performance.now(); }
-  if (!ui.infoScreen.classList.contains('hidden')) { renderCargoDetails(); renderExpeditionStats(); }
+  if (!ui.infoScreen.classList.contains('hidden')) { renderCargoDetails(); renderExpeditionStats(); updateDeveloperUpgradeControls(ui.developerUpgrades, p); }
   updateButtonStates();
 }
 function loop(){
