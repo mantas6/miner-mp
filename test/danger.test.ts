@@ -1,0 +1,23 @@
+import { describe, expect, it } from 'vitest';
+import { ECONOMY, ENEMY, FUEL, HULL } from '../src/balance';
+import { DANGER, START_Y, WORLD_H } from '../src/constants';
+import { buildDangerGuideRows } from '../src/danger';
+
+describe('danger guide helpers', () => {
+  it('derives every survival topic from the configured world and balance rules', () => {
+    const rows = buildDangerGuideRows();
+    const byTitle = new Map(rows.map(row => [row.title, row.detail]));
+
+    expect(rows).toHaveLength(7);
+    expect(byTitle.get('Solid rock')).toContain(`≈${(DANGER.rockMinRow - START_Y) * 10} m`);
+    expect(byTitle.get('Solid rock')).toContain(`${HULL.rockBump}-hull`);
+    expect(byTitle.get('Magma pockets')).toContain(`≈${(DANGER.hazardMinRow - START_Y) * 10} m`);
+    expect(byTitle.get('Dormant tunnel fiends')).toContain(`≈${(DANGER.enemyMinRow - START_Y) * 10} m`);
+    expect(byTitle.get('Active fiends')).toContain(`${HULL.enemyBite.base} hull damage`);
+    expect(byTitle.get('Fiend bounties')).toContain(`$${ENEMY.bounty.base}`);
+    expect(byTitle.get('Fiend bounties')).toContain(`$${ENEMY.bounty.step}`);
+    expect(byTitle.get('Fuel discipline')).toContain(`${FUEL.lowFuelFraction * 100}% fuel`);
+    expect(byTitle.get('Motherlode core')).toContain(`≈${(WORLD_H - 2 - START_Y) * 10} m`);
+    expect(byTitle.get('Motherlode core')).toContain(`$${ECONOMY.artifactReward}`);
+  });
+});

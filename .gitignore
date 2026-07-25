@@ -1,0 +1,19 @@
+# Python/cache artifacts
+__pycache__/
+*.py[cod]
+
+# Node/Vite artifacts
+node_modules/
+dist/
+.vite/
+.vite-dev.log
+.vite-dev.pid
+
+# Local editor/OS files
+.DS_Store
+.idea/
+.vscode/
+
+# Temporary soundtrack smoke-test renders
+public/assets/*-smoke.*
+public/assets/*-test.*
