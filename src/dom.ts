@@ -1,7 +1,7 @@
 import { TILE } from './constants';
 
-export const VIEW_WIDTH = 960;
-export const VIEW_HEIGHT = 640;
+export let VIEW_WIDTH = 960;
+export let VIEW_HEIGHT = 640;
 
 function requireElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -12,18 +12,28 @@ function requireElement<T extends HTMLElement>(id: string): T {
 export const canvas = requireElement<HTMLCanvasElement>('game');
 export const gamePanel = requireElement<HTMLElement>('game-panel');
 
-const deviceScale = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-canvas.width = Math.round(VIEW_WIDTH * deviceScale);
-canvas.height = Math.round(VIEW_HEIGHT * deviceScale);
-canvas.style.aspectRatio = `${VIEW_WIDTH} / ${VIEW_HEIGHT}`;
-
 export const ctx = canvas.getContext('2d');
 if (!ctx) throw new Error('2D canvas rendering context is unavailable.');
-ctx.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
-ctx.imageSmoothingEnabled = true;
 
-export const W = Math.floor(VIEW_WIDTH / TILE);
-export const H = Math.floor(VIEW_HEIGHT / TILE);
+export let W = Math.floor(VIEW_WIDTH / TILE);
+export let H = Math.floor(VIEW_HEIGHT / TILE);
+
+function resizeCanvas(): void {
+  VIEW_WIDTH = Math.max(1, Math.round(gamePanel.clientWidth || window.innerWidth));
+  VIEW_HEIGHT = Math.max(1, Math.round(gamePanel.clientHeight || window.innerHeight));
+  W = Math.floor(VIEW_WIDTH / TILE);
+  H = Math.floor(VIEW_HEIGHT / TILE);
+
+  const deviceScale = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  canvas.width = Math.round(VIEW_WIDTH * deviceScale);
+  canvas.height = Math.round(VIEW_HEIGHT * deviceScale);
+  ctx.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+}
+
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
 export const keys = new Set();
 
 export const ui = {
