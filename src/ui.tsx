@@ -1,6 +1,6 @@
 import React from 'react';
 import { ECONOMY, STARTING } from './balance';
-import { DEVELOPER_CASH_GRANT } from './developer';
+import { DEVELOPER_CASH_GRANT, DEVELOPER_SERVICES } from './developer';
 import { ARTIFACTS, START_Y } from './constants';
 import { buildDangerGuideRows } from './danger';
 import { INFO_NAVIGATION_SECTIONS } from './info-navigation';
@@ -175,7 +175,7 @@ export function MinerApp() {
             </section>
             <section id="info-developer" className="developer-section" tabIndex={-1} aria-labelledby="developer-title">
               <h3 id="developer-title">Debug / Developer</h3>
-              <p className="developer-warning"><strong>Developer actions:</strong> grant local-player cash or permanently grant normal player upgrades for exactly $0. These controls work above or below the surface and do not change shop prices.</p>
+              <p className="developer-warning"><strong>Developer actions:</strong> grant local-player cash, restore fuel or hull, or permanently grant normal player upgrades for exactly $0. These controls work above or below the surface and do not change shop prices.</p>
               <div id="developerUpgrades" className="developer-upgrades" aria-label="Free developer upgrade controls">
                 <div className="developer-upgrade">
                   <div>
@@ -184,6 +184,15 @@ export function MinerApp() {
                   </div>
                   <button type="button" data-developer-cash>Developer: Grant +${DEVELOPER_CASH_GRANT.toLocaleString('en-US')}</button>
                 </div>
+                {DEVELOPER_SERVICES.map(service => (
+                  <div key={service.id} className="developer-upgrade" data-developer-service-row={service.id}>
+                    <div>
+                      <strong>{service.label}</strong>
+                      <span data-developer-service-level>{service.resourceLabel} 100/100</span>
+                    </div>
+                    <button type="button" data-developer-service={service.id} disabled>Developer: {service.label} (already full)</button>
+                  </div>
+                ))}
                 {PLAYER_UPGRADES.map(upgrade => {
                   const maxLevel = Math.ceil((upgrade.max - upgrade.start) / upgrade.step);
                   return (

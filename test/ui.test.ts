@@ -197,11 +197,15 @@ describe('React GUI shell', () => {
 
     expect(markup).toContain('id="info-developer"');
     expect(markup).toContain('Debug / Developer');
-    expect(markup).toContain('grant local-player cash or permanently grant normal player upgrades for exactly $0');
+    expect(markup).toContain('grant local-player cash, restore fuel or hull, or permanently grant normal player upgrades for exactly $0');
     expect(markup).toContain('Money Cheat');
     expect(markup).toContain('Local player only');
     expect(markup).toContain('data-developer-cash="true"');
     expect(markup).toContain('Developer: Grant +$1,000');
+    expect(markup).toContain('data-developer-service="fuel"');
+    expect(markup).toContain('data-developer-service="hull"');
+    expect(markup).toContain('Developer: Refuel (already full)');
+    expect(markup).toContain('Developer: Repair Hull (already full)');
     expect(markup).toContain('data-developer-upgrade="cargo"');
     expect(markup).toContain('data-developer-upgrade="tank"');
     expect(markup).toContain('data-developer-upgrade="hull"');

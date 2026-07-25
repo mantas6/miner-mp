@@ -31,7 +31,7 @@ import { expandReachableAir } from './enemy-exposure';
 import { encodeExploration, isTileExplored, mergeExploration, revealFootprint } from './exploration';
 import { consumeBulletForShot, gunKeyAction, resolveShot } from './weapon';
 import { confirmPlayerDataReset, resetPlayerData } from './player-data-reset';
-import { DEVELOPER_CASH_GRANT, grantDeveloperCash } from './developer';
+import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDeveloperCash, updateDeveloperServiceControls, type DeveloperServiceId } from './developer';
 
 const state = createInitialState();
 let audio;
@@ -565,6 +565,15 @@ function grantDeveloperMoney(){
   ui.cash.textContent = `$${Math.floor(state.cash)}`;
   toast(`Developer action: +$${DEVELOPER_CASH_GRANT.toLocaleString('en-US')} granted.`);
 }
+function runDeveloperService(id: DeveloperServiceId){
+  const changed = id === 'fuel'
+    ? developerRefuel(state.player)
+    : developerRepairHull(state.player);
+  if (!changed) return toast(id === 'fuel' ? 'Fuel tank already full.' : 'Hull already at full strength.');
+  saveProgress();
+  hud();
+  toast(id === 'fuel' ? 'Developer action: refueled for $0.' : 'Developer action: hull repaired for $0.');
+}
 function refuel(){
   const p = state.player;
   if (!atSurface()) return toast('Service depot is on the surface.');
@@ -760,6 +769,11 @@ function bindButtons(){
       grantDeveloperMoney();
       return;
     }
+    const serviceButton = (e.target as Element).closest<HTMLButtonElement>('[data-developer-service]');
+    if (serviceButton) {
+      runDeveloperService(serviceButton.dataset.developerService as DeveloperServiceId);
+      return;
+    }
     const developerButton = (e.target as Element).closest<HTMLButtonElement>('[data-developer-upgrade]');
     if (developerButton) {
       grantDeveloperUpgrade(developerButton.dataset.developerUpgrade as PlayerUpgradeId);
@@ -794,6 +808,7 @@ function openInfoScreen(){
   ui.infoScreen.classList.remove('hidden');
   renderCargoDetails();
   renderExpeditionStats();
+  updateDeveloperServiceControls(ui.developerUpgrades, state.player);
   updateDeveloperUpgradeControls(ui.developerUpgrades, state.player);
   updateActiveInfoNavigation();
   ui.infoCloseBtn.focus({preventScroll:true});
@@ -1046,7 +1061,7 @@ function hud(){
   ui.cargo.closest('.bar')?.classList.toggle('bar-alert', fullCargo);
   ui.fuelWarning.classList.toggle('show', lowFuel);
   if (lowFuel && !atSurface() && performance.now() - audio.lastLowFuel > FUEL.lowFuelWarnMs) { audio.lowFuel(); audio.lastLowFuel = performance.now(); }
-  if (!ui.infoScreen.classList.contains('hidden')) { renderCargoDetails(); renderExpeditionStats(); updateDeveloperUpgradeControls(ui.developerUpgrades, p); }
+  if (!ui.infoScreen.classList.contains('hidden')) { renderCargoDetails(); renderExpeditionStats(); updateDeveloperServiceControls(ui.developerUpgrades, p); updateDeveloperUpgradeControls(ui.developerUpgrades, p); }
   updateButtonStates();
 }
 function loop(){
