@@ -70,5 +70,23 @@
       "Updated tests pass and desktop/390×844 browser smokes report no runtime exceptions. Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
     ],
     "passes": false
+  },
+  {
+    "category": "gameplay-ux",
+    "description": "Zoom the gameplay camera out by 25% so players can see more of the mine and nearby hazards while moving underground.",
+    "steps": [
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh before development and preserve the fixed 960×640 world-to-canvas coordinate model, controls, collision, HUD, and touch targeting.",
+      "Audit the effective camera scale across src/constants.ts, src/dom.ts, src/renderer.ts, and touch-coordinate helpers. Confirm the existing tile/camera values against a live baseline rather than relying on comments, then make the final visible mine view 25% more zoomed out than the pre-task baseline.",
+      "Adjust the camera/tile scale through shared constants and/or rendering math rather than CSS-only canvas stretching. Preserve correct world bounds, camera following, ship position, particle placement, enemy rendering, surface/depot art, and pointer/touch direction calculations.",
+      "Review HUD and modal overlays after the expanded field of view so they do not obscure the additional useful play area, especially on a 390×844 phone viewport.",
+      "Add focused math/regression coverage for viewport tile coverage or scale-derived coordinate behavior, then use ./init.sh for desktop and phone CDP smokes that start play, descend/mine, verify substantially more surrounding tiles are visible, exercise touch/keyboard movement and Info / Cargo open-close, and collect runtime exceptions."
+    ],
+    "acceptance": [
+      "The live game camera is 25% more zoomed out than the verified pre-task baseline, showing a materially larger surrounding mine area on desktop and a 390×844 phone viewport.",
+      "Player movement, drilling, collisions, camera bounds/following, touch direction mapping, surface/depot rendering, particles, enemies, and HUD alignment remain correct at the new scale.",
+      "The expanded view improves visibility without introducing canvas blur, clipping, empty-border artifacts, or renewed HUD obstruction.",
+      "Updated tests pass and desktop/mobile browser smokes report no runtime exceptions. Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
+    ],
+    "passes": false
   }
 ]
