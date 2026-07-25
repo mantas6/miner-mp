@@ -1,21 +1,97 @@
 import { SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants';
 import { canvas, ctx, H, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom';
 import { getPartnerIndicator } from './partner-indicator';
+import { getVisibleTileRange, type VisibleTileRange } from './visible-tile-range';
 
 export function createRenderer({ state, get, rand }) {
+  let drawingContext = ctx;
+  let terrainVersion = 0;
+  let cachedTerrain: {
+    canvas: HTMLCanvasElement;
+    range: VisibleTileRange;
+    viewWidth: number;
+    viewHeight: number;
+    scale: number;
+    version: number;
+    world: unknown;
+  } | null = null;
+
+  function invalidateTerrain(){ terrainVersion++; }
+
+  function drawTerrain(camX, camY){
+    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W, WORLD_H);
+    const scale = canvas.width / VIEW_WIDTH;
+    const reusable = cachedTerrain
+      && cachedTerrain.range.startX === range.startX
+      && cachedTerrain.range.startY === range.startY
+      && cachedTerrain.range.endX === range.endX
+      && cachedTerrain.range.endY === range.endY
+      && cachedTerrain.viewWidth === VIEW_WIDTH
+      && cachedTerrain.viewHeight === VIEW_HEIGHT
+      && cachedTerrain.scale === scale
+      && cachedTerrain.version === terrainVersion
+      && cachedTerrain.world === state.world;
+
+    if (!reusable) {
+      const terrainCanvas = cachedTerrain?.canvas || document.createElement('canvas');
+      const width = (range.endX - range.startX + 1) * TILE;
+      const height = (range.endY - range.startY + 1) * TILE;
+      const pixelWidth = Math.ceil(width * scale);
+      const pixelHeight = Math.ceil(height * scale);
+      if (terrainCanvas.width !== pixelWidth) terrainCanvas.width = pixelWidth;
+      if (terrainCanvas.height !== pixelHeight) terrainCanvas.height = pixelHeight;
+      const terrainContext = terrainCanvas.getContext('2d');
+      if (!terrainContext) throw new Error('2D terrain cache context is unavailable.');
+      terrainContext.setTransform(scale, 0, 0, scale, 0, 0);
+
+      const mainContext = drawingContext;
+      drawingContext = terrainContext;
+      try {
+        for(let wy=range.startY;wy<=range.endY;wy++) for(let wx=range.startX;wx<=range.endX;wx++) {
+          drawTile(get(wx,wy), wx, wy, (wx-range.startX)*TILE, (wy-range.startY)*TILE);
+        }
+      } finally {
+        drawingContext = mainContext;
+      }
+
+      cachedTerrain = {
+        canvas: terrainCanvas,
+        range,
+        viewWidth: VIEW_WIDTH,
+        viewHeight: VIEW_HEIGHT,
+        scale,
+        version: terrainVersion,
+        world: state.world
+      };
+    }
+
+    const terrain = cachedTerrain;
+    const width = (terrain.range.endX - terrain.range.startX + 1) * TILE;
+    const height = (terrain.range.endY - terrain.range.startY + 1) * TILE;
+    drawingContext.drawImage(
+      terrain.canvas,
+      0, 0, terrain.canvas.width, terrain.canvas.height,
+      (terrain.range.startX-camX)*TILE, (terrain.range.startY-camY)*TILE,
+      width, height
+    );
+  }
+
+  function drawTerrainDamage(camX, camY){
+    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W, WORLD_H);
+    for(let wy=range.startY;wy<=range.endY;wy++) for(let wx=range.startX;wx<=range.endX;wx++) {
+      drawTileDamage(get(wx,wy), (wx-camX)*TILE, (wy-camY)*TILE);
+    }
+  }
+
   function draw(){
     const p = state.player;
     const camX = Math.max(0, Math.min(WORLD_W-W, state.camX));
     const camY = Math.max(0, Math.min(WORLD_H-H, state.camY));
-    const startX = Math.floor(camX), startY = Math.floor(camY);
-    const offX = (startX - camX) * TILE, offY = (startY - camY) * TILE;
     const sky = ctx.createLinearGradient(0,0,0,VIEW_HEIGHT);
     sky.addColorStop(0,'#163762'); sky.addColorStop(.25,'#0e1d31'); sky.addColorStop(.26,'#2a1a11'); sky.addColorStop(1,'#050301');
     ctx.fillStyle = sky; ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
-    for(let y=-1;y<=H+1;y++) for(let x=-1;x<=W+1;x++){
-      const wx=x+startX, wy=y+startY, t=get(wx,wy), sx=x*TILE+offX, sy=y*TILE+offY;
-      drawTile(t, wx, wy, sx, sy);
-    }
+    drawTerrain(camX, camY);
+    drawTerrainDamage(camX, camY);
     drawTerrainBlendOverlay(camY);
     drawSurface(camX, camY);
     drawEnemies(camX, camY);
@@ -122,6 +198,7 @@ export function createRenderer({ state, get, rand }) {
     ctx.restore();
   }
   function drawTile(t, wx, wy, sx, sy) {
+    const ctx = drawingContext;
     const pad = 1.5; // overdraw slightly so adjacent cells have no visible seams
     if(t.type==='air') {
       if (wy >= SURFACE_HEIGHT){
@@ -146,7 +223,6 @@ export function createRenderer({ state, get, rand }) {
       ctx.strokeStyle = artifact ? 'rgba(255,236,150,.85)' : 'rgba(255,89,36,.62)'; ctx.lineWidth = artifact ? 5 : 4;
       for (let i=0;i<4;i++) { ctx.beginPath(); ctx.ellipse(sx+TILE*(.30+i*.13), sy+TILE*(.42+rand(wx+i,wy)*.22), TILE*(.10+rand(wx,wy+i)*.08), TILE*.28, rand(wx+i,wy)*Math.PI, 0, Math.PI*2); ctx.stroke(); }
       if (artifact) { ctx.fillStyle = '#fff2a6'; ctx.font = `bold ${Math.floor(TILE*.18)}px sans-serif`; ctx.textAlign='center'; ctx.fillText('CORE', sx+TILE*.5, sy+TILE*.55); ctx.textAlign='left'; }
-      if (t.maxHp && t.hp < t.maxHp) { ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64, TILE*.055); ctx.fillStyle=artifact?'#ffe66d':'#ff7145'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64*Math.max(0,t.hp/t.maxHp), TILE*.055); }
       return;
     }
     if (t.type === 'enemy') {
@@ -156,10 +232,6 @@ export function createRenderer({ state, get, rand }) {
       ctx.strokeStyle = 'rgba(146,255,85,.55)'; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.ellipse(sx+TILE*.5, sy+TILE*.5, TILE*.26, TILE*.32, rand(wx,wy)*.6, 0, Math.PI*2); ctx.stroke();
       ctx.fillStyle = '#10180d'; ctx.beginPath(); ctx.arc(sx+TILE*.42, sy+TILE*.44, TILE*.04, 0, Math.PI*2); ctx.arc(sx+TILE*.58, sy+TILE*.44, TILE*.04, 0, Math.PI*2); ctx.fill();
-      if (t.maxHp && t.hp < t.maxHp) {
-        ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(sx+TILE*.20, sy+TILE*.12, TILE*.60, TILE*.055);
-        ctx.fillStyle = '#8cff58'; ctx.fillRect(sx+TILE*.20, sy+TILE*.12, TILE*.60*Math.max(0,t.hp/t.maxHp), TILE*.055);
-      }
       return;
     }
 
@@ -235,7 +307,20 @@ export function createRenderer({ state, get, rand }) {
     if(t.type==='rock'){
       ctx.fillStyle='rgba(210,220,240,.11)'; ctx.fillRect(sx+TILE*.12,sy+TILE*.22,TILE*.72,TILE*.10); ctx.fillRect(sx+TILE*.29,sy+TILE*.61,TILE*.56,TILE*.10);
     }
-    if (t.maxHp && t.hp < t.maxHp) {
+  }
+  function drawTileDamage(t, sx, sy) {
+    if (!t.maxHp || t.hp >= t.maxHp) return;
+    if (t.type === 'hazard' || t.type === 'artifact') {
+      ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64, TILE*.055);
+      ctx.fillStyle=t.type === 'artifact'?'#ffe66d':'#ff7145'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64*Math.max(0,t.hp/t.maxHp), TILE*.055);
+      return;
+    }
+    if (t.type === 'enemy') {
+      ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(sx+TILE*.20, sy+TILE*.12, TILE*.60, TILE*.055);
+      ctx.fillStyle = '#8cff58'; ctx.fillRect(sx+TILE*.20, sy+TILE*.12, TILE*.60*Math.max(0,t.hp/t.maxHp), TILE*.055);
+      return;
+    }
+    if (t.type !== 'air') {
       const damage = 1 - t.hp / t.maxHp;
       ctx.strokeStyle = `rgba(255,238,178,${0.25 + damage*.55})`;
       ctx.lineWidth = 2 + damage * 4;
@@ -439,5 +524,5 @@ export function createRenderer({ state, get, rand }) {
     ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
   }
 
-  return { draw };
+  return { draw, invalidateTerrain };
 }

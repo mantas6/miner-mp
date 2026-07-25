@@ -80,7 +80,9 @@ function get(x,y){ return state.world[y]?.[x] || {type:'rock', hp:999}; }
 function set(x,y,t, broadcast=true){
   const row = state.world[y];
   if (!row || x < 0 || x >= row.length) return;
+  const previousType = row[x].type;
   row[x] = t;
+  if (previousType !== t.type) renderer?.invalidateTerrain();
   // Guests retain received/local mutations too: they may become the next host.
   if (state.role) tileDiff = applyTileDiff(tileDiff, {x, y, tile: t});
   if (broadcast && state.connected && net?.paired) net.send({type:'tile', x, y, tile:t});
@@ -141,6 +143,7 @@ function startOnline(url: string){
         if (msg.type === 'tile') set(msg.x, msg.y, msg.tile, false);
         if (msg.type === 'worldSync' && isGuestEnemyReplica()) {
           applyWorldSyncToWorld(state.world, msg);
+          renderer.invalidateTerrain();
           tileDiff = mergeWorldSync(tileDiff, [], msg).diff;
           mergeEnemyEntries(msg.enemies);
         }
