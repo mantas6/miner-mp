@@ -1,6 +1,19 @@
 import { START_Y, WORLD_W } from './constants';
 import { STARTING } from './balance';
-import type { GameState } from './types';
+import type { GameState, Player } from './types';
+
+export function respawnPlayer(player: Player): void {
+  const x = Math.floor(WORLD_W / 2);
+  Object.assign(player, {
+    x,
+    y: START_Y,
+    drawX: x,
+    drawY: START_Y,
+    fuel: player.fuelMax,
+    hull: player.hullMax,
+    cargo: []
+  });
+}
 
 /**
  * @typedef {Object} Player

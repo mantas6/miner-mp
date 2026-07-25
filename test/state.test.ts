@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { STARTING, LIMITS, ECONOMY } from '../src/balance';
+import { START_Y, WORLD_W } from '../src/constants';
 import { cargoCost } from '../src/economy';
-import { createInitialState } from '../src/state';
+import { createInitialState, respawnPlayer } from '../src/state';
 
 describe('starting cargo capacity', () => {
   it('starts new games with 10 cargo slots and empty cargo', () => {
@@ -19,5 +20,33 @@ describe('starting cargo capacity', () => {
     expect(ECONOMY.cargo.step).toBe(10);
     expect(cargoCost({ cargoMax: STARTING.cargoMax })).toBe(120);
     expect(cargoCost({ cargoMax: STARTING.cargoMax + ECONOMY.cargo.step })).toBe(159);
+  });
+});
+
+describe('player respawn', () => {
+  it('restores the ship and clears cargo without losing purchased upgrades', () => {
+    const state = createInitialState();
+    const player = state.player;
+    player.x = 4;
+    player.y = 80;
+    player.fuel = 0;
+    player.hull = 0;
+    player.fuelMax += ECONOMY.tank.step;
+    player.cargoMax += ECONOMY.cargo.step;
+    player.drill += ECONOMY.drill.step;
+    player.cargo = [{ name: 'Coal' }];
+
+    respawnPlayer(player);
+
+    expect(player).toMatchObject({
+      x: Math.floor(WORLD_W / 2),
+      y: START_Y,
+      fuel: STARTING.fuelMax + ECONOMY.tank.step,
+      fuelMax: STARTING.fuelMax + ECONOMY.tank.step,
+      hull: player.hullMax,
+      cargoMax: STARTING.cargoMax + ECONOMY.cargo.step,
+      drill: STARTING.drill + ECONOMY.drill.step,
+      cargo: []
+    });
   });
 });

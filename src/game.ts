@@ -2,7 +2,7 @@ import { ORES, START_Y, SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constan
 import { canvas, gamePanel, ctx, H, keys, ui, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom';
 import { createAudio } from './audio';
 import { shouldAttemptAutoAudio } from './audio-permission';
-import { createInitialState } from './state';
+import { createInitialState, respawnPlayer } from './state';
 import { createRenderer } from './renderer';
 import { STARTING, FUEL, HULL, ENEMY, ECONOMY } from './balance';
 import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill, cargoValue, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
@@ -66,18 +66,10 @@ function generate(){
   tileDiff = {};
   resetPlayer(false);
 }
-function resetShipUpgradesAfterDeath(){
-  const p = state.player;
-  p.fuelMax = STARTING.fuelMax;
-  p.cargoMax = STARTING.cargoMax;
-  p.drill = STARTING.drill;
-  p.cargo = [];
-  saveProgress();
-}
 function resetPlayer(full=true){
   state.extractionPhase = cancelExtraction();
   if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.stats = {...DEFAULT_STATS}; saveProgress(); }
-  Object.assign(state.player, {x: Math.floor(WORLD_W/2), y: START_Y, drawX: Math.floor(WORLD_W/2), drawY: START_Y, fuel: state.player.fuelMax, hull: state.player.hullMax, cargo: []});
+  respawnPlayer(state.player);
   state.camX = Math.max(0, state.player.x - Math.floor(W/2));
   state.camY = 0;
   state.particles.length = 0;
@@ -369,12 +361,11 @@ function restartGame(){
   state.input.touchHoldDir = null;
   state.input.lastKeyboardMove = 0;
   state.input.lastTouchMove = 0;
-  if (died) resetShipUpgradesAfterDeath();
   // An online death/reset only replaces this miner's ship; the shared world
   // and host-owned enemy list must remain intact for the other player.
   if (state.connected) resetPlayer(false);
   else generate();
-  if (died) toast('Replacement ship deployed. Cash kept; cargo and upgrades lost.');
+  if (died) toast('Replacement ship deployed. Cash and upgrades kept; cargo lost.');
   if (died && state.connected && net?.paired) {
     net.send({type:'respawned', x:state.player.x, y:state.player.y});
   }
