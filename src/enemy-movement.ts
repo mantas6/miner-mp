@@ -6,8 +6,29 @@ export interface EnemyPosition {
   y: number;
 }
 
+export interface EnemyTarget extends EnemyPosition {
+  local: boolean;
+}
+
 function key(x: number, y: number): string {
   return `${x},${y}`;
+}
+
+export function findClosestEnemyTarget(
+  from: EnemyPosition,
+  localPlayer: EnemyPosition | null,
+  remotePlayers: EnemyPosition[]
+): EnemyTarget | null {
+  const targets: EnemyTarget[] = [
+    ...(localPlayer ? [{...localPlayer, local: true}] : []),
+    ...remotePlayers.map(player => ({...player, local: false}))
+  ];
+  return targets.reduce<EnemyTarget | null>((closest, target) => {
+    if (!closest) return target;
+    const distance = Math.abs(target.x - from.x) + Math.abs(target.y - from.y);
+    const closestDistance = Math.abs(closest.x - from.x) + Math.abs(closest.y - from.y);
+    return distance < closestDistance ? target : closest;
+  }, null);
 }
 
 export function findEnemyPathStep(

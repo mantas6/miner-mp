@@ -33,7 +33,7 @@ import { consumeBulletForShot, gunKeyAction, resolveShot } from './weapon';
 import { confirmPlayerDataReset, resetPlayerData } from './player-data-reset';
 import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDeveloperCash, updateDeveloperServiceControls, type DeveloperServiceId } from './developer';
 import { confirmWorldStateReset, generatedNonAirTiles, resetWorldTerrain } from './world-state';
-import { findEnemyPathStep } from './enemy-movement';
+import { findClosestEnemyTarget, findEnemyPathStep } from './enemy-movement';
 
 const state = createInitialState();
 let audio;
@@ -420,20 +420,21 @@ function destroyDormantEnemy(x: number, y: number, killer: 'host' | 'guest'){
 }
 function updateEnemies(){
   if (isGuestEnemyReplica()) return;
-  if (state.gameOver || !state.introStarted) return;
-  const p = state.player;
+  if (!state.introStarted || (state.gameOver && !state.remotePlayers.length)) return;
   state.enemies = state.enemies.filter(e => e.alive);
   for (const e of state.enemies) {
     e.drawX += (e.x - e.drawX) * 0.28;
     e.drawY += (e.y - e.drawY) * 0.28;
     e.flash *= 0.82;
-    const dist = Math.abs(e.x - p.x) + Math.abs(e.y - p.y);
+    const target = findClosestEnemyTarget(e, state.gameOver ? null : state.player, state.remotePlayers);
+    if (!target) continue;
+    const dist = Math.abs(e.x - target.x) + Math.abs(e.y - target.y);
     if (dist <= 1) {
-      if (state.tick - e.biteTick > 22) {
+      if (target.local && state.tick - e.biteTick > 22) {
         e.biteTick = state.tick;
         const bite = HULL.enemyBite.base + Math.floor(e.y / HULL.enemyBite.perDepth) * HULL.enemyBite.step;
         damage(bite);
-        spawnDust(p.x, p.y, '#ff5d45', 10);
+        spawnDust(target.x, target.y, '#ff5d45', 10);
         toast(`Enemy chewing the hull! -${bite}`);
       }
       continue; // Bite from an adjacent tile; never step onto the ship's tile.
@@ -441,8 +442,8 @@ function updateEnemies(){
     const moveDelay = Math.max(7, 14 - Math.floor(e.y / 70));
     if (state.tick - e.moveTick < moveDelay || dist > ENEMY_AGGRO_RANGE) continue;
     e.moveTick = state.tick;
-    const step = findEnemyPathStep(state.world, e, p, state.enemies.filter(enemy => enemy.alive), ENEMY_AGGRO_RANGE);
-    if (step && (step.x !== p.x || step.y !== p.y)) { e.x = step.x; e.y = step.y; }
+    const step = findEnemyPathStep(state.world, e, target, state.enemies.filter(enemy => enemy.alive), ENEMY_AGGRO_RANGE);
+    if (step && (step.x !== target.x || step.y !== target.y)) { e.x = step.x; e.y = step.y; }
   }
 }
 function updateEnemyPresentation(){
