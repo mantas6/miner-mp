@@ -11,6 +11,7 @@ const GAME_DOM_IDS = [
   'hud',
   'soundBtn',
   'soundStatus',
+  'connectionStatus',
   'serviceStatus',
   'cash',
   'depth',
@@ -44,6 +45,11 @@ const GAME_DOM_IDS = [
   'dangerGuide',
   'fuel-warning',
   'toast',
+  'lobby-screen',
+  'serverUrl',
+  'lobbyConnectionStatus',
+  'connectBtn',
+  'soloBtn',
   'intro'
 ];
 

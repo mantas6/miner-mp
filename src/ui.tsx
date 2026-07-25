@@ -1,6 +1,7 @@
 import React from 'react';
 import { buildDangerGuideRows } from './danger';
 import { INFO_NAVIGATION_SECTIONS } from './info-navigation';
+import { DEFAULT_SERVER_URL } from './net';
 import { PROSPECTING_TIP, buildProspectingGuideRows } from './prospecting';
 
 const prospectingRows = buildProspectingGuideRows();
@@ -16,6 +17,7 @@ export function MinerApp() {
           <div className="hud-top">
             <button id="soundBtn" className="sound" aria-label="Enable optional sound" title="Enable optional sound">🔇</button>
             <span id="soundStatus" className="sound-status" aria-live="polite">Sound off — press Sound to enable</span>
+            <span id="connectionStatus" className="connection-status hidden" aria-live="polite"></span>
           </div>
 
           <div className="stats-grid">
@@ -124,6 +126,21 @@ export function MinerApp() {
 
         <div id="fuel-warning" role="alert">⚠ LOW FUEL — return to the surface</div>
         <div id="toast" role="status"></div>
+        <div id="lobby-screen" role="dialog" aria-modal="true" aria-labelledby="lobby-title">
+          <div className="lobby-card">
+            <p className="lobby-kicker">Co-op dispatch</p>
+            <h2 id="lobby-title">Choose your shift</h2>
+            <p className="lobby-copy">Connect to a local relay to pair with one fellow miner, or launch a solo expedition.</p>
+            <label className="lobby-server-url" htmlFor="serverUrl">Relay server URL
+              <input id="serverUrl" type="url" defaultValue={DEFAULT_SERVER_URL} spellCheck={false} autoComplete="off" />
+            </label>
+            <span id="lobbyConnectionStatus" className="connection-status" aria-live="polite">Disconnected</span>
+            <div className="lobby-actions">
+              <button id="connectBtn" type="button">Connect</button>
+              <button id="soloBtn" type="button">Play solo</button>
+            </div>
+          </div>
+        </div>
         <div id="intro" role="button" tabIndex={0} aria-label="Press screen to start Moleload">
           <div className="intro-card">
             <div className="soviet-badge" aria-hidden="true">

@@ -25,6 +25,7 @@ export function createRenderer({ state, get, rand }) {
       ctx.fillRect(sx, sy, pt.size*TILE, pt.size*TILE);
       ctx.globalAlpha = 1;
     }
+    drawRemotePlayers(camX, camY);
     const sx=(p.drawX-camX)*TILE, sy=(p.drawY-camY)*TILE;
     ctx.save();
     ctx.translate(sx+TILE*.5, sy+TILE*.5 + Math.sin(state.tick*.45)*p.bob*TILE*.08);
@@ -39,6 +40,25 @@ export function createRenderer({ state, get, rand }) {
       ctx.font='bold 24px sans-serif'; ctx.fillText('Tap anywhere to restart', VIEW_WIDTH/2, 338);
       ctx.font='18px sans-serif'; ctx.fillText('or press R', VIEW_WIDTH/2, 370);
       ctx.textAlign='left';
+    }
+  }
+  function drawRemotePlayers(camX, camY) {
+    for (const remote of state.remotePlayers) {
+      const sx = (remote.drawX - camX) * TILE, sy = (remote.drawY - camY) * TILE;
+      if (sx < -TILE || sy < -TILE || sx > VIEW_WIDTH + TILE || sy > VIEW_HEIGHT + TILE) continue;
+      ctx.save();
+      ctx.globalAlpha = 0.56;
+      ctx.translate(sx + TILE*.5, sy + TILE*.5 + Math.sin(state.tick*.45)*remote.bob*TILE*.08);
+      ctx.rotate((remote.x - remote.drawX) * -0.12 + (remote.y - remote.drawY) * 0.08 + (remote.drillDy > 0 ? remote.drillAnim * 0.10 : 0));
+      ctx.scale(remote.facing, 1);
+      drawShip(remote, true);
+      ctx.restore();
+      ctx.save();
+      ctx.fillStyle = '#bfeaff';
+      ctx.font = `bold ${Math.max(10, Math.floor(TILE*.16))}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('PARTNER', sx + TILE*.5, sy - TILE*.16);
+      ctx.restore();
     }
   }
   function drawEnemies(camX, camY) {
@@ -332,8 +352,8 @@ export function createRenderer({ state, get, rand }) {
       ctx.fill();
     }
   }
-  function drawShip(p) {
-    const dead = state.gameOver;
+  function drawShip(p, remote=false) {
+    const dead = !remote && state.gameOver;
     const wobble = Math.sin(state.tick*.22) * p.bob * TILE*.025;
     ctx.translate(0, wobble);
     // engine flame + drill pulse

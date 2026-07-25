@@ -309,6 +309,34 @@ export function remotePlayerFrom(msg: PlayerStateMsg): RemotePlayer {
   };
 }
 
+/**
+ * Keep the current rendered position while accepting the latest remote transform.
+ * The next animation frame eases drawX/drawY toward the transmitted draw position.
+ */
+export function applyRemotePlayerState(
+  current: RemotePlayer[],
+  msg: PlayerStateMsg
+): RemotePlayer[] {
+  const next = remotePlayerFrom(msg);
+  const previous = current[0];
+  return [{
+    ...next,
+    drawX: previous?.drawX ?? next.drawX,
+    drawY: previous?.drawY ?? next.drawY,
+    targetDrawX: msg.drawX,
+    targetDrawY: msg.drawY
+  }];
+}
+
+/** Ease remote render positions toward their latest received transform. Pure. */
+export function interpolateRemotePlayers(players: RemotePlayer[], amount: number): RemotePlayer[] {
+  return players.map((player) => ({
+    ...player,
+    drawX: player.drawX + ((player.targetDrawX ?? player.x) - player.drawX) * amount,
+    drawY: player.drawY + ((player.targetDrawY ?? player.y) - player.drawY) * amount
+  }));
+}
+
 /** Snapshot a single enemy into a wire entry. */
 export function enemyEntryFrom(e: Enemy): EnemySnapshotEntry {
   return {

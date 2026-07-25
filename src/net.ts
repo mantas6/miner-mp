@@ -107,9 +107,11 @@ export function createNet(options: NetOptions = {}): NetClient {
         cb.onPaired?.(role);
         break;
       case 'peer-joined':
+        paired = true;
         cb.onPeerJoined?.();
         break;
       case 'peer-left':
+        paired = false;
         cb.onPeerLeft?.();
         break;
       case 'room-full':
@@ -131,7 +133,13 @@ export function createNet(options: NetOptions = {}): NetClient {
       cb.onError?.(new Error('No WebSocket implementation available'));
       return;
     }
-    const socket = new WS(url);
+    let socket: WebSocket;
+    try {
+      socket = new WS(url);
+    } catch (err) {
+      cb.onError?.(err);
+      return;
+    }
     ws = socket;
 
     socket.onopen = () => {

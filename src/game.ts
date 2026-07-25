@@ -17,6 +17,8 @@ import { formatFuelReserveForecast } from './fuel-reserve';
 import { formatDepthMilestone } from './depth-milestone';
 import { beginExtraction, cancelExtraction, completeExtractionAtDepot } from './extraction-phase';
 import { formatExtractionPresentation } from './extraction-presentation';
+import { createNet, type NetClient } from './net';
+import { applyRemotePlayerState, interpolateRemotePlayers, playerStateFrom, remotePlayerFrom } from './net-protocol';
 
 const state = createInitialState();
 let audio;
@@ -24,6 +26,8 @@ let renderer;
 let enemyIdCounter = 1;
 let resetConfirmUntil = 0;
 let toastTimer = 0;
+let net: NetClient | null = null;
+let connectionIssue: string | null = null;
 
 state.stats = {...DEFAULT_STATS};
 
@@ -64,6 +68,87 @@ function set(x,y,t){ if(state.world[y]) state.world[y][x] = t; }
 function cargoUsed(){ return state.player.cargo.length; }
 function currentCargoValue(){ return cargoValue(state.player.cargo); }
 function toast(msg){ ui.toast.textContent = msg; ui.toast.classList.add('show'); clearTimeout(toastTimer); toastTimer=window.setTimeout(()=>ui.toast.classList.remove('show'),1800); }
+function setConnectionStatus(status: string, showInHud=true){
+  ui.lobbyConnectionStatus.textContent = status;
+  ui.connectionStatus.textContent = status;
+  ui.connectionStatus.classList.toggle('hidden', !showInHud);
+}
+function startOnline(url: string){
+  net?.disconnect();
+  state.remotePlayers = [];
+  state.role = null;
+  state.connected = false;
+  connectionIssue = null;
+  setConnectionStatus('Connecting...');
+  net = createNet({
+    url,
+    callbacks: {
+      onOpen(){
+        state.connected = true;
+        setConnectionStatus('Connected - pairing...');
+      },
+      onPaired(role){
+        state.role = role;
+        if (role === 'host') {
+          setConnectionStatus('Host - waiting for player');
+          return;
+        }
+        setConnectionStatus('Guest - paired');
+        startOnlineGame();
+      },
+      onPeerJoined(){
+        if (state.role !== 'host') return;
+        setConnectionStatus('Host - paired');
+        startOnlineGame();
+      },
+      onPeerLeft(){
+        state.remotePlayers = [];
+        setConnectionStatus('Peer left');
+      },
+      onRoomFull(){
+        connectionIssue = 'Room full';
+        setConnectionStatus(connectionIssue);
+      },
+      onMessage(msg){
+        if (msg.type === 'playerState') state.remotePlayers = applyRemotePlayerState(state.remotePlayers, msg);
+        if (msg.type === 'died') state.remotePlayers = [];
+        if (msg.type === 'respawned') {
+          state.remotePlayers = [remotePlayerFrom({
+            type: 'playerState', x: msg.x, y: msg.y, drawX: msg.x, drawY: msg.y,
+            facing: 1, drillAnim: 0, drillDx: 0, drillDy: 1, bob: 0
+          })];
+        }
+      },
+      onError(){
+        connectionIssue = 'Connection error';
+        setConnectionStatus(connectionIssue);
+      },
+      onClose(){
+        state.connected = false;
+        state.role = null;
+        state.remotePlayers = [];
+        setConnectionStatus(connectionIssue || 'Disconnected');
+      }
+    }
+  });
+  net.connect();
+}
+function startOnlineGame(){
+  if (!net?.paired) return;
+  ui.lobby.classList.add('hidden');
+  startIntro();
+}
+function playSolo(event?: Event){
+  net?.disconnect();
+  net = null;
+  state.connected = false;
+  state.role = null;
+  state.remotePlayers = [];
+  connectionIssue = null;
+  setConnectionStatus('Solo');
+  ui.lobby.classList.add('hidden');
+  startIntro(event);
+}
 function spawnDust(x,y,color='#9d6a42', amount=10){
   for (let i=0;i<amount;i++) state.particles.push({x:x+0.5,y:y+0.5,vx:(Math.random()-.5)*.08,vy:(Math.random()-.7)*.09,life:22+Math.random()*18,color,size:.035+Math.random()*.045});
 }
@@ -471,7 +556,7 @@ function bindTouchControls(){
   let start = null, tracking = false;
   gamePanel.addEventListener('pointerdown', e => {
     const target = e.target as Element;
-    if (target.closest && target.closest('button, #info-screen')) return;
+    if (target.closest && target.closest('button, #info-screen, #lobby-screen')) return;
     tracking = true;
     start = {x: e.clientX, y: e.clientY};
     const dir = directionFromPoint(e.clientX, e.clientY);
@@ -506,6 +591,7 @@ function updateAnimation(){
   p.drawY += (p.y - p.drawY) * 0.23;
   p.bob *= 0.86;
   p.drillAnim *= 0.90;
+  state.remotePlayers = interpolateRemotePlayers(state.remotePlayers, 0.23);
   const targetCamX = Math.max(0, Math.min(WORLD_W-W, p.drawX - W/2 + 0.5));
   const targetCamY = Math.max(0, Math.min(WORLD_H-H, p.drawY - H/2 + 0.5));
   state.camX += (targetCamX - state.camX) * 0.12;
@@ -582,8 +668,15 @@ function hud(){
   if (!ui.infoScreen.classList.contains('hidden')) { renderCargoDetails(); renderExpeditionStats(); }
   updateButtonStates();
 }
-function loop(){ input(); if (state.introStarted) { drainHoverFuel(); updateEnemies(); } draw(); hud(); requestAnimationFrame(loop); }
-function tryAutoAudio(event?: Event) {
+function loop(){
+  input();
+  if (net?.paired && state.connected) net.sendPlayerState(playerStateFrom(state.player));
+  if (state.introStarted) { drainHoverFuel(); updateEnemies(); }
+  draw(); hud(); requestAnimationFrame(loop);
+}
+function tryAutoAudio(event?: Event, allowLobby=false) {
+  const target = event?.target as Element | null;
+  if (!allowLobby && target?.closest?.('#lobby-screen')) return;
   if (shouldAttemptAutoAudio({
     wantsSound: audio.wantsSound,
     enabled: audio.enabled,
@@ -601,7 +694,7 @@ function startIntro(event?: Event){
   ui.intro?.classList.add('hidden');
   setTimeout(() => { if (ui.intro) ui.intro.style.display = 'none'; }, 320);
   focusGame();
-  tryAutoAudio(event);
+  tryAutoAudio(event, true);
   toast('Drill ready. Mine ore, sell it, and watch your fuel.');
 }
 function handleKeyDown(e){
@@ -615,6 +708,7 @@ function handleKeyDown(e){
     if (key === 'escape') { closeInfoScreen(); e.preventDefault(); e.stopPropagation(); }
     return;
   }
+  if (!ui.lobby.classList.contains('hidden')) return;
   const dir = movementKeys[key];
   if (!state.introStarted) {
     if (key === 'enter' || key === ' ') { startIntro(); e.preventDefault(); }
@@ -663,9 +757,19 @@ export function initGame(){
   ui.intro?.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { startIntro(); e.preventDefault(); e.stopPropagation(); }
   });
+  ui.connectBtn.onclick = event => {
+    event.stopPropagation();
+    const url = ui.serverUrl.value.trim();
+    if (!url) { setConnectionStatus('Enter a server URL'); return; }
+    startOnline(url);
+  };
+  ui.soloBtn.onclick = event => {
+    event.stopPropagation();
+    playSolo(event);
+  };
   addEventListener('pointerdown', e => {
     const target = e.target as Element;
-    if (target.closest && target.closest('#info-screen')) return;
+    if (target.closest && target.closest('#info-screen, #lobby-screen')) return;
     if (!state.introStarted) { startIntro(e); e.preventDefault(); e.stopPropagation(); return; }
     if (!state.gameOver) return;
     tryAutoAudio(e);
@@ -675,7 +779,7 @@ export function initGame(){
   }, {capture:true});
   addEventListener('touchstart', e => {
     const target = e.target as Element;
-    if (target.closest && target.closest('#info-screen')) return;
+    if (target.closest && target.closest('#info-screen, #lobby-screen')) return;
     if (!state.introStarted) { startIntro(e); e.preventDefault(); e.stopPropagation(); return; }
     if (!state.gameOver) return;
     tryAutoAudio(e);
@@ -686,4 +790,3 @@ export function initGame(){
   addEventListener('pointerdown', tryAutoAudio);
   bindButtons(); bindTouchControls(); generate(); setInterval(saveProgress, 60000); addEventListener('beforeunload', saveProgress); focusGame(); setTimeout(focusGame, 60); loop();
 }
-

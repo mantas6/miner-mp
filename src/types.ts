@@ -89,6 +89,9 @@ export interface RemotePlayer {
   y: number;
   drawX: number;
   drawY: number;
+  /** Latest remote render target; drawX/drawY ease toward these values locally. */
+  targetDrawX?: number;
+  targetDrawY?: number;
   facing: number;
   drillAnim: number;
   drillDx: number;

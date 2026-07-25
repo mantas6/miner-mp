@@ -6,6 +6,8 @@ import {
   isTile,
   playerStateFrom,
   remotePlayerFrom,
+  applyRemotePlayerState,
+  interpolateRemotePlayers,
   enemySnapshotFrom,
   enemyEntryFrom,
   applyTileDiff,
@@ -180,6 +182,31 @@ describe('builders', () => {
       x: 1, y: 2, drawX: 1.1, drawY: 2.2, facing: -1, bob: 0.5,
       drillAnim: 0.2, drillDx: 1, drillDy: 0
     });
+  });
+
+  it('keeps a remote player render position while applying a newer transform', () => {
+    const current = [{
+      x: 1, y: 2, drawX: 0.5, drawY: 1.5, targetDrawX: 1, targetDrawY: 2,
+      facing: 1, bob: 0, drillAnim: 0, drillDx: 0, drillDy: 1
+    }];
+    const next = applyRemotePlayerState(current, {
+      type: 'playerState', x: 4, y: 5, drawX: 3.8, drawY: 4.7,
+      facing: -1, bob: 0.4, drillAnim: 0.8, drillDx: -1, drillDy: 0
+    });
+
+    expect(next[0]).toMatchObject({ x: 4, y: 5, drawX: 0.5, drawY: 1.5, targetDrawX: 3.8, targetDrawY: 4.7, facing: -1 });
+    expect(current[0].x).toBe(1);
+  });
+
+  it('interpolates remote render positions without changing their target transform', () => {
+    const current = [{
+      x: 4, y: 5, drawX: 0, drawY: 1, targetDrawX: 4, targetDrawY: 5,
+      facing: 1, bob: 0, drillAnim: 0, drillDx: 0, drillDy: 1
+    }];
+
+    const next = interpolateRemotePlayers(current, 0.25);
+    expect(next[0]).toMatchObject({ x: 4, y: 5, drawX: 1, drawY: 2, targetDrawX: 4, targetDrawY: 5 });
+    expect(current[0].drawX).toBe(0);
   });
 
   it('snapshots an enemy list', () => {
