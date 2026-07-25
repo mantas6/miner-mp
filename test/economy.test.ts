@@ -41,7 +41,7 @@ describe('cargo and upgrade feedback', () => {
   });
 
   it('selects the cheapest next ship upgrade', () => {
-    expect(cheapestUpgrade(baselinePlayer)).toEqual({ label: 'Cargo +10', cost: 120 });
+    expect(cheapestUpgrade(baselinePlayer)).toEqual({ label: 'Cargo +5', cost: 120 });
   });
 
   it('recommends hull reinforcement when it is the cheapest next upgrade', () => {
@@ -56,11 +56,11 @@ describe('cargo and upgrade feedback', () => {
   });
 
   it('formats remaining progress when cargo plus cash cannot yet afford the cheapest upgrade', () => {
-    expect(formatCargoUpgradeFeedback(baselinePlayer, 40, 25)).toBe('Cargo value $25 · Next Cargo +10 $120 (need $55 more)');
+    expect(formatCargoUpgradeFeedback(baselinePlayer, 40, 25)).toBe('Cargo value $25 · Next Cargo +5 $120 (need $55 more)');
   });
 
   it('formats ready feedback when selling cargo would afford the next upgrade', () => {
-    expect(formatCargoUpgradeFeedback(baselinePlayer, 70, 55)).toBe('Cargo value $55 · Next Cargo +10 $120 (ready after sell)');
+    expect(formatCargoUpgradeFeedback(baselinePlayer, 70, 55)).toBe('Cargo value $55 · Next Cargo +5 $120 (ready after sell)');
   });
 });
 

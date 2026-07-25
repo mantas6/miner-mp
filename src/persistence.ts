@@ -1,6 +1,8 @@
-import { LIMITS } from './balance';
+import { ECONOMY, LIMITS, STARTING } from './balance';
 
 export const SAVE_KEY = 'moleload-progress-v1';
+export const SAVE_VERSION = 2;
+const LEGACY_CARGO_STEP = 10;
 export const DEFAULT_STATS = {
   maxDepth: 0,
   totalCashEarned: 0,
@@ -27,7 +29,11 @@ export function load(state) {
     state.cash = numeric(save.cash, state.cash, 0);
     p.fuelMax = numeric(save.fuelMax, p.fuelMax, LIMITS.fuelMax.min, LIMITS.fuelMax.max);
     p.hullMax = numeric(save.hullMax, p.hullMax, LIMITS.hullMax.min, LIMITS.hullMax.max);
-    p.cargoMax = numeric(save.cargoMax, p.cargoMax, LIMITS.cargoMax.min, LIMITS.cargoMax.max);
+    const savedCargoMax = numeric(save.cargoMax, p.cargoMax, LIMITS.cargoMax.min, LIMITS.cargoMax.max);
+    const cargoUpgradeLevel = Math.max(0, Math.round((savedCargoMax - STARTING.cargoMax) / LEGACY_CARGO_STEP));
+    p.cargoMax = numeric(save.version, 1, 1) < SAVE_VERSION
+      ? STARTING.cargoMax + cargoUpgradeLevel * ECONOMY.cargo.step
+      : savedCargoMax;
     p.drill = numeric(save.drill, p.drill, LIMITS.drill.min, LIMITS.drill.max);
     p.dynamite = Math.floor(numeric(save.dynamite, p.dynamite, LIMITS.dynamite.min, LIMITS.dynamite.max));
     p.teleporters = Math.floor(numeric(save.teleporters, p.teleporters, LIMITS.teleporters.min, LIMITS.teleporters.max));
@@ -43,7 +49,7 @@ export function save(state) {
   try {
     const p = state.player;
     localStorage.setItem(SAVE_KEY, JSON.stringify({
-      version: 1,
+      version: SAVE_VERSION,
       cash: Math.floor(state.cash),
       fuelMax: p.fuelMax,
       hullMax: p.hullMax,

@@ -612,7 +612,7 @@ function updateButtonStates(){
   ui.sell.disabled = !surf || currentCargoValue() <= 0;
   ui.fuelBtn.textContent = `Refuel $${refuelCost(p)}`;
   ui.repairBtn.textContent = `Repair $${repairCost(p)}`;
-  ui.cargoBtn.textContent = `Cargo +10 $${cargoCost(p)}`;
+  ui.cargoBtn.textContent = `Cargo +${ECONOMY.cargo.step} $${cargoCost(p)}`;
   ui.tankBtn.textContent = `Tank +20 $${tankCost(p)}`;
   ui.hullBtn.textContent = `Hull +20 $${hullCost(p)}`;
   ui.drillBtn.textContent = `Drill +1 $${drillCost(p)}`;

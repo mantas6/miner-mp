@@ -17,9 +17,9 @@ describe('starting cargo capacity', () => {
     expect(state.stats.motherlodeExtractions).toBe(0);
   });
 
-  it('uses 10 as the minimum saved cargo capacity while preserving upgrade increments', () => {
+  it('uses 10 as the minimum saved cargo capacity with incremental five-slot upgrades', () => {
     expect(LIMITS.cargoMax.min).toBe(10);
-    expect(ECONOMY.cargo.step).toBe(10);
+    expect(ECONOMY.cargo.step).toBe(5);
     expect(cargoCost({ cargoMax: STARTING.cargoMax })).toBe(120);
     expect(cargoCost({ cargoMax: STARTING.cargoMax + ECONOMY.cargo.step })).toBe(159);
   });

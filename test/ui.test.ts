@@ -69,6 +69,7 @@ describe('React GUI shell', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
     expect(markup).toContain('0/10');
+    expect(markup).toContain('Cargo +5 $120');
     expect(markup).toContain('Objective: mine the starter Coal/Copper seam below the depot, then return to sell.');
     expect(markup).toContain('Cargo value $0');
   });

@@ -1,6 +1,8 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { DEFAULT_STATS, SAVE_KEY, load, numeric, save } from '../src/persistence';
+import { DEFAULT_STATS, SAVE_KEY, SAVE_VERSION, load, numeric, save } from '../src/persistence';
 import { createInitialState } from '../src/state';
+import { ECONOMY } from '../src/balance';
+import { cargoCost } from '../src/economy';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -41,6 +43,46 @@ describe('Motherlode extraction save compatibility', () => {
     expect({ ...DEFAULT_STATS, ...legacyStats }).toMatchObject({
       motherlodeClaims: 1,
       motherlodeExtractions: 0
+    });
+  });
+});
+
+describe('cargo balance persistence', () => {
+  it.each([
+    [10, 10, 120],
+    [20, 15, 159],
+    [30, 20, 210],
+    [40, 25, 276]
+  ])('maps legacy capacity %i to rebalanced capacity %i at the same price level', (legacyCapacity, capacity, nextCost) => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify({version: 1, cargoMax: legacyCapacity}),
+      setItem: vi.fn()
+    });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(state.player.cargoMax).toBe(capacity);
+    expect(cargoCost(state.player)).toBe(nextCost);
+  });
+
+  it('round-trips rebalanced cargo capacity without migrating it again', () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value)
+    });
+    const state = createInitialState();
+    state.player.cargoMax += ECONOMY.cargo.step * 2;
+    save(state);
+
+    const restored = createInitialState();
+    load(restored);
+
+    expect(restored.player.cargoMax).toBe(20);
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({
+      version: SAVE_VERSION,
+      cargoMax: 20
     });
   });
 });

@@ -1,4 +1,5 @@
 import { ORES, START_Y } from './constants';
+import { ECONOMY } from './balance';
 import type { Ore } from './types';
 
 export interface ProspectingGuideRow {
@@ -27,4 +28,4 @@ export function buildProspectingGuideRows(ores: Ore[] = ORES, startY = START_Y):
   }));
 }
 
-export const PROSPECTING_TIP = 'Early goal: follow the starting shaft into the first Coal/Copper seam, sell it, then save toward Cargo +10.';
+export const PROSPECTING_TIP = `Early goal: follow the starting shaft into the first Coal/Copper seam, sell it, then save toward Cargo +${ECONOMY.cargo.step}.`;
