@@ -5,7 +5,7 @@ import { getVisibleTileRange, type VisibleTileRange } from './visible-tile-range
 import { isTileExplored } from './exploration';
 
 const TERRAIN_CHUNK_TILES = 1;
-const TERRAIN_CHUNK_PADDING = 2;
+const TERRAIN_CHUNK_PADDING = 52;
 const MAX_EXTRA_TERRAIN_CHUNKS = 32;
 
 interface TerrainChunk {

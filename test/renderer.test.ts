@@ -96,8 +96,8 @@ describe('terrain cache lifecycle', () => {
     renderer.draw();
     const initialTileDraws = mocks.terrainContext.fillRect.mock.calls.length;
     expect(initialTileDraws).toBeGreaterThan(0);
-    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.width))).toBe(68);
-    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.height))).toBe(68);
+    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.width))).toBe(168);
+    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.height))).toBe(168);
 
     renderer.draw();
     expect(mocks.terrainContext.fillRect).toHaveBeenCalledTimes(initialTileDraws);
