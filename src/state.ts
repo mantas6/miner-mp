@@ -60,6 +60,9 @@ export function createInitialState(): GameState {
       motherlodeExtractions: 0
     },
     extractionPhase: 'none',
+    role: null,
+    connected: false,
+    remotePlayers: [],
     input: {
       keyImpulse: null,
       lastKeyboardMove: 0,

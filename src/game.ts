@@ -21,6 +21,7 @@ import { formatExtractionPresentation } from './extraction-presentation';
 const state = createInitialState();
 let audio;
 let renderer;
+let enemyIdCounter = 1;
 let resetConfirmUntil = 0;
 let toastTimer = 0;
 
@@ -81,7 +82,7 @@ function wakeEnemy(x,y){
   const tile = get(x,y);
   if (tile.type !== 'enemy') return false;
   set(x,y,{type:'air'});
-  const enemy = {x, y, drawX:x, drawY:y, hp:tile.hp || 4, maxHp:tile.maxHp || tile.hp || 4, alive:true, moveTick:0, biteTick:0, flash:0};
+  const enemy = {id: enemyIdCounter++, x, y, drawX:x, drawY:y, hp:tile.hp || 4, maxHp:tile.maxHp || tile.hp || 4, alive:true, moveTick:0, biteTick:0, flash:0};
   state.enemies.push(enemy);
   spawnDust(x, y, '#8aff5a', 18);
   audio.enemyWake();

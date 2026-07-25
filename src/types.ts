@@ -70,6 +70,7 @@ export interface Player {
 }
 
 export interface Enemy {
+  id: number;
   x: number;
   y: number;
   drawX: number;
@@ -80,6 +81,19 @@ export interface Enemy {
   moveTick: number;
   biteTick: number;
   flash: number;
+}
+
+/** A partner ship as seen locally: transform data only (no vitals). */
+export interface RemotePlayer {
+  x: number;
+  y: number;
+  drawX: number;
+  drawY: number;
+  facing: number;
+  drillAnim: number;
+  drillDx: number;
+  drillDy: number;
+  bob: number;
 }
 
 export interface Particle {
@@ -125,6 +139,12 @@ export interface GameState {
   player: Player;
   stats: GameStats;
   extractionPhase: import('./extraction-phase').ExtractionPhase;
+  /** Multiplayer role once paired, or null when playing solo/offline. */
+  role: 'host' | 'guest' | null;
+  /** Whether the relay socket is currently connected. */
+  connected: boolean;
+  /** Partner ships (transform-only). For 2-player co-op this holds 0 or 1. */
+  remotePlayers: RemotePlayer[];
 }
 
 export interface AudioController {
