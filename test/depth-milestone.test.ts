@@ -17,18 +17,18 @@ describe('expedition depth milestone helper', () => {
     expect(getDepthMilestone(START_Y + 5)).toEqual({
       kind: 'ore',
       target: 'Silver',
-      depthMeters: 160,
-      remainingMeters: 110
+      depthMeters: 600,
+      remainingMeters: 550
     });
   });
 
   it('uses the Motherlode after the last ore band and never reports negative distance', () => {
     const coreRow = WORLD_H - 2;
-    expect(getDepthMilestone(START_Y + 250, ORES, START_Y, WORLD_H)).toMatchObject({
+    expect(getDepthMilestone(START_Y + 860, ORES, START_Y, WORLD_H)).toMatchObject({
       kind: 'motherlode',
       target: 'Motherlode core',
       depthMeters: 10000,
-      remainingMeters: 7500
+      remainingMeters: 1400
     });
     expect(formatDepthMilestone(coreRow + 20)).toBe('Depth target: Motherlode core — 0 m deeper.');
   });

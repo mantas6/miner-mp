@@ -90,7 +90,7 @@ export function MinerApp() {
             <section id="info-prospecting" tabIndex={-1} aria-labelledby="prospecting-title">
               <h3 id="prospecting-title">Prospecting Guide</h3>
               <p className="prospecting-tip">{PROSPECTING_TIP}</p>
-              <ul id="prospectingGuide" className="prospecting-guide" aria-label="Ore values and approximate unlock depths">
+              <ul id="prospectingGuide" className="prospecting-guide" aria-label="Ore values and approximate depth bands">
                 {prospectingRows.map(row => (
                   <li key={row.name}>
                     <span className="ore-icon" style={{ background: row.color }} aria-hidden="true"></span>

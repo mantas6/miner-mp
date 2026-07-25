@@ -47,14 +47,14 @@ describe('expedition objective helper', () => {
   });
 
   it('points deeper players toward the next ore band', () => {
-    expect(nextOreMilestone(80)).toEqual({ name: 'Silver', depthMeters: 160 });
+    expect(nextOreMilestone(80)).toEqual({ name: 'Silver', depthMeters: 600 });
     expect(formatExpeditionObjective({
       player: { ...player, y: START_Y + 8 },
       cash: 20,
       cargoCount: 0,
       currentCargoValue: 0,
       atSurface: false
-    })).toBe('Objective: dig toward Silver around 160 m while keeping fuel for the trip home.');
+    })).toBe('Objective: dig toward Silver around 600 m while keeping fuel for the trip home.');
   });
 
   it('prioritizes taking a secured Motherlode core back to the depot', () => {
@@ -71,11 +71,11 @@ describe('expedition objective helper', () => {
   it('uses Motherlode progress once all ore bands are unlocked', () => {
     expect(motherlodeDepthMeters(WORLD_H, START_Y)).toBe(10000);
     expect(formatExpeditionObjective({
-      player: { ...player, y: START_Y + 260 },
+      player: { ...player, y: START_Y + 860 },
       cash: 200,
       cargoCount: 0,
       currentCargoValue: 0,
       atSurface: false
-    })).toBe('Objective: push toward the Motherlode core at 10000 m (7400 m deeper).');
+    })).toBe('Objective: push toward the Motherlode core at 10000 m (1400 m deeper).');
   });
 });

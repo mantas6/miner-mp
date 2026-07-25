@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { rand, naturalAirPocket, makeTile, starterOreForCoordinate } from '../src/world';
-import { SURFACE_HEIGHT, WORLD_W, WORLD_H } from '../src/constants';
+import { rand, naturalAirPocket, makeTile, oreForDepthRoll, oreSpawnChanceAtDepth, starterOreForCoordinate } from '../src/world';
+import { ORES, START_Y, SURFACE_HEIGHT, WORLD_W, WORLD_H } from '../src/constants';
 
 describe('rand', () => {
   it('is deterministic for the same coordinate', () => {
@@ -58,6 +58,68 @@ describe('starterOreForCoordinate', () => {
   });
 });
 
+describe('ore depth distribution', () => {
+  const sampledNames = (depth: number) => {
+    const names = new Set<string>();
+    for (let i = 0; i < 10000; i++) {
+      const ore = oreForDepthRoll(depth, (i + .5) / 10000);
+      if (ore) names.add(ore.name);
+    }
+    return names;
+  };
+
+  it('spreads overlapping mineral bands across the full 10 km mine', () => {
+    expect(ORES.map(ore => ({
+      name: ore.name,
+      min: (ore.min - START_Y) * 10,
+      max: (ore.max - START_Y) * 10
+    }))).toEqual([
+      {name: 'Coal', min: 0, max: 1800},
+      {name: 'Copper', min: 50, max: 3200},
+      {name: 'Silver', min: 600, max: 4600},
+      {name: 'Gold', min: 1500, max: 6000},
+      {name: 'Ruby', min: 2600, max: 7400},
+      {name: 'Emerald', min: 3900, max: 8500},
+      {name: 'Alienite', min: 5400, max: 9400},
+      {name: 'Uranium', min: 7000, max: 10000},
+      {name: 'Core Shard', min: 8500, max: 10000}
+    ]);
+
+    for (let depth = SURFACE_HEIGHT; depth <= WORLD_H - 2; depth++) {
+      expect(oreForDepthRoll(depth, .5)).not.toBeNull();
+    }
+  });
+
+  it('enforces both edges of every mineral band', () => {
+    for (const ore of ORES) {
+      expect(sampledNames(ore.min)).toContain(ore.name);
+      expect(sampledNames(ore.max)).toContain(ore.name);
+      expect(sampledNames(ore.min - 1)).not.toContain(ore.name);
+      expect(sampledNames(ore.max + 1)).not.toContain(ore.name);
+    }
+  });
+
+  it('weights low tiers early and reserves the richest tiers for deep bands', () => {
+    expect([...sampledNames(START_Y + 100)]).toEqual(['Coal', 'Copper', 'Silver']);
+    expect([...sampledNames(START_Y + 300)]).toEqual(['Copper', 'Silver', 'Gold', 'Ruby']);
+    expect([...sampledNames(START_Y + 900)]).toEqual(['Alienite', 'Uranium', 'Core Shard']);
+
+    const earlyCounts = new Map<string, number>();
+    for (let i = 0; i < 10000; i++) {
+      const name = oreForDepthRoll(START_Y + 100, (i + .5) / 10000)?.name;
+      if (name) earlyCounts.set(name, (earlyCounts.get(name) || 0) + 1);
+    }
+    expect(earlyCounts.get('Coal')).toBeGreaterThan(earlyCounts.get('Copper')!);
+    expect(earlyCounts.get('Copper')).toBeGreaterThan(earlyCounts.get('Silver')!);
+  });
+
+  it('keeps ore frequency stable when mineral tiers transition', () => {
+    expect(oreSpawnChanceAtDepth(SURFACE_HEIGHT)).toBeGreaterThan(.10);
+    expect(oreSpawnChanceAtDepth(START_Y + 600)).toBeCloseTo(.22);
+    expect(oreSpawnChanceAtDepth(WORLD_H - 2)).toBeCloseTo(.22);
+  });
+});
+
 describe('makeTile', () => {
   it('is deterministic', () => {
     expect(makeTile(10, 50)).toEqual(makeTile(10, 50));
@@ -73,7 +135,7 @@ describe('makeTile', () => {
   });
 
   it('never spawns ore above its minimum depth', () => {
-    const maxY = Math.min(250, WORLD_H);
+    const maxY = WORLD_H;
     for (let x = 0; x < WORLD_W; x += 3) {
       for (let y = 0; y < maxY; y++) {
         const tile = makeTile(x, y);
@@ -86,7 +148,7 @@ describe('makeTile', () => {
 
   it('generates at least one ore in a deep scan', () => {
     let foundOre = false;
-    const maxY = Math.min(250, WORLD_H);
+    const maxY = WORLD_H;
     for (let x = 0; x < WORLD_W && !foundOre; x += 3) {
       for (let y = 0; y < maxY; y++) {
         if (makeTile(x, y).type === 'ore') { foundOre = true; break; }

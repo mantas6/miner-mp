@@ -137,9 +137,9 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Prospecting Guide');
     expect(markup).toContain('Coal');
     expect(markup).toContain('$8');
-    expect(markup).toContain('starter seam');
+    expect(markup).toContain('starter–≈1800 m');
     expect(markup).toContain('Copper');
-    expect(markup).toContain('≈50 m+');
+    expect(markup).toContain('≈50–3200 m');
     expect(markup).toContain('first Coal/Copper seam');
   });
 

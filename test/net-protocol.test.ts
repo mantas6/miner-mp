@@ -29,7 +29,7 @@ import {
 } from '../src/net-protocol';
 import type { Enemy, Player, Tile } from '../src/types';
 
-const ORE = { name: 'Gold', color: '#ffd65c', value: 70, min: 34, chance: 0.04 };
+const ORE = { name: 'Gold', color: '#ffd65c', value: 70, min: 152, max: 602, chance: 0.04 };
 
 const messages: NetMessage[] = [
   {

@@ -11,7 +11,7 @@ describe('terrain scanner helper', () => {
 
   it('reports ore value and remaining drill hits from real tile data', () => {
     expect(formatTerrainScanner({
-      tile: { type: 'ore', ore: { name: 'Copper', color: '#c47b45', value: 16, min: 7, chance: .08 }, hp: 4, maxHp: 4 },
+      tile: { type: 'ore', ore: { name: 'Copper', color: '#c47b45', value: 16, min: 7, max: 322, chance: .08 }, hp: 4, maxHp: 4 },
       direction: [-1, 0]
     })).toBe('Scanner ←: Copper — $16, 4 hits.');
   });

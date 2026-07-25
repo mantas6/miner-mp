@@ -21,7 +21,7 @@ describe('dynamite blast targets', () => {
 
   it('destroys ore and hazards without returning cargo or rewards', () => {
     const world: Tile[][] = Array.from({length: 10}, () => Array.from({length: 10}, dirt));
-    world[6][5] = {type: 'ore', ore: {name: 'Gold', color: '#fc0', value: 70, min: 34, chance: .04}, hp: 5, maxHp: 5};
+    world[6][5] = {type: 'ore', ore: {name: 'Gold', color: '#fc0', value: 70, min: 152, max: 602, chance: .04}, hp: 5, maxHp: 5};
     world[5][6] = {type: 'hazard', hp: 8, maxHp: 8};
 
     const targets = getDynamiteBlastTargets(world, 5, 5, 2);

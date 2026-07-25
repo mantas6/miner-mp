@@ -3,6 +3,7 @@ export interface Ore {
   color: string;
   value: number;
   min: number;
+  max: number;
   chance: number;
 }
 

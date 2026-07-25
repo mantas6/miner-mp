@@ -46,6 +46,21 @@ export function starterOreForCoordinate(x: number, y: number) {
   return ORES.find(ore => ore.name === patch.oreName && y >= ore.min) || null;
 }
 
+export function oreSpawnChanceAtDepth(depth: number): number {
+  return .10 * Math.min(2.2, 1 + depth / 90);
+}
+
+export function oreForDepthRoll(depth: number, roll: number) {
+  const eligible = ORES.filter(ore => depth >= ore.min && depth <= ore.max);
+  const totalWeight = eligible.reduce((total, ore) => total + ore.chance, 0);
+  let target = roll * totalWeight;
+  for (const ore of eligible) {
+    target -= ore.chance;
+    if (target < 0) return ore;
+  }
+  return eligible.at(-1) || null;
+}
+
 /**
  * Generate the tile at a world coordinate. Deterministic for a given (x,y).
  * @param {number} x
@@ -58,11 +73,8 @@ export function makeTile(x: number, y: number): Tile {
   if (naturalAirPocket(x,y)) return {type:'air'};
   const r = rand(x,y), depth = y;
   let ore = starterOreForCoordinate(x, y);
-  if (!ore) {
-    for (let i = ORES.length - 1; i >= 0; i--) {
-      const o = ORES[i];
-      if (depth >= o.min && r < o.chance * Math.min(2.2, 1 + depth / 90)) { ore = o; break; }
-    }
+  if (!ore && r < oreSpawnChanceAtDepth(depth)) {
+    ore = oreForDepthRoll(depth, rand(x + 73, y - 47));
   }
   if (y === WORLD_H - 2 && Math.abs(x - Math.floor(WORLD_W/2)) <= 1) return {type:'artifact', hp:24, maxHp:24};
   if (ore) { const hp = Math.max(3, Math.ceil((depth/28)+4)); return {type:'ore', ore, hp, maxHp: hp}; }

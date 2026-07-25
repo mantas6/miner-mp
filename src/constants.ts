@@ -14,14 +14,15 @@ export const DANGER = Object.freeze({
   hazardMinRow: 151
 });
 
+// Chance is the relative tier weight once the independent ore-spawn roll succeeds.
 export const ORES: Ore[] = [
-  {name:'Coal', color:'#343434', value:8, min:2, chance:.10},
-  {name:'Copper', color:'#c47b45', value:16, min:7, chance:.08},
-  {name:'Silver', color:'#c8d3e0', value:36, min:18, chance:.055},
-  {name:'Gold', color:'#ffd65c', value:70, min:34, chance:.04},
-  {name:'Ruby', color:'#f04b73', value:135, min:55, chance:.026},
-  {name:'Emerald', color:'#46df8b', value:220, min:82, chance:.018},
-  {name:'Alienite', color:'#8d7cff', value:360, min:118, chance:.012},
-  {name:'Uranium', color:'#b7ff45', value:620, min:175, chance:.008},
-  {name:'Core Shard', color:'#ff7a1f', value:980, min:240, chance:.005}
+  {name:'Coal', color:'#343434', value:8, min:2, max:182, chance:.10},
+  {name:'Copper', color:'#c47b45', value:16, min:7, max:322, chance:.08},
+  {name:'Silver', color:'#c8d3e0', value:36, min:62, max:462, chance:.055},
+  {name:'Gold', color:'#ffd65c', value:70, min:152, max:602, chance:.04},
+  {name:'Ruby', color:'#f04b73', value:135, min:262, max:742, chance:.026},
+  {name:'Emerald', color:'#46df8b', value:220, min:392, max:852, chance:.018},
+  {name:'Alienite', color:'#8d7cff', value:360, min:542, max:942, chance:.012},
+  {name:'Uranium', color:'#b7ff45', value:620, min:702, max:1002, chance:.008},
+  {name:'Core Shard', color:'#ff7a1f', value:980, min:852, max:1002, chance:.005}
 ];
