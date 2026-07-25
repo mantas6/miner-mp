@@ -19,7 +19,9 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-PORT="${PORT:-8081}" node server/index.js &
+PORT="${PORT:-8081}"
+
+PORT="$PORT" node server/index.js &
 relay_pid=$!
 
 VITE_MP_SERVER_URL="${VITE_MP_SERVER_URL:-ws://localhost:${PORT}}" npm run dev &
