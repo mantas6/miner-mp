@@ -10,6 +10,13 @@ import { PLAYER_UPGRADES } from './upgrades';
 const prospectingRows = buildProspectingGuideRows();
 const dangerRows = buildDangerGuideRows();
 
+const shopUpgrades = {
+  cargo: { icon: 'cargo', purpose: 'Carry more ore before returning to sell.', unit: 'slots', price: ECONOMY.cargo.base },
+  tank: { icon: 'tank', purpose: 'Extend safe range between depot refuels.', unit: 'fuel', price: ECONOMY.tank.base },
+  hull: { icon: 'hull', purpose: 'Survive more rock, magma, and fiend damage.', unit: 'strength', price: ECONOMY.hull.base },
+  drill: { icon: 'drill', purpose: 'Break tougher terrain and enemies faster.', unit: 'power', price: ECONOMY.drill.base }
+} as const;
+
 export function MinerApp() {
   return (
     <main id="shell">
@@ -42,18 +49,78 @@ export function MinerApp() {
 
           <div className="shop">
             <button id="sell">Sell</button>
-            <button id="fuelBtn">Refuel $20</button>
-            <button id="repairBtn">Repair $30</button>
-            <button id="cargoBtn">Cargo +{ECONOMY.cargo.step} ${ECONOMY.cargo.base}</button>
-            <button id="tankBtn">Tank +20 $150</button>
-            <button id="hullBtn">Hull +20 $180</button>
-            <button id="drillBtn">Drill +1 $200</button>
-            <button id="dynamiteBtn">Dynamite $50</button>
-            <button id="teleporterBtn">Teleporter $250 · x0</button>
+            <button id="shopBtn" className="shop-open-btn">Shop &amp; Equipment</button>
+            <button id="dynamiteBtn" hidden>Detonate (E) · x0</button>
+            <button id="teleporterBtn" hidden>Teleport (T) · x0</button>
             <button id="infoBtn">Info / Cargo</button>
           </div>
           <div id="serviceStatus" className="service-status" aria-live="polite">
             At depot: cargo empty, fuel full, hull repaired — upgrades are available when you have enough cash.
+          </div>
+        </div>
+
+        <div id="shop-screen" className="hidden" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+          <div id="shop-card" className="shop-card">
+            <div className="shop-header">
+              <div>
+                <p className="shop-kicker">Depot supply counter</p>
+                <h2 id="shop-title">Shop &amp; Equipment</h2>
+              </div>
+              <button id="shopCloseBtn" className="close-btn" aria-label="Close shop">×</button>
+            </div>
+            <div className="shop-summary" aria-live="polite">
+              <strong data-shop-cash>$60 available</strong>
+              <span data-shop-location>Surface depot</span>
+            </div>
+
+            <section className="shop-section" aria-labelledby="shop-services-title">
+              <div className="shop-section-heading"><h3 id="shop-services-title">Depot Services</h3><span>Pay what you have for a proportional partial service</span></div>
+              <div className="shop-grid shop-grid-services">
+                <article className="shop-item" data-shop-service="fuel">
+                  <span className="equipment-icon icon-fuel" aria-hidden="true"><i></i></span>
+                  <div className="shop-item-copy"><h4>Refuel</h4><p>Restore the current tank before descending.</p><strong data-shop-current>100/100 · full service $20</strong></div>
+                  <span className="shop-state" data-shop-status>Full</span><button id="fuelBtn" type="button">Refuel · $20</button>
+                </article>
+                <article className="shop-item" data-shop-service="repair">
+                  <span className="equipment-icon icon-repair" aria-hidden="true"><i></i></span>
+                  <div className="shop-item-copy"><h4>Hull Repair</h4><p>Restore damage without changing maximum strength.</p><strong data-shop-current>100/100 · full service $30</strong></div>
+                  <span className="shop-state" data-shop-status>Full</span><button id="repairBtn" type="button">Repair · $30</button>
+                </article>
+              </div>
+            </section>
+
+            <section className="shop-section" aria-labelledby="shop-upgrades-title">
+              <div className="shop-section-heading"><h3 id="shop-upgrades-title">Permanent Upgrades</h3><span>Installed permanently · prices rise by level</span></div>
+              <div className="shop-grid">
+                {PLAYER_UPGRADES.map(upgrade => {
+                  const display = shopUpgrades[upgrade.id];
+                  const maxLevel = Math.ceil((upgrade.max - upgrade.start) / upgrade.step);
+                  return (
+                    <article key={upgrade.id} className="shop-item" data-shop-upgrade={upgrade.id}>
+                      <span className={`equipment-icon icon-${display.icon}`} aria-hidden="true"><i></i></span>
+                      <div className="shop-item-copy"><h4>{upgrade.label}</h4><p>{display.purpose}</p><strong data-shop-current>Level 0/{maxLevel} · {upgrade.start}/{upgrade.max} {display.unit}</strong><span data-shop-benefit>Next: {upgrade.start} → {upgrade.start + upgrade.step} {display.unit}</span></div>
+                      <span className="shop-state" data-shop-status>Need ${display.price - STARTING.cash}</span><button id={`${upgrade.id}Btn`} type="button">Buy · ${display.price}</button>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="shop-section" aria-labelledby="shop-equipment-title">
+              <div className="shop-section-heading"><h3 id="shop-equipment-title">Consumable Equipment</h3><span>Each use spends one carried item</span></div>
+              <div className="shop-grid">
+                <article className="shop-item" data-shop-item="dynamite">
+                  <span className="equipment-icon icon-dynamite" aria-hidden="true"><i></i></span>
+                  <div className="shop-item-copy"><h4>Dynamite</h4><p>Clears nearby terrain underground. Destroys ore and artifacts without rewards.</p><strong data-shop-current>Carried: 0</strong><span>Control: <kbd>E</kbd> or Detonate</span></div>
+                  <span className="shop-state" data-shop-status>Ready</span><button id="shopDynamiteBtn" type="button">Buy one · ${ECONOMY.dynamite.price}</button>
+                </article>
+                <article className="shop-item" data-shop-item="teleporter">
+                  <span className="equipment-icon icon-teleporter" aria-hidden="true"><i></i></span>
+                  <div className="shop-item-copy"><h4>Teleporter</h4><p>Emergency return to the depot. Cargo and ship condition stay unchanged.</p><strong data-shop-current>Carried: 0</strong><span>Control: <kbd>T</kbd> or Teleport</span></div>
+                  <span className="shop-state" data-shop-status>Need ${ECONOMY.teleporter.price - STARTING.cash}</span><button id="shopTeleporterBtn" type="button">Buy one · ${ECONOMY.teleporter.price}</button>
+                </article>
+              </div>
+            </section>
           </div>
         </div>
 

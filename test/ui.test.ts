@@ -30,6 +30,10 @@ const GAME_DOM_IDS = [
   'extractionInfoStatus',
   'cargoFeedback',
   'sell',
+  'shopBtn',
+  'shop-screen',
+  'shop-card',
+  'shopCloseBtn',
   'fuelBtn',
   'repairBtn',
   'cargoBtn',
@@ -38,6 +42,8 @@ const GAME_DOM_IDS = [
   'drillBtn',
   'dynamiteBtn',
   'teleporterBtn',
+  'shopDynamiteBtn',
+  'shopTeleporterBtn',
   'infoBtn',
   'info-screen',
   'info-card',
@@ -79,7 +85,9 @@ describe('React GUI shell', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
     expect(markup).toContain('id="hullBtn"');
-    expect(markup).toContain('Hull +20 $180');
+    expect(markup).toContain('data-shop-upgrade="hull"');
+    expect(markup).toContain('Next: 100 → 120 strength');
+    expect(markup).toContain('Buy · $180');
     expect(markup).toContain('choose tank, hull, cargo, and drill upgrades carefully');
   });
 
@@ -87,7 +95,8 @@ describe('React GUI shell', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
     expect(markup).toContain('id="dynamiteBtn"');
-    expect(markup).toContain('Dynamite $50');
+    expect(markup).toContain('data-shop-item="dynamite"');
+    expect(markup).toContain('Buy one · $50');
     expect(markup).toContain('<kbd>E</kbd>');
     expect(markup).toContain('blasts yield no cargo');
   });
@@ -96,7 +105,8 @@ describe('React GUI shell', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
     expect(markup).toContain('id="teleporterBtn"');
-    expect(markup).toContain('Teleporter $250 · x0');
+    expect(markup).toContain('data-shop-item="teleporter"');
+    expect(markup).toContain('Buy one · $250');
     expect(markup).toContain('<kbd>T</kbd>');
     expect(markup).toContain('without unloading or servicing the ship');
   });
@@ -177,6 +187,29 @@ describe('React GUI shell', () => {
     expect(markup).toContain('data-developer-upgrade="hull"');
     expect(markup).toContain('data-developer-upgrade="drill"');
     expect(markup).toContain('Level 0/198');
+  });
+
+  it('separates surface services, permanent upgrades, and consumable equipment in a modal shop', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('id="shop-screen" class="hidden" role="dialog" aria-modal="true"');
+    expect(markup).toContain('Shop &amp; Equipment');
+    expect(markup).toContain('Depot Services');
+    expect(markup).toContain('Permanent Upgrades');
+    expect(markup).toContain('Consumable Equipment');
+    expect(markup).toContain('Pay what you have for a proportional partial service');
+    expect(markup).toContain('Control: <kbd>E</kbd> or Detonate');
+    expect(markup).toContain('Control: <kbd>T</kbd> or Teleport');
+  });
+
+  it('keeps purchase actions out of the compact surface action bar', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+    const actionBar = markup.match(/<div class="shop">([\s\S]*?)<\/div>/)?.[1];
+
+    expect(actionBar).toContain('id="shopBtn"');
+    expect(actionBar).not.toContain('id="cargoBtn"');
+    expect(actionBar).not.toContain('id="fuelBtn"');
+    expect(actionBar).not.toContain('Buy one');
   });
 
   it('renders the hazard and fiend survival guide with its stable hook', () => {

@@ -26,6 +26,7 @@ import { advanceTeleportEffect, createTeleportEffect, teleportPlayerToSurface } 
 import { claimArtifact } from './artifacts';
 import type { Enemy } from './types';
 import { applyPlayerUpgrade, getPlayerUpgradeProgress, updateDeveloperUpgradeControls, type PlayerUpgradeId } from './upgrades';
+import { updateShopControls } from './shop';
 
 const state = createInitialState();
 let audio;
@@ -520,10 +521,6 @@ function detonateDynamite(){
   saveProgress();
   toast(targets.length ? `Dynamite cleared ${targets.length} blocks. Ore and artifacts were destroyed; no rewards granted.` : 'Dynamite detonated, but no destructible blocks were in range.');
 }
-function useDynamiteControl(){
-  if (atSurface()) buyDynamite();
-  else detonateDynamite();
-}
 function buyTeleporter(){
   spend(ECONOMY.teleporter.price, () => state.player.teleporters++, 'Teleporter loaded. Press T or Teleport underground.');
 }
@@ -577,12 +574,17 @@ function bindButtons(){
   ui.tankBtn.onclick = () => buyPlayerUpgrade('tank', tankCost(state.player), 'Fuel tank upgraded.');
   ui.hullBtn.onclick = () => buyPlayerUpgrade('hull', hullCost(state.player), 'Hull reinforced.');
   ui.drillBtn.onclick = () => buyPlayerUpgrade('drill', drillCost(state.player), 'Drill power increased.');
-  ui.dynamiteBtn.onclick = useDynamiteControl;
-  ui.teleporterBtn.onclick = () => atSurface() ? buyTeleporter() : useTeleporter();
+  ui.dynamiteBtn.onclick = detonateDynamite;
+  ui.teleporterBtn.onclick = useTeleporter;
+  ui.shopDynamiteBtn.onclick = buyDynamite;
+  ui.shopTeleporterBtn.onclick = buyTeleporter;
   ui.soundBtn.addEventListener('pointerdown', e => e.stopPropagation());
   ui.soundBtn.onclick = e => { e.stopPropagation(); audio.toggle(); };
   ui.infoBtn.onclick = e => { e.stopPropagation(); openInfoScreen(); };
   ui.infoCloseBtn.onclick = e => { e.stopPropagation(); closeInfoScreen(); };
+  ui.shopBtn.onclick = e => { e.stopPropagation(); openShopScreen(); };
+  ui.shopCloseBtn.onclick = e => { e.stopPropagation(); closeShopScreen(); };
+  ui.shopScreen.addEventListener('pointerdown', e => { if (e.target === ui.shopScreen) closeShopScreen(); });
   ui.infoScreen.addEventListener('pointerdown', e => { if (e.target === ui.infoScreen) closeInfoScreen(); });
   ui.infoCard.addEventListener('scroll', updateActiveInfoNavigation, {passive:true});
   ui.infoScreen.addEventListener('click', e => {
@@ -604,16 +606,28 @@ function bindButtons(){
     requestAnimationFrame(updateActiveInfoNavigation);
   });
 }
+function openShopScreen(){
+  if (!atSurface()) return toast('Shop is at the surface depot.');
+  updateShopControls(ui.shopCard, state.player, state.cash, true);
+  ui.shopScreen.classList.remove('hidden');
+  ui.shopCard.scrollTop = 0;
+  ui.shopCloseBtn.focus({preventScroll:true});
+}
+function closeShopScreen(){
+  ui.shopScreen.classList.add('hidden');
+  ui.shopBtn.focus({preventScroll:true});
+}
 function openInfoScreen(){
   ui.infoScreen.classList.remove('hidden');
   renderCargoDetails();
   renderExpeditionStats();
   updateDeveloperUpgradeControls(ui.developerUpgrades, state.player);
   updateActiveInfoNavigation();
+  ui.infoCloseBtn.focus({preventScroll:true});
 }
 function closeInfoScreen(){
   ui.infoScreen.classList.add('hidden');
-  focusGame();
+  ui.infoBtn.focus({preventScroll:true});
 }
 function renderCargoDetails(){
   const counts = new Map();
@@ -640,25 +654,16 @@ function renderExpeditionStats(){
 }
 function updateButtonStates(){
   const p = state.player, surf = atSurface();
-  for (const button of [ui.sell, ui.fuelBtn, ui.repairBtn, ui.cargoBtn, ui.tankBtn, ui.hullBtn, ui.drillBtn]) button.hidden = !surf;
+  ui.sell.hidden = !surf;
+  ui.shopBtn.hidden = !surf;
+  ui.dynamiteBtn.hidden = surf;
+  ui.teleporterBtn.hidden = surf;
   ui.sell.disabled = !surf || currentCargoValue() <= 0;
-  ui.fuelBtn.textContent = `Refuel $${refuelCost(p)}`;
-  ui.repairBtn.textContent = `Repair $${repairCost(p)}`;
-  ui.cargoBtn.textContent = `Cargo +${ECONOMY.cargo.step} $${cargoCost(p)}`;
-  ui.tankBtn.textContent = `Tank +20 $${tankCost(p)}`;
-  ui.hullBtn.textContent = `Hull +20 $${hullCost(p)}`;
-  ui.drillBtn.textContent = `Drill +1 $${drillCost(p)}`;
-  ui.dynamiteBtn.textContent = surf ? `Dynamite $${ECONOMY.dynamite.price} · x${p.dynamite}` : `Detonate (E) · x${p.dynamite}`;
-  ui.teleporterBtn.textContent = surf ? `Teleporter $${ECONOMY.teleporter.price} · x${p.teleporters}` : `Teleport (T) · x${p.teleporters}`;
-  ui.fuelBtn.disabled = !surf || state.cash <= 0 || p.fuel >= p.fuelMax;
-  ui.repairBtn.disabled = !surf || state.cash <= 0 || p.hull >= p.hullMax;
-  ui.cargoBtn.disabled = !surf || state.cash < cargoCost(p);
-  ui.cargoBtn.disabled ||= getPlayerUpgradeProgress(p, 'cargo').atMax;
-  ui.tankBtn.disabled = !surf || state.cash < tankCost(p) || getPlayerUpgradeProgress(p, 'tank').atMax;
-  ui.hullBtn.disabled = !surf || state.cash < hullCost(p) || getPlayerUpgradeProgress(p, 'hull').atMax;
-  ui.drillBtn.disabled = !surf || state.cash < drillCost(p) || getPlayerUpgradeProgress(p, 'drill').atMax;
-  ui.dynamiteBtn.disabled = surf ? state.cash < ECONOMY.dynamite.price : p.dynamite <= 0 || state.gameOver;
-  ui.teleporterBtn.disabled = surf ? state.cash < ECONOMY.teleporter.price : p.teleporters <= 0 || state.gameOver;
+  ui.dynamiteBtn.textContent = `Detonate (E) · x${p.dynamite}`;
+  ui.teleporterBtn.textContent = `Teleport (T) · x${p.teleporters}`;
+  ui.dynamiteBtn.disabled = surf || p.dynamite <= 0 || state.gameOver;
+  ui.teleporterBtn.disabled = surf || p.teleporters <= 0 || state.gameOver;
+  if (!ui.shopScreen.classList.contains('hidden')) updateShopControls(ui.shopCard, p, state.cash, surf);
 }
 const movementKeys = {
   arrowleft: [-1, 0], a: [-1, 0],
@@ -887,6 +892,17 @@ function focusGame(){
   try { (gamePanel || canvas).focus({preventScroll:true}); }
   catch (_) { try { (gamePanel || canvas).focus(); } catch (_) {} }
 }
+function keepFocusInDialog(event: KeyboardEvent, dialog: HTMLElement): void {
+  const focusable = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), [href], input:not(:disabled), [tabindex]:not([tabindex="-1"])')]
+    .filter(element => !element.hidden && element.getClientRects().length > 0);
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) last.focus();
+  else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) first.focus();
+  else return;
+  event.preventDefault();
+}
 function startIntro(event?: Event){
   if (state.introStarted) return;
   state.introStarted = true;
@@ -902,9 +918,14 @@ function handleKeyDown(e){
   // Keyboard movement must work even before the browser grants audio permission.
   // Sound can still be enabled with the Sound button or any pointer/touch input.
   const key = e.key.toLowerCase();
-  const target = e.target as Element | null;
-  if (target?.closest?.('#info-screen')) {
+  if (!ui.shopScreen.classList.contains('hidden')) {
+    if (key === 'escape') { closeShopScreen(); e.preventDefault(); e.stopPropagation(); }
+    else if (key === 'tab') keepFocusInDialog(e, ui.shopScreen);
+    return;
+  }
+  if (!ui.infoScreen.classList.contains('hidden')) {
     if (key === 'escape') { closeInfoScreen(); e.preventDefault(); e.stopPropagation(); }
+    else if (key === 'tab') keepFocusInDialog(e, ui.infoScreen);
     return;
   }
   if (!ui.lobby.classList.contains('hidden')) return;
@@ -924,7 +945,6 @@ function handleKeyDown(e){
     e.preventDefault();
     return;
   }
-  if (key === 'escape' && !ui.infoScreen.classList.contains('hidden')) { closeInfoScreen(); e.preventDefault(); e.stopPropagation(); return; }
   if (key === 'enter') { sell(); e.preventDefault(); e.stopPropagation(); return; }
   if (key === ' ') { surfaceService(); e.preventDefault(); e.stopPropagation(); return; }
   if (key === 'e') { if (!e.repeat) detonateDynamite(); e.preventDefault(); e.stopPropagation(); return; }
@@ -977,7 +997,7 @@ export function initGame(){
   };
   addEventListener('pointerdown', e => {
     const target = e.target as Element;
-    if (target.closest && target.closest('#info-screen, #lobby-screen')) return;
+    if (target.closest && target.closest('#info-screen, #shop-screen, #lobby-screen')) return;
     if (!state.introStarted) { startIntro(e); e.preventDefault(); e.stopPropagation(); return; }
     if (!state.gameOver) return;
     tryAutoAudio(e);
@@ -987,7 +1007,7 @@ export function initGame(){
   }, {capture:true});
   addEventListener('touchstart', e => {
     const target = e.target as Element;
-    if (target.closest && target.closest('#info-screen, #lobby-screen')) return;
+    if (target.closest && target.closest('#info-screen, #shop-screen, #lobby-screen')) return;
     if (!state.introStarted) { startIntro(e); e.preventDefault(); e.stopPropagation(); return; }
     if (!state.gameOver) return;
     tryAutoAudio(e);
