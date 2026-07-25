@@ -117,7 +117,7 @@ export function MinerApp() {
               <h3 id="controls-title">Controls</h3>
               <ul className="control-list">
                 <li><kbd>WASD</kbd> / <kbd>Arrows</kbd><span>Move, fly, and dig</span></li>
-                <li><kbd>Shift</kbd> + movement<span>Sprint faster at increased fuel cost</span></li>
+                <li><kbd>Shift</kbd> + movement<span>Sprint through open space at increased fuel cost; drilling stays normal</span></li>
                 <li><kbd>Tap / hold</kbd><span>Move toward the touched side of the ship</span></li>
                 <li><kbd>Enter</kbd><span>Sell cargo at the surface depot</span></li>
                 <li><kbd>Space</kbd><span>Repair or refuel at the surface</span></li>

@@ -20,7 +20,7 @@ import { formatExtractionPresentation } from './extraction-presentation';
 import { createNet, type NetClient } from './net';
 import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, mergeWorldSync, nextEnemyId, playerStateFrom, remotePlayerFrom, worldSyncFrom, type EnemySnapshotEntry, type TileDiff } from './net-protocol';
 import { loadServerUrl, saveServerUrl } from './multiplayer-settings';
-import { keyboardMovementRepeatMs, movementFuelCost } from './movement';
+import { isOpenSpaceDestination, keyboardMovementRepeatMs, movementFuelCost } from './movement';
 import { getDynamiteBlastTargets } from './dynamite';
 import type { Enemy } from './types';
 
@@ -359,6 +359,12 @@ function grounded(){
   const p = state.player;
   return p.y >= WORLD_H-1 || get(p.x, p.y + 1).type !== 'air';
 }
+function isOpenMovementDestination(dx,dy){
+  const p = state.player;
+  const nx = Math.max(1, Math.min(WORLD_W-2, p.x + dx));
+  const ny = Math.max(START_Y, Math.min(WORLD_H-1, p.y + dy));
+  return isOpenSpaceDestination(nx !== p.x || ny !== p.y, get(nx,ny).type, Boolean(enemyAt(nx,ny)));
+}
 function restartGame(){
   resetConfirmUntil = 0;
   const died = state.gameOver;
@@ -400,10 +406,11 @@ function move(dx,dy,sprinting=false){
   }
   const tile = get(nx,ny);
   const activeEnemy = enemyAt(nx, ny);
+  const destinationOpen = isOpenSpaceDestination(true, tile.type, Boolean(activeEnemy));
   let cost = FUEL.baseMove + Math.abs(dy)*FUEL.vertical;
   const flyCost = cost * FUEL.flyMult;             // flying uses 50% less fuel
   const dig = extra => (cost + extra) * FUEL.digMult; // digging uses 50% more fuel
-  const useFuel = amount => { p.fuel -= movementFuelCost(amount, sprinting); };
+  const useFuel = amount => { p.fuel -= movementFuelCost(amount, sprinting, destinationOpen); };
   p.facing = dx ? Math.sign(dx) : p.facing;
   p.drillDx = dx;
   p.drillDy = dy;
@@ -636,7 +643,8 @@ function input(){
     return;
   }
   const held = heldKeyDirection();
-  if (held && now - state.input.lastKeyboardMove >= keyboardMovementRepeatMs(state.input.keyboardRepeatMs, sprinting)) {
+  const destinationOpen = held ? isOpenMovementDestination(held[0], held[1]) : false;
+  if (held && now - state.input.lastKeyboardMove >= keyboardMovementRepeatMs(state.input.keyboardRepeatMs, sprinting, destinationOpen)) {
     state.input.lastKeyboardMove = now;
     move(held[0], held[1], sprinting);
     return;
