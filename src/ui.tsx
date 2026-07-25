@@ -53,6 +53,7 @@ export function MinerApp() {
             <button id="shopBtn" className="shop-open-btn">Shop &amp; Equipment</button>
             <button id="dynamiteBtn" hidden>Detonate (E) · x0</button>
             <button id="teleporterBtn" hidden>Teleport (T) · x0</button>
+            <button id="gunBtn" hidden>Arm Gun (G) · x0</button>
             <button id="infoBtn">Info / Cargo</button>
           </div>
           <div id="serviceStatus" className="service-status" aria-live="polite">
@@ -105,6 +106,13 @@ export function MinerApp() {
                   );
                 })}
               </div>
+              <div className="shop-grid shop-gun-grid">
+                <article className="shop-item" data-shop-gun>
+                  <span className="equipment-icon icon-gun" aria-hidden="true"><i></i></span>
+                  <div className="shop-item-copy"><h4>Linebreaker Gun</h4><p>Permanent precision weapon. Fires one round up to {ECONOMY.gun.range} tiles; rock, depot structure, boundaries, and Motherlode are protected.</p><strong data-shop-current>Not owned · Ammo: 0</strong><span>Control: <kbd>G</kbd>, then a direction · <kbd>G</kbd>/<kbd>Esc</kbd> cancels</span></div>
+                  <span className="shop-state" data-shop-status>Need ${ECONOMY.gun.price - STARTING.cash}</span><button id="shopGunBtn" type="button">Buy · ${ECONOMY.gun.price}</button>
+                </article>
+              </div>
             </section>
 
             <section className="shop-section" aria-labelledby="shop-equipment-title">
@@ -119,6 +127,11 @@ export function MinerApp() {
                   <span className="equipment-icon icon-teleporter" aria-hidden="true"><i></i></span>
                   <div className="shop-item-copy"><h4>Teleporter</h4><p>Emergency return to the depot. Cargo and ship condition stay unchanged.</p><strong data-shop-current>Carried: 0</strong><span>Control: <kbd>T</kbd> or Teleport</span></div>
                   <span className="shop-state" data-shop-status>Need ${ECONOMY.teleporter.price - STARTING.cash}</span><button id="shopTeleporterBtn" type="button">Buy one · ${ECONOMY.teleporter.price}</button>
+                </article>
+                <article className="shop-item" data-shop-item="bullets">
+                  <span className="equipment-icon icon-bullets" aria-hidden="true"><i></i></span>
+                  <div className="shop-item-copy"><h4>Gun Ammunition</h4><p>Six precision rounds. Requires the permanent Linebreaker Gun.</p><strong data-shop-current>Ammo: 0 · +{ECONOMY.gun.ammoBundle} per bundle</strong><span>Arm with <kbd>G</kbd>, then press or tap a direction</span></div>
+                  <span className="shop-state" data-shop-status>Gun required</span><button id="shopBulletsBtn" type="button">Buy {ECONOMY.gun.ammoBundle} · ${ECONOMY.gun.ammoPrice}</button>
                 </article>
               </div>
             </section>
@@ -225,6 +238,7 @@ export function MinerApp() {
                 <li><kbd>Space</kbd><span>Repair or refuel at the surface</span></li>
                 <li><kbd>E</kbd> / <kbd>Detonate</kbd><span>Use one carried dynamite underground; blasts yield no cargo, and destroyed artifacts grant no cash</span></li>
                 <li><kbd>T</kbd> / <kbd>Teleport</kbd><span>Use one carried teleporter underground to return to the depot without unloading or servicing the ship</span></li>
+                <li><kbd>G</kbd> then direction / <kbd>Arm Gun</kbd> then tap<span>Fire one bullet up to {ECONOMY.gun.range} tiles; press G or Escape to cancel aiming. Shots destroy the first eligible block or enemy, but valuables give no cargo or artifact cash.</span></li>
                 <li><kbd>R</kbd> then <kbd>R</kbd><span>Confirm reset while alive</span></li>
               </ul>
             </section>
@@ -270,6 +284,7 @@ export function MinerApp() {
                 <li><strong>Make money:</strong> mine ore, return to surface, press Sell or Enter. Space repairs/refuels.</li>
                 <li><strong>Dynamite:</strong> buy charges at the depot, then press E or Detonate underground to clear terrain.</li>
                 <li><strong>Teleporter:</strong> buy one at the depot, then press T or Teleport underground for an emergency return.</li>
+                <li><strong>Gun:</strong> buy the permanent gun and bullet bundles, then press G and a direction; touch players use Arm Gun then tap a direction.</li>
                 <li><strong>Do not die:</strong> deep magma pockets, tougher rock, and tunnel fiends scale with depth.</li>
                 <li><strong>Enemies:</strong> drilling nearby blocks wakes them; drill them back before they chew the hull.</li>
                 <li><strong>Goal:</strong> reach the Motherlode core at the bottom, crack it, and get home alive.</li>

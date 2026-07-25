@@ -156,6 +156,12 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
 .icon-dynamite::after { top: 5px; right: 7px; width: 17px; height: 12px; border-top: 2px solid #f4d37a; border-radius: 50%; transform: rotate(-30deg); }
 .icon-teleporter::before { width: 31px; height: 31px; border: 4px solid #72d9ff; border-radius: 50%; box-shadow: inset 0 0 8px #527aff, 0 0 8px #5cc8ff; }
 .icon-teleporter::after { width: 18px; height: 18px; border: 3px solid #c0eeff; border-radius: 50%; }
+.shop-gun-grid { margin-top: 9px; }
+.shop-gun-grid .shop-item { grid-column: 1 / -1; }
+.icon-gun::before { width: 34px; height: 12px; border-radius: 3px; background: linear-gradient(#e8d17c, #80672b); box-shadow: -8px 7px 0 -2px #53422b; }
+.icon-gun::after { right: 5px; width: 13px; height: 5px; border-radius: 2px; background: #ffeaa0; box-shadow: 0 0 8px #ffd35f; }
+.icon-bullets::before { width: 9px; height: 29px; border-radius: 5px 5px 2px 2px; background: linear-gradient(#ffe58e 0 30%, #a66f29 31%); box-shadow: -13px 4px 0 #a66f29, 13px 4px 0 #a66f29; }
+#gunBtn.armed { background: linear-gradient(#9d6d23, #5e390f); color: #fff0a6; box-shadow: inset 0 0 0 2px #ffe28b, 0 0 18px rgba(255,211,95,.55); }
 #fuel-warning { position: absolute; left: 50%; top: 18px; translate: -50% 0; z-index: 5; display: none; padding: 11px 18px; border-radius: 999px; background: linear-gradient(135deg, rgba(124,22,22,.94), rgba(246,99,30,.90)); border: 2px solid rgba(255,235,150,.92); color: #fff6d1; font-size: 18px; font-weight: 950; letter-spacing: .04em; text-shadow: 0 2px 0 rgba(0,0,0,.35); box-shadow: 0 0 0 4px rgba(255,65,65,.18), 0 15px 36px rgba(0,0,0,.45); pointer-events: none; animation: lowFuelPulse .85s ease-in-out infinite alternate; }
 #fuel-warning.show { display: block; }
 @keyframes lowFuelPulse { from { filter: brightness(.95); scale: 1; } to { filter: brightness(1.25); scale: 1.035; } }

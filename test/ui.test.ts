@@ -43,8 +43,11 @@ const GAME_DOM_IDS = [
   'visibilityBtn',
   'dynamiteBtn',
   'teleporterBtn',
+  'gunBtn',
   'shopDynamiteBtn',
   'shopTeleporterBtn',
+  'shopGunBtn',
+  'shopBulletsBtn',
   'infoBtn',
   'info-screen',
   'info-card',
@@ -110,6 +113,17 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Buy one · $250');
     expect(markup).toContain('<kbd>T</kbd>');
     expect(markup).toContain('without unloading or servicing the ship');
+  });
+
+  it('shows permanent gun ownership, prerequisite ammunition, and keyboard/touch instructions', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+    expect(markup).toContain('data-shop-gun="true"');
+    expect(markup).toContain('Buy · $1500');
+    expect(markup).toContain('data-shop-item="bullets"');
+    expect(markup).toContain('Buy 6 · $120');
+    expect(markup).toContain('<kbd>G</kbd>, then a direction');
+    expect(markup).toContain('touch players use Arm Gun then tap a direction');
+    expect(markup).toContain('up to 8 tiles');
   });
 
   it('explains that sprinting only applies in open space', () => {

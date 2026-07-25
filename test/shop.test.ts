@@ -61,6 +61,26 @@ describe('shop action states', () => {
     expect(shop.querySelector('[data-shop-item="teleporter"] [data-shop-current]')?.textContent).toBe('Carried: 1');
   });
 
+  it('requires the permanent gun before ammunition and reports ownership and affordability', () => {
+    const state = createInitialState();
+    updateShopControls(shop, state.player, 1499, true);
+    const gun = shop.querySelector<HTMLElement>('[data-shop-gun]')!;
+    const ammo = shop.querySelector<HTMLElement>('[data-shop-item="bullets"]')!;
+    expect(gun.querySelector('[data-shop-current]')?.textContent).toBe('Not owned · Ammo: 0');
+    expect(gun.querySelector('[data-shop-status]')?.textContent).toBe('Need $1');
+    expect(gun.querySelector<HTMLButtonElement>('button')?.disabled).toBe(true);
+    expect(ammo.querySelector('[data-shop-status]')?.textContent).toBe('Gun required');
+    expect(ammo.querySelector<HTMLButtonElement>('button')?.disabled).toBe(true);
+
+    state.player.gunOwned = true;
+    state.player.bullets = 7;
+    updateShopControls(shop, state.player, 120, true);
+    expect(gun.querySelector('[data-shop-current]')?.textContent).toBe('Owned · Ammo: 7');
+    expect(gun.querySelector('[data-shop-status]')?.textContent).toBe('Owned');
+    expect(ammo.querySelector('[data-shop-current]')?.textContent).toBe('Ammo: 7 · +6 per bundle');
+    expect(ammo.querySelector<HTMLButtonElement>('button')?.disabled).toBe(false);
+  });
+
   it('disables every purchase away from the surface depot', () => {
     const state = createInitialState();
 

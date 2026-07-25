@@ -89,7 +89,8 @@ export function createInitialState(): GameState {
       keyboardRepeatMs: 105,
       touchHoldDir: null,
       lastTouchMove: 0,
-      touchRepeatMs: 130
+      touchRepeatMs: 130,
+      gunArmed: false
     },
     player: {
       x: Math.floor(WORLD_W / 2),
@@ -109,6 +110,8 @@ export function createInitialState(): GameState {
       drill: STARTING.drill,
       dynamite: STARTING.dynamite,
       teleporters: STARTING.teleporters,
+      gunOwned: STARTING.gunOwned,
+      bullets: STARTING.bullets,
       visibility: STARTING.visibility,
       cargo: []
     }

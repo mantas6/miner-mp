@@ -85,6 +85,8 @@ export interface Player {
   drill: number;
   dynamite: number;
   teleporters: number;
+  gunOwned: boolean;
+  bullets: number;
   visibility: number;
   cargo: any[];
 }
@@ -159,6 +161,7 @@ export interface InputState {
   touchHoldDir: Direction | null;
   lastTouchMove: number;
   touchRepeatMs: number;
+  gunArmed: boolean;
 }
 
 export interface GameState {

@@ -4,7 +4,7 @@ import { createAudio } from './audio';
 import { shouldAttemptAutoAudio } from './audio-permission';
 import { createInitialState, respawnPlayer } from './state';
 import { createRenderer } from './renderer';
-import { STARTING, FUEL, HULL, ENEMY, ECONOMY } from './balance';
+import { STARTING, FUEL, HULL, ENEMY, ECONOMY, LIMITS } from './balance';
 import { refuelCost, repairCost, cargoCost, tankCost, hullCost, drillCost, visibilityCost, partialFill, cargoValue, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from './hud-alerts';
 import { formatExpeditionObjective } from './objective';
@@ -29,6 +29,7 @@ import { applyPlayerUpgrade, getPlayerUpgradeProgress, updateDeveloperUpgradeCon
 import { updateShopControls } from './shop';
 import { expandReachableAir } from './enemy-exposure';
 import { encodeExploration, isTileExplored, mergeExploration, revealFootprint } from './exploration';
+import { consumeBulletForShot, gunKeyAction, resolveShot } from './weapon';
 
 const state = createInitialState();
 let audio;
@@ -88,7 +89,8 @@ function generate(){
 function resetPlayer(full=true){
   state.extractionPhase = cancelExtraction();
   state.teleportEffect = null;
-  if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.player.visibility=STARTING.visibility; state.player.dynamite=STARTING.dynamite; state.player.teleporters=STARTING.teleporters; state.exploredTiles.clear(); state.stats = {...DEFAULT_STATS}; saveProgress(); }
+  state.input.gunArmed = false;
+  if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.player.visibility=STARTING.visibility; state.player.dynamite=STARTING.dynamite; state.player.teleporters=STARTING.teleporters; state.player.gunOwned=STARTING.gunOwned; state.player.bullets=STARTING.bullets; state.exploredTiles.clear(); state.stats = {...DEFAULT_STATS}; saveProgress(); }
   respawnPlayer(state.player);
   revealAtPlayer();
   state.camX = Math.max(0, state.player.x - Math.floor(W/2));
@@ -193,6 +195,7 @@ function startOnline(url: string){
         if (msg.type === 'enemyDamage' && isPairedHost() && msg.by === 'guest' && msg.amount > 0) {
           damageEnemy(state.enemies.find(e => e.id === msg.id), msg.amount, 'guest');
         }
+        if (msg.type === 'enemyTileShot' && isPairedHost() && msg.by === 'guest') destroyDormantEnemy(msg.x, msg.y, 'guest');
         if (msg.type === 'wakeNear' && isPairedHost()) wakeEnemiesNear(msg.x, msg.y);
         if (msg.type === 'bounty' && isGuestEnemyReplica()) creditEnemyBounty(msg.amount);
         if (msg.type === 'died') state.remotePlayers = [];
@@ -244,6 +247,19 @@ function spawnExplosion(x,y){
     const a = Math.random() * Math.PI * 2;
     const sp = .035 + Math.random() * .16;
     state.particles.push({x:x+0.5,y:y+0.5,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-.04,life:34+Math.random()*34,color:colors[i%colors.length],size:.045+Math.random()*.085});
+  }
+}
+function spawnShotTrail(path: {x: number; y: number}[]){
+  const stride = state.reducedMotion ? 3 : 1;
+  for (let index=0; index<path.length; index+=stride) {
+    const point = path[index];
+    state.particles.push({
+      x:point.x+.46, y:point.y+.46,
+      vx:state.reducedMotion ? 0 : (Math.random()-.5)*.025,
+      vy:state.reducedMotion ? 0 : (Math.random()-.5)*.025,
+      life:state.reducedMotion ? 7 : 15,
+      color:'#ffe58a', size:.09
+    });
   }
 }
 function enemyAt(x,y){
@@ -345,6 +361,17 @@ function damageEnemyTile(x,y){
   }
   return true;
 }
+function destroyDormantEnemy(x: number, y: number, killer: 'host' | 'guest'){
+  if (isGuestEnemyReplica()) return false;
+  if (get(x,y).type !== 'enemy') return false;
+  set(x,y,{type:'air'});
+  spawnExplosion(x,y);
+  const bounty = enemyBounty(y);
+  if (killer === 'guest') net?.send({type:'bounty', amount:bounty});
+  else creditEnemyBounty(bounty);
+  wakeEnemiesNear(x,y);
+  return true;
+}
 function updateEnemies(){
   if (isGuestEnemyReplica()) return;
   if (state.gameOver || !state.introStarted) return;
@@ -419,6 +446,7 @@ function restartGame(){
   state.input.keyImpulse = null;
   state.input.sprintDirection = null;
   state.input.touchHoldDir = null;
+  state.input.gunArmed = false;
   state.input.lastKeyboardMove = 0;
   state.input.lastTouchMove = 0;
   // An online death/reset only replaces this miner's ship; the shared world
@@ -433,6 +461,7 @@ function restartGame(){
 function gameOver(msg='Game over. Tap anywhere or press R to restart.'){
   if (state.gameOver) return;
   state.gameOver = true;
+  state.input.gunArmed = false;
   state.teleportEffect = null;
   state.extractionPhase = cancelExtraction();
   state.stats.deaths++;
@@ -573,6 +602,64 @@ function detonateDynamite(){
 function buyTeleporter(){
   spend(ECONOMY.teleporter.price, () => state.player.teleporters++, 'Teleporter loaded. Press T or Teleport underground.');
 }
+function buyGun(){
+  if (state.player.gunOwned) return toast('Linebreaker Gun is already installed.');
+  spend(ECONOMY.gun.price, () => { state.player.gunOwned = true; }, 'Linebreaker Gun installed permanently. Buy ammunition before descending.');
+}
+function buyBullets(){
+  const p = state.player;
+  if (!p.gunOwned) return toast('Buy the Linebreaker Gun before buying ammunition.');
+  if (p.bullets + ECONOMY.gun.ammoBundle > LIMITS.bullets.max) return toast('Ammunition storage is full.');
+  spend(ECONOMY.gun.ammoPrice, () => { p.bullets += ECONOMY.gun.ammoBundle; }, `${ECONOMY.gun.ammoBundle} bullets loaded.`);
+}
+function setGunArmed(armed: boolean){
+  const p = state.player;
+  if (armed) {
+    if (state.gameOver) return;
+    if (atSurface()) return toast('The gun can only be fired underground.');
+    if (!p.gunOwned) { audio.alarm(); return toast('Buy the permanent Linebreaker Gun at the surface shop.'); }
+    if (p.bullets <= 0) { audio.alarm(); return toast('No ammunition. Buy bullet bundles at the surface shop.'); }
+    keys.clear();
+    state.input.keyImpulse = null;
+    state.input.touchHoldDir = null;
+    state.input.gunArmed = true;
+    toast('GUN ARMED — press or tap a direction. G or Escape cancels.');
+    return;
+  }
+  if (state.input.gunArmed) toast('Gun aim cancelled. No bullet used.');
+  state.input.gunArmed = false;
+}
+function fireGun(direction: [number, number]){
+  const p = state.player;
+  if (!state.input.gunArmed || state.gameOver || atSurface() || !p.gunOwned || p.bullets <= 0) return false;
+  const shot = resolveShot(state.world, p.x, p.y, direction, ECONOMY.gun.range, state.enemies.filter(enemy => enemy.alive));
+  if (!shot) return false;
+  if (!consumeBulletForShot(p, state.input.gunArmed, direction)) return false;
+  state.input.gunArmed = false;
+  state.input.touchHoldDir = null;
+  p.drillDx = direction[0]; p.drillDy = direction[1];
+  if (direction[0]) p.facing = direction[0];
+  spawnShotTrail(shot.path);
+  audio.blip(520, .08, 'square', .055, -180);
+  const target = shot.target;
+  if (target?.kind === 'enemy') {
+    damageEnemy(state.enemies.find(enemy => enemy.id === target.enemy.id), ECONOMY.gun.damage);
+    toast(`Direct enemy hit. ${p.bullets} bullets remain.`);
+  } else if (target?.kind === 'tile') {
+    if (target.tile.type === 'enemy') {
+      if (isGuestEnemyReplica()) net?.send({type:'enemyTileShot', x:target.x, y:target.y, by:'guest'});
+      else destroyDormantEnemy(target.x, target.y, 'host');
+    } else {
+      set(target.x,target.y,{type:'air'});
+      wakeEnemiesNear(target.x,target.y);
+      spawnDust(target.x,target.y,'#ffe58a',state.reducedMotion ? 3 : 12);
+    }
+    toast(`Shot destroyed ${target.tile.type}. No mining rewards. ${p.bullets} bullets remain.`);
+  } else if (shot.outcome === 'blocked') toast(`Shot blocked by protected terrain. ${p.bullets} bullets remain.`);
+  else toast(`Shot missed within ${ECONOMY.gun.range}-tile range. ${p.bullets} bullets remain.`);
+  saveProgress();
+  return true;
+}
 function useTeleporter(){
   const p = state.player;
   if (state.gameOver) return;
@@ -587,6 +674,7 @@ function useTeleporter(){
   state.teleportEffect = createTeleportEffect(originScreenX, originScreenY, p.x, p.y, reducedMotion);
   state.input.keyImpulse = null;
   state.input.touchHoldDir = null;
+  state.input.gunArmed = false;
   state.camX = Math.max(0, p.x - Math.floor(W/2));
   state.camY = 0;
   saveProgress();
@@ -626,8 +714,11 @@ function bindButtons(){
   ui.visibilityBtn.onclick = () => buyPlayerUpgrade('visibility', visibilityCost(state.player), 'Sensor footprint expanded.');
   ui.dynamiteBtn.onclick = detonateDynamite;
   ui.teleporterBtn.onclick = useTeleporter;
+  ui.gunBtn.onclick = () => setGunArmed(!state.input.gunArmed);
   ui.shopDynamiteBtn.onclick = buyDynamite;
   ui.shopTeleporterBtn.onclick = buyTeleporter;
+  ui.shopGunBtn.onclick = buyGun;
+  ui.shopBulletsBtn.onclick = buyBullets;
   ui.soundBtn.addEventListener('pointerdown', e => e.stopPropagation());
   ui.soundBtn.onclick = e => { e.stopPropagation(); audio.toggle(); };
   ui.infoBtn.onclick = e => { e.stopPropagation(); openInfoScreen(); };
@@ -659,6 +750,7 @@ function bindButtons(){
 function openShopScreen(){
   if (!atSurface()) return toast('Shop is at the surface depot.');
   updateShopControls(ui.shopCard, state.player, state.cash, true);
+  state.input.gunArmed = false;
   ui.shopScreen.classList.remove('hidden');
   ui.shopCard.scrollTop = 0;
   ui.shopCloseBtn.focus({preventScroll:true});
@@ -708,11 +800,16 @@ function updateButtonStates(){
   ui.shopBtn.hidden = !surf;
   ui.dynamiteBtn.hidden = surf;
   ui.teleporterBtn.hidden = surf;
+  ui.gunBtn.hidden = surf || !p.gunOwned;
   ui.sell.disabled = !surf || currentCargoValue() <= 0;
   ui.dynamiteBtn.textContent = `Detonate (E) · x${p.dynamite}`;
   ui.teleporterBtn.textContent = `Teleport (T) · x${p.teleporters}`;
+  ui.gunBtn.textContent = state.input.gunArmed ? `AIMING — tap direction · x${p.bullets}` : `Arm Gun (G) · x${p.bullets}`;
+  ui.gunBtn.classList.toggle('armed', state.input.gunArmed);
+  ui.gunBtn.setAttribute('aria-pressed', String(state.input.gunArmed));
   ui.dynamiteBtn.disabled = surf || p.dynamite <= 0 || state.gameOver;
   ui.teleporterBtn.disabled = surf || p.teleporters <= 0 || state.gameOver;
+  ui.gunBtn.disabled = surf || !p.gunOwned || p.bullets <= 0 || state.gameOver;
   if (!ui.shopScreen.classList.contains('hidden')) updateShopControls(ui.shopCard, p, state.cash, surf);
 }
 const movementKeys = {
@@ -768,6 +865,7 @@ function input(){
 }
 function moveFromTouch(dx, dy, immediate=true) {
   if (!state.introStarted) return;
+  if (state.input.gunArmed) { fireGun([dx, dy]); return; }
   if (immediate) state.input.lastTouchMove = performance.now();
   move(dx, dy);
 }
@@ -801,11 +899,12 @@ function directionFromPoint(clientX: number, clientY: number, fallbackStart: {x:
   return adx > ady * 0.75 ? [dx > 0 ? 1 : -1, 0] : [0, dy > 0 ? 1 : -1];
 }
 function bindTouchControls(){
-  let start = null, tracking = false;
+  let start = null, tracking = false, aimedGesture = false;
   gamePanel.addEventListener('pointerdown', e => {
     const target = e.target as Element;
     if (target.closest && target.closest('button, #info-screen, #lobby-screen')) return;
     tracking = true;
+    aimedGesture = state.input.gunArmed;
     start = {x: e.clientX, y: e.clientY};
     const dir = directionFromPoint(e.clientX, e.clientY);
     state.input.touchHoldDir = dir;
@@ -826,11 +925,12 @@ function bindTouchControls(){
     const dir = directionFromPoint(e.clientX, e.clientY, start);
     state.input.touchHoldDir = null;
     // Keep quick flicks/swipes working, but taps already move on pointerdown.
-    if (dir && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 28) moveFromTouch(dir[0], dir[1]);
+    if (dir && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 28 && !aimedGesture) moveFromTouch(dir[0], dir[1]);
     start = null;
+    aimedGesture = false;
     e.preventDefault();
   });
-  gamePanel.addEventListener('pointercancel', () => { tracking = false; state.input.touchHoldDir = null; start = null; });
+  gamePanel.addEventListener('pointercancel', () => { tracking = false; aimedGesture = false; state.input.touchHoldDir = null; start = null; });
   gamePanel.addEventListener('touchmove', e => e.preventDefault(), {passive:false});
 }
 function updateAnimation(){
@@ -992,6 +1092,10 @@ function handleKeyDown(e){
     keys.add(key);
     return;
   }
+  const gunAction = gunKeyAction(state.input.gunArmed, key);
+  if (gunAction === 'arm') { if (!e.repeat) setGunArmed(true); e.preventDefault(); e.stopPropagation(); return; }
+  if (gunAction === 'cancel') { if (!e.repeat) setGunArmed(false); e.preventDefault(); e.stopPropagation(); return; }
+  if (gunAction === 'fire' && dir) { if (!e.repeat) fireGun(dir as [number, number]); e.preventDefault(); e.stopPropagation(); return; }
   if (dir) {
     if (e.shiftKey) keys.add('shift');
     if (!keys.has(key) && !e.repeat) state.input.keyImpulse = dir;

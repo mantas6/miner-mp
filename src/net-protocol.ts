@@ -83,6 +83,14 @@ export interface EnemyDamageMsg {
   by: 'host' | 'guest';
 }
 
+/** Guest -> host: destroy a dormant enemy tile with one valid gun shot. */
+export interface EnemyTileShotMsg {
+  type: 'enemyTileShot';
+  x: number;
+  y: number;
+  by: 'guest';
+}
+
 /** Host -> guest: credit a guest kill locally. */
 export interface BountyMsg {
   type: 'bounty';
@@ -137,6 +145,7 @@ export type NetMessage =
   | EnemySpawnMsg
   | EnemyDeadMsg
   | EnemyDamageMsg
+  | EnemyTileShotMsg
   | BountyMsg
   | DiedMsg
   | RespawnedMsg
@@ -268,6 +277,10 @@ export function validateMessage(v: unknown): NetMessage | null {
     case 'enemyDamage':
       return isInt(v.id) && isNum(v.amount) && (v.by === 'host' || v.by === 'guest')
         ? (v as unknown as EnemyDamageMsg)
+        : null;
+    case 'enemyTileShot':
+      return isNum(v.x) && isNum(v.y) && v.by === 'guest'
+        ? (v as unknown as EnemyTileShotMsg)
         : null;
     case 'bounty':
       return isNum(v.amount) ? (v as unknown as BountyMsg) : null;

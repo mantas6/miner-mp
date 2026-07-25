@@ -40,6 +40,8 @@ export function load(state) {
     p.drill = numeric(save.drill, p.drill, LIMITS.drill.min, LIMITS.drill.max);
     p.dynamite = Math.floor(numeric(save.dynamite, p.dynamite, LIMITS.dynamite.min, LIMITS.dynamite.max));
     p.teleporters = Math.floor(numeric(save.teleporters, p.teleporters, LIMITS.teleporters.min, LIMITS.teleporters.max));
+    p.gunOwned = save.gunOwned === true;
+    p.bullets = Math.floor(numeric(save.bullets, p.bullets, LIMITS.bullets.min, LIMITS.bullets.max));
     p.visibility = Math.floor(numeric(save.visibility, p.visibility, LIMITS.visibility.min, LIMITS.visibility.max));
     mergeExploration(state.exploredTiles, save.explored);
     state.stats = {...DEFAULT_STATS, ...(save.stats || {})};
@@ -62,6 +64,8 @@ export function save(state) {
       drill: p.drill,
       dynamite: p.dynamite,
       teleporters: p.teleporters,
+      gunOwned: p.gunOwned,
+      bullets: p.bullets,
       visibility: p.visibility,
       explored: encodeExploration(state.exploredTiles),
       stats: state.stats,

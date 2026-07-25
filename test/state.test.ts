@@ -13,6 +13,8 @@ describe('starting cargo capacity', () => {
     expect(state.player.cargo).toHaveLength(0);
     expect(state.player.dynamite).toBe(0);
     expect(state.player.teleporters).toBe(0);
+    expect(state.player.gunOwned).toBe(false);
+    expect(state.player.bullets).toBe(0);
     expect(state.extractionPhase).toBe('none');
     expect(state.stats.motherlodeExtractions).toBe(0);
     expect(state.input.sprintDirection).toBeNull();
@@ -40,6 +42,8 @@ describe('player respawn', () => {
     player.drill += ECONOMY.drill.step;
     player.dynamite = 2;
     player.teleporters = 1;
+    player.gunOwned = true;
+    player.bullets = 9;
     player.cargo = [{ name: 'Coal' }];
 
     respawnPlayer(player);
@@ -54,6 +58,8 @@ describe('player respawn', () => {
       drill: STARTING.drill + ECONOMY.drill.step,
       dynamite: 2,
       teleporters: 1,
+      gunOwned: true,
+      bullets: 9,
       cargo: []
     });
   });

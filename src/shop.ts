@@ -1,4 +1,4 @@
-import { ECONOMY } from './balance';
+import { ECONOMY, LIMITS } from './balance';
 import { cargoCost, drillCost, hullCost, refuelCost, repairCost, tankCost, visibilityCost } from './economy';
 import type { Player } from './types';
 import { getPlayerUpgradeProgress, type PlayerUpgradeId } from './upgrades';
@@ -75,4 +75,24 @@ export function updateShopControls(container: HTMLElement, player: Player, cash:
     if (button) button.textContent = `Buy one · $${item.price}`;
     setPurchaseState(button ?? null, status ?? null, cash, item.price, atSurface);
   }
+
+  const gun = container.querySelector<HTMLElement>('[data-shop-gun]');
+  const gunCurrent = gun?.querySelector<HTMLElement>('[data-shop-current]');
+  const gunButton = gun?.querySelector<HTMLButtonElement>('button');
+  const gunStatus = gun?.querySelector<HTMLElement>('[data-shop-status]');
+  if (gunCurrent) gunCurrent.textContent = player.gunOwned ? `Owned · Ammo: ${player.bullets}` : 'Not owned · Ammo: 0';
+  if (gunButton) gunButton.textContent = player.gunOwned ? 'Installed' : `Buy · $${ECONOMY.gun.price}`;
+  setPurchaseState(gunButton ?? null, gunStatus ?? null, cash, ECONOMY.gun.price, atSurface, player.gunOwned);
+  if (player.gunOwned && gunStatus) gunStatus.textContent = atSurface ? 'Owned' : 'Surface depot only';
+
+  const ammo = container.querySelector<HTMLElement>('[data-shop-item="bullets"]');
+  const ammoCurrent = ammo?.querySelector<HTMLElement>('[data-shop-current]');
+  const ammoButton = ammo?.querySelector<HTMLButtonElement>('button');
+  const ammoStatus = ammo?.querySelector<HTMLElement>('[data-shop-status]');
+  if (ammoCurrent) ammoCurrent.textContent = `Ammo: ${player.bullets} · +${ECONOMY.gun.ammoBundle} per bundle`;
+  if (ammoButton) ammoButton.textContent = `Buy ${ECONOMY.gun.ammoBundle} · $${ECONOMY.gun.ammoPrice}`;
+  const ammoUnavailable = !player.gunOwned || player.bullets + ECONOMY.gun.ammoBundle > LIMITS.bullets.max;
+  setPurchaseState(ammoButton ?? null, ammoStatus ?? null, cash, ECONOMY.gun.ammoPrice, atSurface, ammoUnavailable);
+  if (atSurface && !player.gunOwned && ammoStatus) ammoStatus.textContent = 'Gun required';
+  else if (atSurface && player.bullets + ECONOMY.gun.ammoBundle > LIMITS.bullets.max && ammoStatus) ammoStatus.textContent = 'Ammo full';
 }

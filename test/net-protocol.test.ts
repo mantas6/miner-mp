@@ -59,6 +59,7 @@ const messages: NetMessage[] = [
   { type: 'enemySpawn', id: 7, x: 12, y: 30, hp: 6, maxHp: 6 },
   { type: 'enemyDead', id: 7, bounty: 42, killerIsGuest: true },
   { type: 'enemyDamage', id: 7, amount: 3, by: 'guest' },
+  { type: 'enemyTileShot', x: 12, y: 30, by: 'guest' },
   { type: 'bounty', amount: 42 },
   { type: 'died' },
   { type: 'respawned', x: 45, y: 2 },
@@ -131,6 +132,11 @@ describe('decodeMessage / validateMessage rejection', () => {
 
   it('rejects enemyDamage with an invalid "by"', () => {
     expect(validateMessage({ type: 'enemyDamage', id: 1, amount: 2, by: 'server' })).toBeNull();
+  });
+
+  it('validates only guest-attributed dormant enemy shots', () => {
+    expect(validateMessage({type:'enemyTileShot', x:12, y:30, by:'guest'})).toEqual({type:'enemyTileShot', x:12, y:30, by:'guest'});
+    expect(validateMessage({type:'enemyTileShot', x:12, y:30, by:'host'})).toBeNull();
   });
 
   it('rejects a non-integer enemy id', () => {

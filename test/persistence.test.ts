@@ -172,6 +172,32 @@ describe('teleporter persistence', () => {
   });
 });
 
+describe('gun persistence', () => {
+  it('round-trips permanent ownership and consumable ammunition', () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value)
+    });
+    const state = createInitialState();
+    state.player.gunOwned = true;
+    state.player.bullets = 17;
+    save(state);
+
+    const restored = createInitialState();
+    load(restored);
+    expect(restored.player).toMatchObject({gunOwned:true, bullets:17});
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({gunOwned:true, bullets:17});
+  });
+
+  it('gives legacy saves no gun or ammunition', () => {
+    vi.stubGlobal('localStorage', {getItem: () => JSON.stringify({cash:90}), setItem: vi.fn()});
+    const state = createInitialState();
+    load(state);
+    expect(state.player).toMatchObject({gunOwned:false, bullets:0});
+  });
+});
+
 describe('fog exploration persistence', () => {
   it('round-trips compact explored ranges and sensor level', () => {
     const stored = new Map<string, string>();
