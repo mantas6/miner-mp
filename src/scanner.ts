@@ -35,7 +35,7 @@ export function formatTerrainScanner({ tile, direction, activeEnemy = false }: T
     case 'hazard':
       return `${prefix} magma — hull risk, ${hitsLabel(tile.hp)} to vent.`;
     case 'enemy':
-      return `${prefix} dormant fiend — drill with caution, ${hitsLabel(tile.hp)}.`;
+      return `${prefix} dirt — drillable, ${hitsLabel(tile.hp)}.`;
     case 'artifact':
       return `${prefix} RARE ${tile.artifact.name} — $${tile.artifact.value} CASH NOW, ${hitsLabel(tile.hp)}; uses no cargo.`;
     case 'motherlode':

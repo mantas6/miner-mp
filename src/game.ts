@@ -27,6 +27,7 @@ import { claimArtifact } from './artifacts';
 import type { Enemy } from './types';
 import { applyPlayerUpgrade, getPlayerUpgradeProgress, updateDeveloperUpgradeControls, type PlayerUpgradeId } from './upgrades';
 import { updateShopControls } from './shop';
+import { expandReachableAir } from './enemy-exposure';
 
 const state = createInitialState();
 let audio;
@@ -37,6 +38,7 @@ let toastTimer = 0;
 let net: NetClient | null = null;
 let connectionIssue: string | null = null;
 let tileDiff: TileDiff = {};
+const reachableAir = new Set<string>();
 
 state.stats = {...DEFAULT_STATS};
 
@@ -72,6 +74,7 @@ function generate(){
   state.world = Array.from({length: WORLD_H}, (_,y)=>Array.from({length: WORLD_W},(_,x)=>makeTile(x,y)));
   tileDiff = {};
   resetPlayer(false);
+  resetEnemyExposure();
 }
 function resetPlayer(full=true){
   state.extractionPhase = cancelExtraction();
@@ -118,6 +121,7 @@ function startOnline(url: string){
       },
       onPaired(role){
         state.role = role;
+        resetEnemyExposure();
         if (role === 'host') {
           setConnectionStatus('Host - waiting for player');
           return;
@@ -136,6 +140,7 @@ function startOnline(url: string){
         if (state.role === 'guest') {
           state.role = 'host';
           enemyIdCounter = nextEnemyId(state.enemies);
+          resetEnemyExposure();
           setConnectionStatus('Host - waiting for player');
           return;
         }
@@ -186,6 +191,8 @@ function startOnline(url: string){
         state.connected = false;
         state.role = null;
         state.remotePlayers = [];
+        enemyIdCounter = nextEnemyId(state.enemies);
+        resetEnemyExposure();
         setConnectionStatus(connectionIssue || 'Disconnected');
       }
     }
@@ -240,8 +247,23 @@ function wakeEnemiesNear(x,y){
     if (net?.paired) net.send({type:'wakeNear', x, y});
     return;
   }
-  for (let yy=y-1; yy<=y+1; yy++) for (let xx=x-1; xx<=x+1; xx++) {
-    if (Math.abs(xx-x) + Math.abs(yy-y) <= 1) wakeEnemy(xx, yy);
+  let seeds = [{x, y}];
+  while (seeds.length) {
+    const exposed = expandReachableAir(state.world, reachableAir, seeds);
+    for (const enemy of exposed) wakeEnemy(enemy.x, enemy.y);
+    seeds = exposed;
+  }
+}
+function resetEnemyExposure(){
+  reachableAir.clear();
+  if (isGuestEnemyReplica()) return;
+  let seeds = [{x: state.player.x, y: state.player.y}];
+  let forceSeeds = true;
+  while (seeds.length) {
+    const exposed = expandReachableAir(state.world, reachableAir, seeds, forceSeeds);
+    for (const enemy of exposed) wakeEnemy(enemy.x, enemy.y);
+    seeds = exposed;
+    forceSeeds = false;
   }
 }
 function enemyBounty(y){ return ENEMY.bounty.base + Math.floor(y / ENEMY.bounty.depthDivisor) * ENEMY.bounty.step; }
@@ -426,7 +448,7 @@ function move(dx,dy,sprinting=false){
   if (tile.type === 'rock') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.2; damage(HULL.rockBump); useFuel(dig(0)); spawnDust(nx, ny, '#444857', 8); audio.bump(); toast('Solid rock blocks the drill.'); return; }
   if (tile.type === 'enemy') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; useFuel(dig(FUEL.dig.enemy)); damageEnemyTile(nx, ny); return; }
   if (tile.type === 'hazard') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; tile.hp -= p.drill; useFuel(dig(FUEL.dig.hazard)); damage(HULL.hazardBase + Math.floor(ny/HULL.hazardDepthDivisor)); spawnDust(nx, ny, '#ff5f24', 18); audio.alarm(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); spawnExplosion(nx,ny); wakeEnemiesNear(nx,ny); toast('Magma pocket vented — hull scorched!'); } else { set(nx,ny,tile); toast(`Venting magma... ${Math.ceil(tile.hp)} hits left`); } return; }
-  if (tile.type === 'motherlode') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; useFuel(dig(FUEL.dig.artifact)); spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); const extraction = beginExtraction(state.extractionPhase); state.extractionPhase = extraction.phase; if (extraction.changed) { addCash(ECONOMY.artifactReward); state.stats.motherlodeClaims++; saveProgress(); } spawnExplosion(nx,ny); toast('Motherlode core secured +$5000! Return it to the depot alive.'); } else { set(nx,ny,tile); toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); } return; }
+  if (tile.type === 'motherlode') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; useFuel(dig(FUEL.dig.artifact)); spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); wakeEnemiesNear(nx,ny); const extraction = beginExtraction(state.extractionPhase); state.extractionPhase = extraction.phase; if (extraction.changed) { addCash(ECONOMY.artifactReward); state.stats.motherlodeClaims++; saveProgress(); } spawnExplosion(nx,ny); toast('Motherlode core secured +$5000! Return it to the depot alive.'); } else { set(nx,ny,tile); toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); } return; }
   if (tile.type !== 'air') {
     p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65;
     tile.hp -= p.drill;
@@ -516,6 +538,7 @@ function detonateDynamite(){
   const targets = getDynamiteBlastTargets(state.world, p.x, p.y, ECONOMY.dynamite.radius);
   p.dynamite--;
   for (const {x, y} of targets) set(x, y, {type:'air'});
+  wakeEnemiesNear(p.x, p.y);
   spawnExplosion(p.x, p.y);
   audio.noise(.32, .12, 520);
   saveProgress();

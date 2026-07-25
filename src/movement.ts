@@ -1,7 +1,11 @@
 import { SPRINT } from './balance';
 
+export function isTraversableTerrain(tileType: string): boolean {
+  return tileType === 'air';
+}
+
 export function isOpenSpaceDestination(destinationChanged: boolean, tileType: string, activeEnemy: boolean): boolean {
-  return destinationChanged && tileType === 'air' && !activeEnemy;
+  return destinationChanged && isTraversableTerrain(tileType) && !activeEnemy;
 }
 
 export function keyboardMovementRepeatMs(normalRepeatMs: number, sprintRequested: boolean, destinationOpen: boolean): number {

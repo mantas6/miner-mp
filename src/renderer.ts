@@ -279,6 +279,7 @@ export function createRenderer({ state, get, rand }) {
   }
   function drawTile(t, wx, wy, sx, sy) {
     const ctx = drawingContext;
+    if (t.type === 'enemy') t = {type: 'dirt', hp: t.hp, maxHp: t.maxHp};
     const pad = 1.5; // overdraw slightly so adjacent cells have no visible seams
     if(t.type==='air') {
       if (wy >= SURFACE_HEIGHT){
@@ -315,16 +316,6 @@ export function createRenderer({ state, get, rand }) {
       if (artifact) { ctx.fillStyle = '#fff2a6'; ctx.font = `bold ${Math.floor(TILE*.18)}px sans-serif`; ctx.textAlign='center'; ctx.fillText('CORE', sx+TILE*.5, sy+TILE*.55); ctx.textAlign='left'; }
       return;
     }
-    if (t.type === 'enemy') {
-      const g = ctx.createRadialGradient(sx+TILE*.46, sy+TILE*.42, TILE*.08, sx+TILE*.5, sy+TILE*.5, TILE*.55);
-      g.addColorStop(0, '#b7ff5a'); g.addColorStop(.35, '#42612a'); g.addColorStop(1, '#1d120d');
-      ctx.fillStyle = g; ctx.fillRect(sx-pad,sy-pad,TILE+pad*2,TILE+pad*2);
-      ctx.strokeStyle = 'rgba(146,255,85,.55)'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.ellipse(sx+TILE*.5, sy+TILE*.5, TILE*.26, TILE*.32, rand(wx,wy)*.6, 0, Math.PI*2); ctx.stroke();
-      ctx.fillStyle = '#10180d'; ctx.beginPath(); ctx.arc(sx+TILE*.42, sy+TILE*.44, TILE*.04, 0, Math.PI*2); ctx.arc(sx+TILE*.58, sy+TILE*.44, TILE*.04, 0, Math.PI*2); ctx.fill();
-      return;
-    }
-
     // Smooth neighbor-averaged noise keeps color variation without obvious square patches.
     const n1 = (rand(wx,wy)+rand(wx-1,wy)+rand(wx+1,wy)+rand(wx,wy-1)+rand(wx,wy+1)) / 5;
     const n2 = (rand(wx*2+11,wy*2-7)+rand((wx-1)*2+11,wy*2-7)+rand((wx+1)*2+11,wy*2-7)+rand(wx*2+11,(wy-1)*2-7)+rand(wx*2+11,(wy+1)*2-7)) / 5;
@@ -403,11 +394,6 @@ export function createRenderer({ state, get, rand }) {
     if (t.type === 'hazard' || t.type === 'artifact' || t.type === 'motherlode') {
       ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64, TILE*.055);
       ctx.fillStyle=t.type === 'hazard'?'#ff7145':t.type === 'artifact'?t.artifact.color:'#ffe66d'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64*Math.max(0,t.hp/t.maxHp), TILE*.055);
-      return;
-    }
-    if (t.type === 'enemy') {
-      ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(sx+TILE*.20, sy+TILE*.12, TILE*.60, TILE*.055);
-      ctx.fillStyle = '#8cff58'; ctx.fillRect(sx+TILE*.20, sy+TILE*.12, TILE*.60*Math.max(0,t.hp/t.maxHp), TILE*.055);
       return;
     }
     if (t.type !== 'air') {

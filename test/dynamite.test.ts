@@ -44,6 +44,17 @@ describe('dynamite blast targets', () => {
     expect(world[5][4]).toEqual({type: 'air'});
   });
 
+  it('includes directly hit dormant enemies among destroyed terrain', () => {
+    const world: Tile[][] = Array.from({length: 9}, () => Array.from({length: 9}, dirt));
+    world[5][6] = {type: 'enemy', hp: 4, maxHp: 4};
+
+    const targets = getDynamiteBlastTargets(world, 5, 5, 2);
+    for (const {x, y} of targets) world[y][x] = {type: 'air'};
+
+    expect(targets).toContainEqual({x: 6, y: 5});
+    expect(world[5][6]).toEqual({type: 'air'});
+  });
+
   it('preserves the Motherlode, protected surface/base tiles, and world boundaries', () => {
     const world: Tile[][] = Array.from({length: 9}, () => Array.from({length: 9}, dirt));
     world[5][5] = {type: 'motherlode', hp: 24, maxHp: 24};

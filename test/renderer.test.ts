@@ -170,6 +170,24 @@ describe('terrain cache lifecycle', () => {
     expect(mocks.terrainContext.createRadialGradient).toHaveBeenCalled();
   });
 
+  it('renders a buried enemy as ordinary dirt', () => {
+    const state = {
+      world: {}, camX: 10, camY: 20, tick: 0, gameOver: false,
+      particles: [], enemies: [], remotePlayers: [],
+      player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+    const renderer = createRenderer({
+      state,
+      get: () => ({type:'enemy', hp:4, maxHp:4}),
+      rand: () => 0
+    });
+
+    renderer.draw();
+
+    expect(mocks.terrainContext.createLinearGradient).toHaveBeenCalled();
+    expect(mocks.terrainContext.createRadialGradient).not.toHaveBeenCalled();
+  });
+
   it('renders departure and arrival feedback across a camera jump', () => {
     const state = {
       world: {}, camX: 37.5, camY: 0, tick: 0, gameOver: false,
