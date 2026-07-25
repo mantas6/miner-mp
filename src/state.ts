@@ -80,9 +80,11 @@ export function createInitialState(): GameState {
     connected: false,
     remotePlayers: [],
     teleportEffect: null,
+    reducedMotion: false,
     exploredTiles: new Set<number>(),
     input: {
       keyImpulse: null,
+      sprintDirection: null,
       lastKeyboardMove: 0,
       keyboardRepeatMs: 105,
       touchHoldDir: null,

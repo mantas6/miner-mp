@@ -20,7 +20,7 @@ import { formatExtractionPresentation } from './extraction-presentation';
 import { createNet, type NetClient } from './net';
 import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, mergeWorldSync, nextEnemyId, playerStateFrom, remotePlayerFrom, worldSyncFrom, type EnemySnapshotEntry, type TileDiff } from './net-protocol';
 import { loadServerUrl, saveServerUrl } from './multiplayer-settings';
-import { fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs } from './movement';
+import { activeSprintDirection, fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs } from './movement';
 import { getDynamiteBlastTargets } from './dynamite';
 import { advanceTeleportEffect, createTeleportEffect, teleportPlayerToSurface } from './teleporter';
 import { claimArtifact } from './artifacts';
@@ -417,6 +417,7 @@ function restartGame(){
   const died = state.gameOver;
   keys.clear();
   state.input.keyImpulse = null;
+  state.input.sprintDirection = null;
   state.input.touchHoldDir = null;
   state.input.lastKeyboardMove = 0;
   state.input.lastTouchMove = 0;
@@ -739,6 +740,7 @@ function requestReset(){
 }
 function input(){
   state.tick++;
+  state.input.sprintDirection = null;
   if (!state.introStarted) return;
   const now = performance.now();
   const sprinting = keys.has('shift');
@@ -746,11 +748,13 @@ function input(){
   if (impulse) {
     state.input.keyImpulse = null;
     state.input.lastKeyboardMove = now;
+    state.input.sprintDirection = activeSprintDirection(!state.gameOver && sprinting, isOpenMovementDestination(impulse[0], impulse[1]), impulse[0], impulse[1]);
     move(impulse[0], impulse[1], sprinting);
     return;
   }
   const held = heldKeyDirection();
   const destinationOpen = held ? isOpenMovementDestination(held[0], held[1]) : false;
+  if (held) state.input.sprintDirection = activeSprintDirection(!state.gameOver && sprinting, destinationOpen, held[0], held[1]);
   if (held && now - state.input.lastKeyboardMove >= keyboardMovementRepeatMs(state.input.keyboardRepeatMs, sprinting, destinationOpen)) {
     state.input.lastKeyboardMove = now;
     move(held[0], held[1], sprinting);
@@ -1007,6 +1011,7 @@ function handleKeyUp(e){
 }
 export function initGame(){
   audio = createAudio(ui, toast);
+  state.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   renderer = createRenderer({ state, get, rand });
   loadProgress();
   ui.serverUrl.value = loadServerUrl(ui.serverUrl.value);

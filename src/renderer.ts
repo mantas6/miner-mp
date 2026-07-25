@@ -142,7 +142,7 @@ export function createRenderer({ state, get, rand }) {
     ctx.translate(sx+TILE*.5, sy+TILE*.5 + Math.sin(state.tick*.45)*p.bob*TILE*.08);
     ctx.rotate((p.x - p.drawX) * -0.12 + (p.y - p.drawY) * 0.08 + (p.drillDy > 0 ? p.drillAnim * 0.10 : 0));
     ctx.scale(p.facing, 1);
-    drawShip(p);
+    drawShip(p, false, state.input?.sprintDirection);
     ctx.restore();
     drawTeleportEffect(camX, camY, true);
     drawPartnerIndicators(camX, camY, sx + TILE*.5, sy + TILE*.5);
@@ -555,10 +555,11 @@ export function createRenderer({ state, get, rand }) {
       ctx.fill();
     }
   }
-  function drawShip(p, remote=false) {
+  function drawShip(p, remote=false, sprintDirection: [number, number] | null = null) {
     const dead = !remote && state.gameOver;
     const wobble = Math.sin(state.tick*.22) * p.bob * TILE*.025;
     ctx.translate(0, wobble);
+    if (!dead && sprintDirection) drawBoostFlames(sprintDirection, p.facing);
     // engine flame + drill pulse
     const flame = TILE*(.22 + Math.sin(state.tick*.55)*.04);
     ctx.fillStyle = dead ? '#433' : '#ffb02e'; ctx.beginPath(); ctx.moveTo(-TILE*.16,TILE*.28); ctx.lineTo(0,TILE*.54+flame*.18); ctx.lineTo(TILE*.16,TILE*.28); ctx.fill();
@@ -575,6 +576,33 @@ export function createRenderer({ state, get, rand }) {
     drawDirectionalDrill(p);
     ctx.fillStyle = '#ffd35f'; ctx.fillRect(TILE*.30, -TILE*.09, TILE*.14, TILE*.18);
     ctx.fillStyle = '#182536'; ctx.fillRect(TILE*.33, -TILE*.055, TILE*.08, TILE*.11);
+  }
+  function drawBoostFlames(direction: [number, number], facing: number) {
+    const pulse = state.reducedMotion ? 0 : Math.sin(state.tick*.9) * TILE*.055;
+    const length = TILE*.72 + pulse;
+    ctx.save();
+    // The ship context is mirrored by facing, so convert world travel into local coordinates first.
+    ctx.rotate(Math.atan2(direction[1], direction[0] * facing));
+    ctx.globalCompositeOperation = 'screen';
+    ctx.shadowColor = '#43d9ff';
+    ctx.shadowBlur = state.reducedMotion ? 8 : 15;
+    for (const offset of [-TILE*.17, TILE*.17]) {
+      ctx.fillStyle = 'rgba(65,205,255,.88)';
+      ctx.beginPath();
+      ctx.moveTo(-TILE*.28, offset-TILE*.085);
+      ctx.lineTo(-length, offset);
+      ctx.lineTo(-TILE*.28, offset+TILE*.085);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#fff1a3';
+      ctx.beginPath();
+      ctx.moveTo(-TILE*.30, offset-TILE*.035);
+      ctx.lineTo(-length+TILE*.24, offset);
+      ctx.lineTo(-TILE*.30, offset+TILE*.035);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
   }
   function drawRedStar(cx, cy, r, color='#ffd95a') {
     ctx.save(); ctx.fillStyle=color; ctx.beginPath();

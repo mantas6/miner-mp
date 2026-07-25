@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => {
     save: vi.fn(),
     scale: vi.fn(),
     setTransform: vi.fn(),
+    shadowColor: '',
     stroke: vi.fn(),
     translate: vi.fn()
   });
@@ -224,5 +225,50 @@ describe('terrain cache lifecycle', () => {
     expect(mocks.mainContext.fillRect).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 66, 66);
     expect(mocks.mainContext.fillText).not.toHaveBeenCalledWith('PARTNER', expect.any(Number), expect.any(Number));
     expect(mocks.mainContext.createRadialGradient).not.toHaveBeenCalled();
+  });
+
+  it('draws boost jets opposite the active travel direction only', () => {
+    const state = {
+      world: {}, camX: 10, camY: 20, tick: 4, gameOver: false, reducedMotion: false,
+      exploredTiles: new Set<number>(), teleportEffect: null,
+      particles: [], enemies: [], remotePlayers: [],
+      input: {sprintDirection: [0, -1]},
+      player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+    const renderer = createRenderer({state, get: () => ({type:'air'}), rand: () => 0});
+
+    renderer.draw();
+
+    expect(mocks.mainContext.rotate).toHaveBeenCalledWith(-Math.PI/2);
+    expect(mocks.mainContext.shadowColor).toBe('#43d9ff');
+
+    vi.clearAllMocks();
+    mocks.mainContext.shadowColor = '';
+    state.input.sprintDirection = null;
+    renderer.draw();
+    expect(mocks.mainContext.shadowColor).not.toBe('#43d9ff');
+  });
+
+  it('keeps reduced-motion boost flames static across render frames', () => {
+    const state = {
+      world: {}, camX: 10, camY: 20, tick: 1, gameOver: false, reducedMotion: true,
+      exploredTiles: new Set<number>(), teleportEffect: null,
+      particles: [], enemies: [], remotePlayers: [], input: {sprintDirection: [1, 0]},
+      player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+    const renderer = createRenderer({state, get: () => ({type:'air'}), rand: () => 0});
+    const flameTips = () => mocks.mainContext.lineTo.mock.calls
+      .filter(([, y]) => Math.abs(y) === 64*.17)
+      .map(([x, y]) => [x, y]);
+
+    renderer.draw();
+    const firstFrame = flameTips();
+    vi.clearAllMocks();
+    state.tick = 17;
+    renderer.draw();
+    const secondFrame = flameTips();
+
+    expect(firstFrame).not.toHaveLength(0);
+    expect(firstFrame).toEqual(secondFrame);
   });
 });

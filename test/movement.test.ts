@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FUEL } from '../src/balance';
 import { partialFill } from '../src/economy';
-import { fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs, movementFuelCost } from '../src/movement';
+import { activeSprintDirection, fuelAfterMovement, isOpenSpaceDestination, isSprintActive, keyboardMovementRepeatMs, movementFuelCost } from '../src/movement';
 
 describe('surface fuel', () => {
   it('charges lateral open-space flight without passively refueling', () => {
@@ -18,6 +18,14 @@ describe('surface fuel', () => {
 });
 
 describe('sprint movement', () => {
+  it('exposes active sprint direction only from the movement sprint truth', () => {
+    expect(isSprintActive(true, true)).toBe(true);
+    expect(activeSprintDirection(true, true, -1, 0)).toEqual([-1, 0]);
+    expect(activeSprintDirection(true, false, 1, 0)).toBeNull();
+    expect(activeSprintDirection(false, true, 1, 0)).toBeNull();
+    expect(activeSprintDirection(true, true, 0, 0)).toBeNull();
+  });
+
   it('repeats open-space movement faster and consumes sprint fuel', () => {
     const destinationOpen = isOpenSpaceDestination(true, 'air', false);
 
@@ -59,6 +67,7 @@ describe('sprint movement', () => {
     expect(movementFuelCost(2, false, destinationOpen, true)).toBe(0);
     expect(movementFuelCost(2, true, destinationOpen, true)).toBe(0);
     expect(keyboardMovementRepeatMs(100, true, destinationOpen)).toBeCloseTo(55);
+    expect(activeSprintDirection(true, destinationOpen, 0, 1)).toEqual([0, 1]);
   });
 
   it('retains ordinary drill fuel when moving downward into terrain, with or without Shift', () => {

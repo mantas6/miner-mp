@@ -15,6 +15,8 @@ describe('starting cargo capacity', () => {
     expect(state.player.teleporters).toBe(0);
     expect(state.extractionPhase).toBe('none');
     expect(state.stats.motherlodeExtractions).toBe(0);
+    expect(state.input.sprintDirection).toBeNull();
+    expect(state.reducedMotion).toBe(false);
   });
 
   it('uses 10 as the minimum saved cargo capacity with incremental five-slot upgrades', () => {

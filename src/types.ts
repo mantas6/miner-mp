@@ -152,6 +152,8 @@ export interface GameStats {
 
 export interface InputState {
   keyImpulse: Direction | null;
+  /** Current keyboard sprint through open air; null while drilling, blocked, or idle. */
+  sprintDirection: Direction | null;
   lastKeyboardMove: number;
   keyboardRepeatMs: number;
   touchHoldDir: Direction | null;
@@ -180,6 +182,7 @@ export interface GameState {
   /** Partner ships (transform-only). For 2-player co-op this holds 0 or 1. */
   remotePlayers: RemotePlayer[];
   teleportEffect: TeleportEffect | null;
+  reducedMotion: boolean;
   /** Explored underground cells as row-major indexes; surface rows are implicitly visible. */
   exploredTiles: Set<number>;
 }
