@@ -108,6 +108,12 @@ export interface TeleportedMsg {
   y: number;
 }
 
+/** Newly explored row-major tile ranges, shared as co-op cartography. */
+export interface ExploreMsg {
+  type: 'explore';
+  ranges: string;
+}
+
 /** A single accumulated tile diff entry. */
 export interface TileDiffEntry {
   x: number;
@@ -120,6 +126,7 @@ export interface WorldSyncMsg {
   type: 'worldSync';
   tiles: TileDiffEntry[];
   enemies: EnemySnapshotEntry[];
+  explored: string;
 }
 
 export type NetMessage =
@@ -134,6 +141,7 @@ export type NetMessage =
   | DiedMsg
   | RespawnedMsg
   | TeleportedMsg
+  | ExploreMsg
   | WorldSyncMsg;
 
 export type NetMessageType = NetMessage['type'];
@@ -269,11 +277,14 @@ export function validateMessage(v: unknown): NetMessage | null {
       return isNum(v.x) && isNum(v.y) ? (v as unknown as RespawnedMsg) : null;
     case 'teleported':
       return isNum(v.x) && isNum(v.y) ? (v as unknown as TeleportedMsg) : null;
+    case 'explore':
+      return isStr(v.ranges) ? (v as unknown as ExploreMsg) : null;
     case 'worldSync':
       return Array.isArray(v.tiles) &&
         v.tiles.every(isTileDiffEntry) &&
         Array.isArray(v.enemies) &&
-        v.enemies.every(isEnemyEntry)
+        v.enemies.every(isEnemyEntry) &&
+        isStr(v.explored)
         ? (v as unknown as WorldSyncMsg)
         : null;
     default:
@@ -408,8 +419,8 @@ export function tileDiffToArray(diff: TileDiff): TileDiffEntry[] {
 }
 
 /** Build a compact late-join world sync from the accumulated tile mutations. */
-export function worldSyncFrom(diff: TileDiff, enemies: Enemy[] = []): WorldSyncMsg {
-  return { type: 'worldSync', tiles: tileDiffToArray(diff), enemies: enemies.map(enemyEntryFrom) };
+export function worldSyncFrom(diff: TileDiff, enemies: Enemy[] = [], explored = ''): WorldSyncMsg {
+  return { type: 'worldSync', tiles: tileDiffToArray(diff), enemies: enemies.map(enemyEntryFrom), explored };
 }
 
 /**

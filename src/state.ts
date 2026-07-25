@@ -80,6 +80,7 @@ export function createInitialState(): GameState {
     connected: false,
     remotePlayers: [],
     teleportEffect: null,
+    exploredTiles: new Set<number>(),
     input: {
       keyImpulse: null,
       lastKeyboardMove: 0,
@@ -106,6 +107,7 @@ export function createInitialState(): GameState {
       drill: STARTING.drill,
       dynamite: STARTING.dynamite,
       teleporters: STARTING.teleporters,
+      visibility: STARTING.visibility,
       cargo: []
     }
   };

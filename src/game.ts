@@ -5,7 +5,7 @@ import { shouldAttemptAutoAudio } from './audio-permission';
 import { createInitialState, respawnPlayer } from './state';
 import { createRenderer } from './renderer';
 import { STARTING, FUEL, HULL, ENEMY, ECONOMY } from './balance';
-import { refuelCost, repairCost, cargoCost, tankCost, hullCost, drillCost, partialFill, cargoValue, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
+import { refuelCost, repairCost, cargoCost, tankCost, hullCost, drillCost, visibilityCost, partialFill, cargoValue, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from './hud-alerts';
 import { formatExpeditionObjective } from './objective';
 import { load, save, DEFAULT_STATS } from './persistence';
@@ -28,6 +28,7 @@ import type { Enemy } from './types';
 import { applyPlayerUpgrade, getPlayerUpgradeProgress, updateDeveloperUpgradeControls, type PlayerUpgradeId } from './upgrades';
 import { updateShopControls } from './shop';
 import { expandReachableAir } from './enemy-exposure';
+import { encodeExploration, isTileExplored, mergeExploration, revealFootprint } from './exploration';
 
 const state = createInitialState();
 let audio;
@@ -35,6 +36,7 @@ let renderer;
 let enemyIdCounter = 1;
 let resetConfirmUntil = 0;
 let toastTimer = 0;
+let explorationSaveTimer = 0;
 let net: NetClient | null = null;
 let connectionIssue: string | null = null;
 let tileDiff: TileDiff = {};
@@ -45,6 +47,13 @@ state.stats = {...DEFAULT_STATS};
 function loadProgress() { load(state); }
 
 function saveProgress() { save(state); }
+function revealAtPlayer(broadcast=true) {
+  const added = revealFootprint(state.exploredTiles, state.player.x, state.player.y, state.player.visibility);
+  if (!added.length) return;
+  if (broadcast && state.connected && net?.paired) net.send({type:'explore', ranges:encodeExploration(added)});
+  clearTimeout(explorationSaveTimer);
+  explorationSaveTimer = window.setTimeout(saveProgress, 500);
+}
 
 function addCash(amount) {
   state.cash += amount;
@@ -79,8 +88,9 @@ function generate(){
 function resetPlayer(full=true){
   state.extractionPhase = cancelExtraction();
   state.teleportEffect = null;
-  if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.player.dynamite=STARTING.dynamite; state.player.teleporters=STARTING.teleporters; state.stats = {...DEFAULT_STATS}; saveProgress(); }
+  if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.player.visibility=STARTING.visibility; state.player.dynamite=STARTING.dynamite; state.player.teleporters=STARTING.teleporters; state.exploredTiles.clear(); state.stats = {...DEFAULT_STATS}; saveProgress(); }
   respawnPlayer(state.player);
+  revealAtPlayer();
   state.camX = Math.max(0, state.player.x - Math.floor(W/2));
   state.camY = 0;
   state.particles.length = 0;
@@ -121,6 +131,7 @@ function startOnline(url: string){
       },
       onPaired(role){
         state.role = role;
+        if (role === 'guest' && state.exploredTiles.size) net?.send({type:'explore', ranges:encodeExploration(state.exploredTiles)});
         resetEnemyExposure();
         if (role === 'host') {
           setConnectionStatus('Host - waiting for player');
@@ -132,7 +143,7 @@ function startOnline(url: string){
       onPeerJoined(){
         if (state.role !== 'host') return;
         setConnectionStatus('Host - paired');
-        net?.send(worldSyncFrom(tileDiff, state.enemies));
+        net?.send(worldSyncFrom(tileDiff, state.enemies, encodeExploration(state.exploredTiles)));
         startOnlineGame();
       },
       onPeerLeft(){
@@ -153,11 +164,20 @@ function startOnline(url: string){
       onMessage(msg){
         if (msg.type === 'playerState') state.remotePlayers = applyRemotePlayerState(state.remotePlayers, msg);
         if (msg.type === 'tile') set(msg.x, msg.y, msg.tile, false);
+        if (msg.type === 'explore') {
+          const added = mergeExploration(state.exploredTiles, msg.ranges);
+          if (added.length) {
+            saveProgress();
+            if (isPairedHost()) net?.send({type:'explore', ranges:encodeExploration(added)});
+          }
+        }
         if (msg.type === 'worldSync' && isGuestEnemyReplica()) {
           applyWorldSyncToWorld(state.world, msg);
           renderer.invalidateTerrain();
           tileDiff = mergeWorldSync(tileDiff, [], msg).diff;
           mergeEnemyEntries(msg.enemies);
+          mergeExploration(state.exploredTiles, msg.explored);
+          saveProgress();
         }
         if (msg.type === 'enemySnapshot' && isGuestEnemyReplica()) mergeEnemyEntries(msg.enemies);
         if (msg.type === 'enemySpawn' && isGuestEnemyReplica()) {
@@ -474,6 +494,7 @@ function move(dx,dy,sprinting=false){
     if (performance.now() - audio.lastMove > 120) { audio.blip(150 + Math.abs(dy)*35, 0.035, 'triangle', 0.02); audio.lastMove = performance.now(); }
   }
   p.x = nx; p.y = ny; p.bob = 1;
+  revealAtPlayer();
   state.stats.maxDepth = Math.max(state.stats.maxDepth, Math.max(0, p.y - START_Y) * 10);
   wakeEnemiesNear(p.x, p.y);
   if (atSurface()) {
@@ -493,10 +514,14 @@ function sell(){ const v = currentCargoValue(); if (!atSurface()) return toast('
 function spend(amount, fn, msg){ if (!atSurface()) return toast('Upgrades are at the surface.'); if (state.cash < amount) { audio.alarm(); return toast(`Need $${amount}.`); } state.cash -= amount; fn(); saveProgress(); toast(msg); audio.cash(amount); }
 function buyPlayerUpgrade(id: PlayerUpgradeId, amount: number, msg: string){
   if (getPlayerUpgradeProgress(state.player, id).atMax) return toast('Upgrade already at maximum level.');
-  spend(amount, () => applyPlayerUpgrade(state.player, id), msg);
+  spend(amount, () => {
+    applyPlayerUpgrade(state.player, id);
+    if (id === 'visibility') revealAtPlayer();
+  }, msg);
 }
 function grantDeveloperUpgrade(id: PlayerUpgradeId){
   if (!applyPlayerUpgrade(state.player, id)) return toast('Developer upgrade already at maximum level.');
+  if (id === 'visibility') revealAtPlayer();
   saveProgress();
   updateDeveloperUpgradeControls(ui.developerUpgrades, state.player);
   toast('Developer action: upgrade granted for $0.');
@@ -597,6 +622,7 @@ function bindButtons(){
   ui.tankBtn.onclick = () => buyPlayerUpgrade('tank', tankCost(state.player), 'Fuel tank upgraded.');
   ui.hullBtn.onclick = () => buyPlayerUpgrade('hull', hullCost(state.player), 'Hull reinforced.');
   ui.drillBtn.onclick = () => buyPlayerUpgrade('drill', drillCost(state.player), 'Drill power increased.');
+  ui.visibilityBtn.onclick = () => buyPlayerUpgrade('visibility', visibilityCost(state.player), 'Sensor footprint expanded.');
   ui.dynamiteBtn.onclick = detonateDynamite;
   ui.teleporterBtn.onclick = useTeleporter;
   ui.shopDynamiteBtn.onclick = buyDynamite;
@@ -859,7 +885,8 @@ function hud(){
   ui.terrainScanner.textContent = formatTerrainScanner({
     tile: get(scannerX, scannerY),
     direction: scannerDirection,
-    activeEnemy: Boolean(enemyAt(scannerX, scannerY))
+    activeEnemy: Boolean(enemyAt(scannerX, scannerY)),
+    explored: isTileExplored(state.exploredTiles, scannerX, scannerY)
   });
   ui.fuelReserve.textContent = formatFuelReserveForecast({
     fuel: p.fuel,

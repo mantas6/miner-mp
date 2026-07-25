@@ -63,13 +63,15 @@ const messages: NetMessage[] = [
   { type: 'died' },
   { type: 'respawned', x: 45, y: 2 },
   { type: 'teleported', x: 45, y: 2 },
+  { type: 'explore', ranges: '270-278,360' },
   {
     type: 'worldSync',
     tiles: [
       { x: 1, y: 1, tile: { type: 'air' } },
       { x: 2, y: 2, tile: { type: 'dirt', hp: 1, maxHp: 2 } }
     ],
-    enemies: [{ id: 3, x: 0, y: 0, drawX: 0, drawY: 0, hp: 4, maxHp: 4, alive: true }]
+    enemies: [{ id: 3, x: 0, y: 0, drawX: 0, drawY: 0, hp: 4, maxHp: 4, alive: true }],
+    explored: '270-278'
   }
 ];
 
@@ -279,7 +281,7 @@ describe('tile diff reducers', () => {
       [{ type: 'ore', ore: ORE, hp: 4, maxHp: 4 }, { type: 'dirt', hp: 2, maxHp: 2 }]
     ];
 
-    expect(sync).toEqual({ type: 'worldSync', tiles: tileDiffToArray(diff), enemies: [] });
+    expect(sync).toEqual({ type: 'worldSync', tiles: tileDiffToArray(diff), enemies: [], explored: '' });
     expect(applyWorldSyncToWorld(world, sync)).toBe(world);
     expect(world).toEqual([
       [{ type: 'air' }, { type: 'rock', hp: 999 }],
@@ -296,7 +298,8 @@ describe('tile diff reducers', () => {
     expect(worldSyncFrom({}, [enemy])).toEqual({
       type: 'worldSync',
       tiles: [],
-      enemies: [{ id: 12, x: 7, y: 31, drawX: 6.8, drawY: 31, hp: 3, maxHp: 6, alive: true }]
+      enemies: [{ id: 12, x: 7, y: 31, drawX: 6.8, drawY: 31, hp: 3, maxHp: 6, alive: true }],
+      explored: ''
     });
   });
 });
@@ -369,7 +372,8 @@ describe('mergeWorldSync', () => {
         { x: 0, y: 0, tile: { type: 'air' } }, // overwrites existing
         { x: 1, y: 2, tile: { type: 'dirt', hp: 1, maxHp: 2 } }
       ],
-      enemies: [{ id: 2, x: 5, y: 5, drawX: 5, drawY: 5, hp: 6, maxHp: 6, alive: true }]
+      enemies: [{ id: 2, x: 5, y: 5, drawX: 5, drawY: 5, hp: 6, maxHp: 6, alive: true }],
+      explored: '270-278'
     });
 
     expect(result.diff[tileKey(0, 0)].tile).toEqual({ type: 'air' });

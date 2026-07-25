@@ -14,7 +14,8 @@ const shopUpgrades = {
   cargo: { icon: 'cargo', purpose: 'Carry more ore before returning to sell.', unit: 'slots', price: ECONOMY.cargo.base },
   tank: { icon: 'tank', purpose: 'Extend safe range between depot refuels.', unit: 'fuel', price: ECONOMY.tank.base },
   hull: { icon: 'hull', purpose: 'Survive more rock, magma, and fiend damage.', unit: 'strength', price: ECONOMY.hull.base },
-  drill: { icon: 'drill', purpose: 'Break tougher terrain and enemies faster.', unit: 'power', price: ECONOMY.drill.base }
+  drill: { icon: 'drill', purpose: 'Break tougher terrain and enemies faster.', unit: 'power', price: ECONOMY.drill.base },
+  visibility: { icon: 'visibility', purpose: 'Reveal a larger persistent square around the ship. Even sizes extend one extra tile right and down.', unit: 'tiles wide', price: ECONOMY.visibility.base }
 } as const;
 
 export function MinerApp() {
@@ -217,6 +218,7 @@ export function MinerApp() {
               <h3 id="controls-title">Controls</h3>
               <ul className="control-list">
                 <li><kbd>WASD</kbd> / <kbd>Arrows</kbd><span>Move, fly, and dig</span></li>
+                <li><strong>Fog map</strong><span>Movement permanently reveals the sensor footprint. Co-op miners share explored tiles.</span></li>
                 <li><kbd>Shift</kbd> + movement<span>Sprint through open space at increased fuel cost; open-space descent is free and drilling stays normal</span></li>
                 <li><kbd>Tap / hold</kbd><span>Move toward the touched side of the ship</span></li>
                 <li><kbd>Enter</kbd><span>Sell cargo at the surface depot</span></li>
@@ -271,7 +273,7 @@ export function MinerApp() {
                 <li><strong>Do not die:</strong> deep magma pockets, tougher rock, and tunnel fiends scale with depth.</li>
                 <li><strong>Enemies:</strong> drilling nearby blocks wakes them; drill them back before they chew the hull.</li>
                 <li><strong>Goal:</strong> reach the Motherlode core at the bottom, crack it, and get home alive.</li>
-                <li><strong>Upgrade:</strong> prices rise, so choose tank, hull, cargo, and drill upgrades carefully.</li>
+                <li><strong>Upgrade:</strong> prices rise, so choose tank, hull, cargo, drill, and sensor upgrades carefully.</li>
                 <li><strong>Sound:</strong> optional soundtrack starts only after the Sound button or a trusted tap/click.</li>
               </ul>
               <p className="intro-warning">Low fuel below 25% means return to the surface immediately.</p>

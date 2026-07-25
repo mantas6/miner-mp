@@ -85,6 +85,7 @@ export interface Player {
   drill: number;
   dynamite: number;
   teleporters: number;
+  visibility: number;
   cargo: any[];
 }
 
@@ -179,6 +180,8 @@ export interface GameState {
   /** Partner ships (transform-only). For 2-player co-op this holds 0 or 1. */
   remotePlayers: RemotePlayer[];
   teleportEffect: TeleportEffect | null;
+  /** Explored underground cells as row-major indexes; surface rows are implicitly visible. */
+  exploredTiles: Set<number>;
 }
 
 export interface AudioController {

@@ -5,6 +5,7 @@ import { ECONOMY } from '../src/balance';
 import { cargoCost } from '../src/economy';
 import { claimArtifact } from '../src/artifacts';
 import { ARTIFACTS } from '../src/constants';
+import { explorationIndex } from '../src/exploration';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -168,5 +169,42 @@ describe('teleporter persistence', () => {
     load(state);
 
     expect(state.player.teleporters).toBe(0);
+  });
+});
+
+describe('fog exploration persistence', () => {
+  it('round-trips compact explored ranges and sensor level', () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value)
+    });
+    const state = createInitialState();
+    state.player.visibility = 4;
+    state.exploredTiles.add(explorationIndex(10, 10));
+    state.exploredTiles.add(explorationIndex(11, 10));
+    save(state);
+
+    const serialized = JSON.parse(stored.get(SAVE_KEY) || '{}');
+    expect(serialized).toMatchObject({version: SAVE_VERSION, visibility: 4, explored: '910-911'});
+
+    const restored = createInitialState();
+    load(restored);
+    expect(restored.player.visibility).toBe(4);
+    expect(restored.exploredTiles).toEqual(state.exploredTiles);
+  });
+
+  it('preserves existing saves with default sensors and no explored coordinates', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify({version: 2, cargoMax: 20, cash: 90}),
+      setItem: vi.fn()
+    });
+    const state = createInitialState();
+    load(state);
+
+    expect(state.cash).toBe(90);
+    expect(state.player.cargoMax).toBe(20);
+    expect(state.player.visibility).toBe(3);
+    expect(state.exploredTiles.size).toBe(0);
   });
 });

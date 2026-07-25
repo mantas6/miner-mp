@@ -4,6 +4,7 @@ export interface TerrainScannerInput {
   tile: Tile;
   direction: Direction;
   activeEnemy?: boolean;
+  explored?: boolean;
 }
 
 function directionLabel([dx, dy]: Direction): string {
@@ -19,8 +20,9 @@ function hitsLabel(hp: number): string {
 }
 
 /** Formats a concise, DOM-free warning for the adjacent movement/drill target. */
-export function formatTerrainScanner({ tile, direction, activeEnemy = false }: TerrainScannerInput): string {
+export function formatTerrainScanner({ tile, direction, activeEnemy = false, explored = true }: TerrainScannerInput): string {
   const prefix = `Scanner ${directionLabel(direction)}:`;
+  if (!explored) return `${prefix} unexplored — advance to map terrain.`;
   if (activeEnemy) return `${prefix} active fiend — drill it before it chews hull.`;
 
   switch (tile.type) {

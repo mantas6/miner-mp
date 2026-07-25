@@ -40,6 +40,7 @@ const GAME_DOM_IDS = [
   'tankBtn',
   'hullBtn',
   'drillBtn',
+  'visibilityBtn',
   'dynamiteBtn',
   'teleporterBtn',
   'shopDynamiteBtn',
@@ -88,7 +89,7 @@ describe('React GUI shell', () => {
     expect(markup).toContain('data-shop-upgrade="hull"');
     expect(markup).toContain('Next: 100 → 120 strength');
     expect(markup).toContain('Buy · $180');
-    expect(markup).toContain('choose tank, hull, cargo, and drill upgrades carefully');
+    expect(markup).toContain('choose tank, hull, cargo, drill, and sensor upgrades carefully');
   });
 
   it('exposes dynamite purchasing and keyboard/touch detonation controls', () => {
@@ -186,7 +187,17 @@ describe('React GUI shell', () => {
     expect(markup).toContain('data-developer-upgrade="tank"');
     expect(markup).toContain('data-developer-upgrade="hull"');
     expect(markup).toContain('data-developer-upgrade="drill"');
+    expect(markup).toContain('data-developer-upgrade="visibility"');
     expect(markup).toContain('Level 0/198');
+  });
+
+  it('offers the paid sensor upgrade and explains persistent shared fog', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+    expect(markup).toContain('data-shop-upgrade="visibility"');
+    expect(markup).toContain('Sensor Array');
+    expect(markup).toContain('Next: 3 → 4 tiles wide');
+    expect(markup).toContain('Buy · $175');
+    expect(markup).toContain('Co-op miners share explored tiles');
   });
 
   it('separates surface services, permanent upgrades, and consumable equipment in a modal shop', () => {

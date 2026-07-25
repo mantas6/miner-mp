@@ -207,4 +207,22 @@ describe('terrain cache lifecycle', () => {
     expect(mocks.mainContext.createRadialGradient).toHaveBeenCalled();
     expect(mocks.mainContext.fillRect).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 4, 4);
   });
+
+  it('paints unexplored tiles black without leaking enemies, peers, or particles', () => {
+    const state = {
+      world: {}, camX: 10, camY: 20, tick: 0, gameOver: false,
+      exploredTiles: new Set<number>(), teleportEffect: null,
+      particles: [{x:12.5, y:22.5, vx:0, vy:0, life:20, color:'#fff', size:.1}],
+      enemies: [{id:1, x:12, y:22, drawX:12, drawY:22, hp:4, maxHp:4, alive:true, moveTick:0, biteTick:0, flash:0}],
+      remotePlayers: [{x:13, y:22, drawX:13, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}],
+      player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+    const renderer = createRenderer({state, get: () => ({type:'artifact', artifact:{name:'Cache', color:'#ffd166', value:900, min:20, max:30, chance:.1}, hp:5, maxHp:5}), rand: () => 0});
+
+    renderer.draw();
+
+    expect(mocks.mainContext.fillRect).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 66, 66);
+    expect(mocks.mainContext.fillText).not.toHaveBeenCalledWith('PARTNER', expect.any(Number), expect.any(Number));
+    expect(mocks.mainContext.createRadialGradient).not.toHaveBeenCalled();
+  });
 });

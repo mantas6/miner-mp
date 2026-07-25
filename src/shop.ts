@@ -1,5 +1,5 @@
 import { ECONOMY } from './balance';
-import { cargoCost, drillCost, hullCost, refuelCost, repairCost, tankCost } from './economy';
+import { cargoCost, drillCost, hullCost, refuelCost, repairCost, tankCost, visibilityCost } from './economy';
 import type { Player } from './types';
 import { getPlayerUpgradeProgress, type PlayerUpgradeId } from './upgrades';
 
@@ -7,14 +7,16 @@ const upgradeCosts: Record<PlayerUpgradeId, (player: Player) => number> = {
   cargo: cargoCost,
   tank: tankCost,
   hull: hullCost,
-  drill: drillCost
+  drill: drillCost,
+  visibility: visibilityCost
 };
 
 const upgradeUnits: Record<PlayerUpgradeId, string> = {
   cargo: 'slots',
   tank: 'fuel',
   hull: 'strength',
-  drill: 'power'
+  drill: 'power',
+  visibility: 'tiles wide'
 };
 
 function setPurchaseState(button: HTMLButtonElement | null, status: HTMLElement | null, cash: number, price: number, atSurface: boolean, unavailable = false): void {
@@ -29,11 +31,11 @@ export function updateShopControls(container: HTMLElement, player: Player, cash:
   if (cashDisplay) cashDisplay.textContent = `$${Math.floor(cash)} available`;
   if (location) location.textContent = atSurface ? 'Surface depot' : 'Return to surface';
 
-  for (const id of ['cargo', 'tank', 'hull', 'drill'] as const) {
+  for (const id of ['cargo', 'tank', 'hull', 'drill', 'visibility'] as const) {
     const row = container.querySelector<HTMLElement>(`[data-shop-upgrade="${id}"]`);
     const progress = getPlayerUpgradeProgress(player, id);
     const price = upgradeCosts[id](player);
-    const stepValue = Math.min(progress.maxValue, progress.value + (id === 'cargo' ? ECONOMY.cargo.step : id === 'tank' ? ECONOMY.tank.step : id === 'hull' ? ECONOMY.hull.step : ECONOMY.drill.step));
+    const stepValue = Math.min(progress.maxValue, progress.value + ECONOMY[id].step);
     const current = row?.querySelector<HTMLElement>('[data-shop-current]');
     const benefit = row?.querySelector<HTMLElement>('[data-shop-benefit]');
     const button = row?.querySelector<HTMLButtonElement>('button');

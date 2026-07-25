@@ -35,4 +35,11 @@ describe('terrain scanner helper', () => {
       direction: [1, 0]
     })).toBe('Scanner →: RARE Alien Reliquary — $900 CASH NOW, 7 hits; uses no cargo.');
   });
+
+  it('does not leak terrain, rewards, or enemies through unexplored fog', () => {
+    expect(formatTerrainScanner({
+      tile: {type:'artifact', artifact:{name:'Alien Reliquary', color:'#ff78e1', value:900, min:702, max:992, chance:.00025}, hp:7, maxHp:7},
+      direction: [1, 0], activeEnemy: true, explored: false
+    })).toBe('Scanner →: unexplored — advance to map terrain.');
+  });
 });

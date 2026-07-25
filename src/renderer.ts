@@ -2,6 +2,7 @@ import { SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants';
 import { canvas, ctx, H, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom';
 import { getPartnerIndicator } from './partner-indicator';
 import { getVisibleTileRange, type VisibleTileRange } from './visible-tile-range';
+import { isTileExplored } from './exploration';
 
 const TERRAIN_CHUNK_TILES = 1;
 const TERRAIN_CHUNK_PADDING = 2;
@@ -20,6 +21,7 @@ export function createRenderer({ state, get, rand }) {
   const terrainChunks = new Map<string, TerrainChunk>();
   let cachedTerrainScale = 0;
   let cachedTerrainWorld: unknown = null;
+  const isExplored = (x: number, y: number) => !state.exploredTiles || isTileExplored(state.exploredTiles, x, y);
 
   function terrainChunkKey(chunkX: number, chunkY: number){ return `${chunkX},${chunkY}`; }
   function invalidateTerrain(x?: number, y?: number){
@@ -106,6 +108,7 @@ export function createRenderer({ state, get, rand }) {
   function drawTerrainDamage(camX, camY){
     const range = getVisibleTileRange(camX, camY, W, H, WORLD_W, WORLD_H);
     for(let wy=range.startY;wy<=range.endY;wy++) for(let wx=range.startX;wx<=range.endX;wx++) {
+      if (!isExplored(wx, wy)) continue;
       drawTileDamage(get(wx,wy), (wx-camX)*TILE, (wy-camY)*TILE);
     }
   }
@@ -123,6 +126,7 @@ export function createRenderer({ state, get, rand }) {
     drawSurface(camX, camY);
     drawEnemies(camX, camY);
     for (const pt of state.particles) {
+      if (!isExplored(Math.floor(pt.x), Math.floor(pt.y))) continue;
       const sx = (pt.x - camX) * TILE, sy = (pt.y - camY) * TILE;
       ctx.globalAlpha = Math.max(0, Math.min(1, pt.life / 28));
       ctx.fillStyle = pt.color;
@@ -130,6 +134,7 @@ export function createRenderer({ state, get, rand }) {
       ctx.globalAlpha = 1;
     }
     drawRemotePlayers(camX, camY);
+    drawFog(camX, camY);
     const sx=(p.drawX-camX)*TILE, sy=(p.drawY-camY)*TILE;
     drawTeleportEffect(camX, camY, false);
     ctx.save();
@@ -148,6 +153,14 @@ export function createRenderer({ state, get, rand }) {
       ctx.font='bold 24px sans-serif'; ctx.fillText('Tap anywhere to restart', VIEW_WIDTH/2, 338);
       ctx.font='18px sans-serif'; ctx.fillText('or press R', VIEW_WIDTH/2, 370);
       ctx.textAlign='left';
+    }
+  }
+  function drawFog(camX, camY) {
+    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W, WORLD_H);
+    ctx.fillStyle = '#000';
+    for (let wy=range.startY; wy<=range.endY; wy++) for (let wx=range.startX; wx<=range.endX; wx++) {
+      if (isExplored(wx, wy)) continue;
+      ctx.fillRect((wx-camX)*TILE-1, (wy-camY)*TILE-1, TILE+2, TILE+2);
     }
   }
   function drawTeleportEffect(camX, camY, foreground) {
@@ -202,6 +215,7 @@ export function createRenderer({ state, get, rand }) {
   }
   function drawRemotePlayers(camX, camY) {
     for (const remote of state.remotePlayers) {
+      if (!isExplored(Math.round(remote.x), Math.round(remote.y))) continue;
       const sx = (remote.drawX - camX) * TILE, sy = (remote.drawY - camY) * TILE;
       if (sx < -TILE || sy < -TILE || sx > VIEW_WIDTH + TILE || sy > VIEW_HEIGHT + TILE) continue;
       ctx.save();
@@ -221,6 +235,7 @@ export function createRenderer({ state, get, rand }) {
   }
   function drawPartnerIndicators(camX, camY, playerX, playerY) {
     for (const remote of state.remotePlayers) {
+      if (!isExplored(Math.round(remote.x), Math.round(remote.y))) continue;
       const targetX = (remote.drawX - camX + .5) * TILE;
       const targetY = (remote.drawY - camY + .5) * TILE;
       const indicator = getPartnerIndicator(
@@ -246,6 +261,7 @@ export function createRenderer({ state, get, rand }) {
   function drawEnemies(camX, camY) {
     for (const e of state.enemies) {
       if (!e.alive) continue;
+      if (!isExplored(Math.round(e.x), Math.round(e.y))) continue;
       const sx = (e.drawX - camX) * TILE, sy = (e.drawY - camY) * TILE;
       if (sx < -TILE || sy < -TILE || sx > VIEW_WIDTH + TILE || sy > VIEW_HEIGHT + TILE) continue;
       drawEnemyBody(sx, sy, e.hp / e.maxHp, e.flash);
