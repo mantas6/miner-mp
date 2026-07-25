@@ -2,15 +2,35 @@ import { describe, expect, it } from 'vitest';
 import { START_Y, WORLD_W } from '../src/constants';
 import { createInitialState } from '../src/state';
 import {
+  MIN_TELEPORT_DEPTH_METERS,
   REDUCED_TELEPORT_EFFECT_FRAMES,
   TELEPORT_EFFECT_FRAMES,
   advanceTeleportEffect,
+  canTeleportToSurface,
+  canUseTeleporter,
   createTeleportEffect,
   teleportPlayerToReturn,
   teleportPlayerToSurface
 } from '../src/teleporter';
 
 describe('surface teleporter', () => {
+  it('rejects departure above 100 m and allows it at exactly 100 m', () => {
+    const player = createInitialState().player;
+    Object.assign(player, {x: 7, drawX: 7, teleporters: 2});
+
+    player.y = START_Y + MIN_TELEPORT_DEPTH_METERS / 10 - 1;
+    expect(canTeleportToSurface(player.y)).toBe(false);
+    expect(canUseTeleporter(player, null)).toBe(false);
+    expect(teleportPlayerToSurface(player)).toBeNull();
+    expect(player).toMatchObject({y: START_Y + 9, teleporters: 2});
+
+    player.y = START_Y + MIN_TELEPORT_DEPTH_METERS / 10;
+    expect(canTeleportToSurface(player.y)).toBe(true);
+    expect(canUseTeleporter(player, null)).toBe(true);
+    expect(teleportPlayerToSurface(player)).toEqual({x: 7, y: START_Y + 10});
+    expect(player.teleporters).toBe(1);
+  });
+
   it('consumes one charge and moves to the safe spawn without free services', () => {
     const state = createInitialState();
     const player = state.player;
@@ -61,6 +81,16 @@ describe('surface teleporter', () => {
     expect(secondReturn).toEqual({x: 11, y: 176});
     expect(teleportPlayerToReturn(player, secondReturn)).toBe(true);
     expect(player).toMatchObject({x: 11, y: 176, teleporters: 0});
+  });
+
+  it('keeps a pending surface return enabled at 0 m without another charge', () => {
+    const player = createInitialState().player;
+    const returnPosition = {x: 7, y: START_Y + 10};
+
+    expect(player.teleporters).toBe(0);
+    expect(canUseTeleporter(player, returnPosition)).toBe(true);
+    expect(teleportPlayerToReturn(player, returnPosition)).toBe(true);
+    expect(player).toMatchObject({...returnPosition, teleporters: 0});
   });
 
   it('does not return without a pending point or from underground', () => {

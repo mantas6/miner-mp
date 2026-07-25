@@ -3,6 +3,16 @@ import type { Player, TeleportEffect, TeleportReturnPosition } from './types';
 
 export const TELEPORT_EFFECT_FRAMES = 36;
 export const REDUCED_TELEPORT_EFFECT_FRAMES = 12;
+export const MIN_TELEPORT_DEPTH_METERS = 100;
+
+export function canTeleportToSurface(playerY: number): boolean {
+  return (playerY - START_Y) * 10 >= MIN_TELEPORT_DEPTH_METERS;
+}
+
+export function canUseTeleporter(player: Player, returnPosition: TeleportReturnPosition | null): boolean {
+  if (player.y < SURFACE_HEIGHT) return returnPosition !== null;
+  return player.teleporters > 0 && canTeleportToSurface(player.y);
+}
 
 export function createTeleportEffect(
   originScreenX: number,
@@ -28,7 +38,7 @@ export function advanceTeleportEffect(effect: TeleportEffect | null): TeleportEf
 }
 
 export function teleportPlayerToSurface(player: Player): TeleportReturnPosition | null {
-  if (player.y < SURFACE_HEIGHT || player.teleporters <= 0) return null;
+  if (!canTeleportToSurface(player.y) || player.teleporters <= 0) return null;
 
   const returnPosition = {x: player.x, y: player.y};
   const x = Math.floor(WORLD_W / 2);

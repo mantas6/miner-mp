@@ -22,7 +22,7 @@ import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff,
 import { loadServerUrl, saveServerUrl } from './multiplayer-settings';
 import { activeSprintDirection, fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs, movementDestination } from './movement';
 import { getDynamiteBlastTargets } from './dynamite';
-import { advanceTeleportEffect, createTeleportEffect, teleportPlayerToReturn, teleportPlayerToSurface } from './teleporter';
+import { MIN_TELEPORT_DEPTH_METERS, advanceTeleportEffect, canTeleportToSurface, canUseTeleporter, createTeleportEffect, teleportPlayerToReturn, teleportPlayerToSurface } from './teleporter';
 import { claimArtifact } from './artifacts';
 import type { Enemy, Tile } from './types';
 import { applyPlayerUpgrade, getPlayerUpgradeProgress, updateDeveloperUpgradeControls, type PlayerUpgradeId } from './upgrades';
@@ -657,7 +657,7 @@ function detonateDynamite(){
   toast(targets.length ? `Dynamite cleared ${targets.length} blocks. Ore and artifacts were destroyed; no rewards granted.` : 'Dynamite detonated, but no destructible blocks were in range.');
 }
 function buyTeleporter(){
-  spend(ECONOMY.teleporter.price, () => state.player.teleporters++, 'Teleporter loaded. Press T or Teleport underground.');
+  spend(ECONOMY.teleporter.price, () => state.player.teleporters++, `Teleporter loaded. Press T or Teleport at ${MIN_TELEPORT_DEPTH_METERS} m or deeper.`);
 }
 function buyGun(){
   if (state.player.gunOwned) return toast('Linebreaker Gun is already installed.');
@@ -724,6 +724,7 @@ function useTeleporter(){
   const surf = atSurface();
   if (surf && !state.teleportReturnPosition) return toast('No underground teleport return point.');
   if (!surf && p.teleporters <= 0) { audio.alarm(); return toast('No teleporter. Buy one at the surface depot.'); }
+  if (!surf && !canTeleportToSurface(p.y)) { audio.alarm(); return toast(`Teleport requires a depth of at least ${MIN_TELEPORT_DEPTH_METERS} m.`); }
   const camX = Math.max(0, Math.min(WORLD_W-W, state.camX));
   const camY = Math.max(0, state.camY);
   const originScreenX = (p.drawX - camX + .5) * TILE;
@@ -909,12 +910,12 @@ function updateButtonStates(){
   ui.gunBtn.hidden = surf || !p.gunOwned;
   ui.sell.disabled = !surf || currentCargoValue() <= 0;
   ui.dynamiteBtn.textContent = `Detonate (E) · x${p.dynamite}`;
-  ui.teleporterBtn.textContent = surf ? 'Return (T)' : `Teleport (T) · x${p.teleporters}`;
+  ui.teleporterBtn.textContent = surf ? 'Return (T)' : canTeleportToSurface(p.y) ? `Teleport (T) · x${p.teleporters}` : `Teleport at ${MIN_TELEPORT_DEPTH_METERS} m (T) · x${p.teleporters}`;
   ui.gunBtn.textContent = state.input.gunArmed ? `AIMING — tap direction · x${p.bullets}` : `Arm Gun (G) · x${p.bullets}`;
   ui.gunBtn.classList.toggle('armed', state.input.gunArmed);
   ui.gunBtn.setAttribute('aria-pressed', String(state.input.gunArmed));
   ui.dynamiteBtn.disabled = surf || p.dynamite <= 0 || state.gameOver;
-  ui.teleporterBtn.disabled = state.gameOver || (surf ? !state.teleportReturnPosition : p.teleporters <= 0);
+  ui.teleporterBtn.disabled = state.gameOver || !canUseTeleporter(p, state.teleportReturnPosition);
   ui.gunBtn.disabled = surf || !p.gunOwned || p.bullets <= 0 || state.gameOver;
   if (!ui.shopScreen.classList.contains('hidden')) updateShopControls(ui.shopCard, p, state.cash, surf);
 }

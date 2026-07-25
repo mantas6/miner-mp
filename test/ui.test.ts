@@ -114,6 +114,7 @@ describe('React GUI shell', () => {
     expect(markup).toContain('data-shop-item="teleporter"');
     expect(markup).toContain('Buy one · $250');
     expect(markup).toContain('<kbd>T</kbd>');
+    expect(markup).toContain('At 100 m or deeper');
     expect(markup).toContain('without unloading or servicing the ship');
   });
 
