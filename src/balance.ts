@@ -17,8 +17,8 @@ export const STARTING = Object.freeze({
 });
 
 export const LIMITS = Object.freeze({
-  fuelMax: Object.freeze({ min: 100, max: 1000 }),
-  hullMax: Object.freeze({ min: 100, max: 1000 }),
+  fuelMax: Object.freeze({ min: 100, max: 2000 }),
+  hullMax: Object.freeze({ min: 100, max: 2000 }),
   cargoMax: Object.freeze({ min: STARTING.cargoMax, max: 1000 }),
   drill: Object.freeze({ min: 1, max: 100 }),
   dynamite: Object.freeze({ min: 0, max: 999 }),
