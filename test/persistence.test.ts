@@ -1,5 +1,13 @@
-import { describe, it, expect } from 'vitest';
-import { DEFAULT_STATS, numeric } from '../src/persistence';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { DEFAULT_STATS, SAVE_KEY, SAVE_VERSION, load, numeric, save } from '../src/persistence';
+import { createInitialState } from '../src/state';
+import { ECONOMY } from '../src/balance';
+import { cargoCost } from '../src/economy';
+import { claimArtifact } from '../src/artifacts';
+import { ARTIFACTS } from '../src/constants';
+import { explorationIndex } from '../src/exploration';
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('numeric clamp', () => {
   it('passes through a finite value within range', () => {
@@ -39,5 +47,190 @@ describe('Motherlode extraction save compatibility', () => {
       motherlodeClaims: 1,
       motherlodeExtractions: 0
     });
+  });
+});
+
+describe('artifact payout persistence', () => {
+  it('round-trips immediately banked cash and artifact count without cargo', () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value)
+    });
+    const state = createInitialState();
+    claimArtifact(state, ARTIFACTS[0]);
+    save(state);
+
+    const restored = createInitialState();
+    load(restored);
+    expect(restored.cash).toBe(240);
+    expect(restored.stats.artifactsFound).toBe(1);
+    expect(restored.stats.totalCashEarned).toBe(180);
+    expect(restored.player.cargo).toEqual([]);
+  });
+});
+
+describe('cargo balance persistence', () => {
+  it.each([
+    [10, 10, 120],
+    [20, 15, 159],
+    [30, 20, 210],
+    [40, 25, 276]
+  ])('maps legacy capacity %i to rebalanced capacity %i at the same price level', (legacyCapacity, capacity, nextCost) => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify({version: 1, cargoMax: legacyCapacity}),
+      setItem: vi.fn()
+    });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(state.player.cargoMax).toBe(capacity);
+    expect(cargoCost(state.player)).toBe(nextCost);
+  });
+
+  it('round-trips rebalanced cargo capacity without migrating it again', () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value)
+    });
+    const state = createInitialState();
+    state.player.cargoMax += ECONOMY.cargo.step * 2;
+    save(state);
+
+    const restored = createInitialState();
+    load(restored);
+
+    expect(restored.player.cargoMax).toBe(20);
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({
+      version: SAVE_VERSION,
+      cargoMax: 20
+    });
+  });
+});
+
+describe('dynamite persistence', () => {
+  it('round-trips carried charges with progression', () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value)
+    });
+    const state = createInitialState();
+    state.player.dynamite = 3;
+    save(state);
+
+    const restored = createInitialState();
+    load(restored);
+
+    expect(restored.player.dynamite).toBe(3);
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}').dynamite).toBe(3);
+  });
+
+  it('keeps zero charges when loading a legacy save', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify({cash: 90}),
+      setItem: vi.fn()
+    });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(state.player.dynamite).toBe(0);
+  });
+});
+
+describe('teleporter persistence', () => {
+  it('round-trips carried teleporters with progression', () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value)
+    });
+    const state = createInitialState();
+    state.player.teleporters = 2;
+    save(state);
+
+    const restored = createInitialState();
+    load(restored);
+
+    expect(restored.player.teleporters).toBe(2);
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}').teleporters).toBe(2);
+  });
+
+  it('keeps zero teleporters when loading a legacy save', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify({cash: 90}),
+      setItem: vi.fn()
+    });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(state.player.teleporters).toBe(0);
+  });
+});
+
+describe('gun persistence', () => {
+  it('round-trips permanent ownership and consumable ammunition', () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value)
+    });
+    const state = createInitialState();
+    state.player.gunOwned = true;
+    state.player.bullets = 17;
+    save(state);
+
+    const restored = createInitialState();
+    load(restored);
+    expect(restored.player).toMatchObject({gunOwned:true, bullets:17});
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({gunOwned:true, bullets:17});
+  });
+
+  it('gives legacy saves no gun or ammunition', () => {
+    vi.stubGlobal('localStorage', {getItem: () => JSON.stringify({cash:90}), setItem: vi.fn()});
+    const state = createInitialState();
+    load(state);
+    expect(state.player).toMatchObject({gunOwned:false, bullets:0});
+  });
+});
+
+describe('fog exploration persistence', () => {
+  it('round-trips compact explored ranges and sensor level', () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value)
+    });
+    const state = createInitialState();
+    state.player.visibility = 4;
+    state.exploredTiles.add(explorationIndex(10, 10));
+    state.exploredTiles.add(explorationIndex(11, 10));
+    save(state);
+
+    const serialized = JSON.parse(stored.get(SAVE_KEY) || '{}');
+    expect(serialized).toMatchObject({version: SAVE_VERSION, visibility: 4, explored: '910-911'});
+
+    const restored = createInitialState();
+    load(restored);
+    expect(restored.player.visibility).toBe(4);
+    expect(restored.exploredTiles).toEqual(state.exploredTiles);
+  });
+
+  it('preserves existing saves with default sensors and no explored coordinates', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify({version: 2, cargoMax: 20, cash: 90}),
+      setItem: vi.fn()
+    });
+    const state = createInitialState();
+    load(state);
+
+    expect(state.cash).toBe(90);
+    expect(state.player.cargoMax).toBe(20);
+    expect(state.player.visibility).toBe(3);
+    expect(state.exploredTiles.size).toBe(0);
   });
 });

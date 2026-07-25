@@ -11,21 +11,35 @@ describe('terrain scanner helper', () => {
 
   it('reports ore value and remaining drill hits from real tile data', () => {
     expect(formatTerrainScanner({
-      tile: { type: 'ore', ore: { name: 'Copper', color: '#c47b45', value: 16, min: 7, chance: .08 }, hp: 4, maxHp: 4 },
+      tile: { type: 'ore', ore: { name: 'Copper', color: '#c47b45', value: 16, min: 7, max: 322, chance: .08 }, hp: 4, maxHp: 4 },
       direction: [-1, 0]
     })).toBe('Scanner ←: Copper — $16, 4 hits.');
   });
 
-  it('warns about rock, magma, dormant fiends, active fiends, and the Motherlode', () => {
+  it('conceals dormant fiends while warning about rock, magma, active fiends, and the Motherlode', () => {
     expect(formatTerrainScanner({ tile: { type: 'rock', hp: 999 }, direction: [0, -1] }))
       .toBe('Scanner ↑: solid rock — detour; drill blocked.');
     expect(formatTerrainScanner({ tile: { type: 'hazard', hp: 5, maxHp: 5 }, direction: [0, 1] }))
       .toBe('Scanner ↓: magma — hull risk, 5 hits to vent.');
-    expect(formatTerrainScanner({ tile: { type: 'enemy', hp: 4, maxHp: 4 }, direction: [1, 0] }))
-      .toBe('Scanner →: dormant fiend — drill with caution, 4 hits.');
+    expect(formatTerrainScanner({ tile: { type: 'enemy', kind:'tunnelFiend', hp: 4, maxHp: 4 }, direction: [1, 0] }))
+      .toBe('Scanner →: dirt — drillable, 4 hits.');
     expect(formatTerrainScanner({ tile: { type: 'air' }, direction: [-1, 0], activeEnemy: true }))
       .toBe('Scanner ←: active fiend — drill it before it chews hull.');
-    expect(formatTerrainScanner({ tile: { type: 'artifact', hp: 24, maxHp: 24 }, direction: [0, 1] }))
+    expect(formatTerrainScanner({ tile: { type: 'motherlode', hp: 24, maxHp: 24 }, direction: [0, 1] }))
       .toBe('Scanner ↓: Motherlode core — 24 hits to crack; claim it and return alive.');
+  });
+
+  it('makes immediate artifact cash and zero cargo use explicit', () => {
+    expect(formatTerrainScanner({
+      tile: {type:'artifact', artifact:{name:'Alien Reliquary', color:'#ff78e1', value:900, min:702, max:992, chance:.00025}, hp:7, maxHp:7},
+      direction: [1, 0]
+    })).toBe('Scanner →: RARE Alien Reliquary — $900 CASH NOW, 7 hits; uses no cargo.');
+  });
+
+  it('does not leak terrain, rewards, or enemies through unexplored fog', () => {
+    expect(formatTerrainScanner({
+      tile: {type:'artifact', artifact:{name:'Alien Reliquary', color:'#ff78e1', value:900, min:702, max:992, chance:.00025}, hp:7, maxHp:7},
+      direction: [1, 0], activeEnemy: true, explored: false
+    })).toBe('Scanner →: unexplored — advance to map terrain.');
   });
 });

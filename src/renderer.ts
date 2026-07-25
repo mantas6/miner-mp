@@ -1,37 +1,153 @@
-import { SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants';
+import { SURFACE_HEIGHT, TILE, WORLD_W } from './constants';
 import { canvas, ctx, H, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom';
+import { getPartnerIndicator } from './partner-indicator';
+import { getVisibleTileRange, type VisibleTileRange } from './visible-tile-range';
+import { isTileExplored } from './exploration';
+import { getEnemyType } from './enemy-types';
+import type { EnemyKind } from './types';
+
+const TERRAIN_CHUNK_TILES = 1;
+const TERRAIN_CHUNK_PADDING = 52;
+const MAX_EXTRA_TERRAIN_CHUNKS = 32;
+
+interface TerrainChunk {
+  canvas: HTMLCanvasElement;
+  startX: number;
+  startY: number;
+  width: number;
+  height: number;
+}
 
 export function createRenderer({ state, get, rand }) {
+  let drawingContext = ctx;
+  const terrainChunks = new Map<string, TerrainChunk>();
+  let cachedTerrainScale = 0;
+  let cachedTerrainWorld: unknown = null;
+  const isExplored = (x: number, y: number) => !state.exploredTiles || isTileExplored(state.exploredTiles, x, y);
+
+  function terrainChunkKey(chunkX: number, chunkY: number){ return `${chunkX},${chunkY}`; }
+  function invalidateTerrain(x?: number, y?: number){
+    if (x === undefined || y === undefined) {
+      terrainChunks.clear();
+      return;
+    }
+    terrainChunks.delete(terrainChunkKey(
+      Math.floor(x / TERRAIN_CHUNK_TILES),
+      Math.floor(y / TERRAIN_CHUNK_TILES)
+    ));
+  }
+
+  function createTerrainChunk(chunkX: number, chunkY: number, scale: number): TerrainChunk {
+    const startX = chunkX * TERRAIN_CHUNK_TILES;
+    const startY = chunkY * TERRAIN_CHUNK_TILES;
+    const endX = Math.min(WORLD_W - 1, startX + TERRAIN_CHUNK_TILES - 1);
+    const endY = startY + TERRAIN_CHUNK_TILES - 1;
+    const width = (endX - startX + 1) * TILE;
+    const height = (endY - startY + 1) * TILE;
+    const terrainCanvas = document.createElement('canvas');
+    terrainCanvas.width = Math.ceil((width + TERRAIN_CHUNK_PADDING * 2) * scale);
+    terrainCanvas.height = Math.ceil((height + TERRAIN_CHUNK_PADDING * 2) * scale);
+    const terrainContext = terrainCanvas.getContext('2d');
+    if (!terrainContext) throw new Error('2D terrain cache context is unavailable.');
+    terrainContext.setTransform(scale, 0, 0, scale, 0, 0);
+
+    const mainContext = drawingContext;
+    drawingContext = terrainContext;
+    try {
+      for(let wy=startY;wy<=endY;wy++) for(let wx=startX;wx<=endX;wx++) {
+        drawTile(
+          get(wx,wy), wx, wy,
+          TERRAIN_CHUNK_PADDING + (wx-startX)*TILE,
+          TERRAIN_CHUNK_PADDING + (wy-startY)*TILE
+        );
+      }
+    } finally {
+      drawingContext = mainContext;
+    }
+
+    return {canvas: terrainCanvas, startX, startY, width, height};
+  }
+
+  function drawTerrain(camX, camY){
+    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W);
+    // Cache at CSS-pixel resolution so high-DPI screens do not multiply terrain generation cost.
+    const scale = Math.min(1, canvas.width / VIEW_WIDTH);
+    if (cachedTerrainScale !== scale || cachedTerrainWorld !== state.world) {
+      terrainChunks.clear();
+      cachedTerrainScale = scale;
+      cachedTerrainWorld = state.world;
+    }
+
+    const startChunkX = Math.floor(range.startX / TERRAIN_CHUNK_TILES);
+    const endChunkX = Math.floor(range.endX / TERRAIN_CHUNK_TILES);
+    const startChunkY = Math.floor(range.startY / TERRAIN_CHUNK_TILES);
+    const endChunkY = Math.floor(range.endY / TERRAIN_CHUNK_TILES);
+    let visibleChunkCount = 0;
+    for(let chunkY=startChunkY;chunkY<=endChunkY;chunkY++) for(let chunkX=startChunkX;chunkX<=endChunkX;chunkX++) {
+      const key = terrainChunkKey(chunkX, chunkY);
+      let terrain = terrainChunks.get(key);
+      if (!terrain) terrain = createTerrainChunk(chunkX, chunkY, scale);
+      else terrainChunks.delete(key);
+      terrainChunks.set(key, terrain);
+      visibleChunkCount++;
+      drawingContext.drawImage(
+        terrain.canvas,
+        0, 0, terrain.canvas.width, terrain.canvas.height,
+        (terrain.startX-camX)*TILE-TERRAIN_CHUNK_PADDING,
+        (terrain.startY-camY)*TILE-TERRAIN_CHUNK_PADDING,
+        terrain.width+TERRAIN_CHUNK_PADDING*2,
+        terrain.height+TERRAIN_CHUNK_PADDING*2
+      );
+    }
+
+    while (terrainChunks.size > visibleChunkCount + MAX_EXTRA_TERRAIN_CHUNKS) {
+      const oldestKey = terrainChunks.keys().next().value;
+      if (oldestKey === undefined) break;
+      terrainChunks.delete(oldestKey);
+    }
+  }
+
+  function drawTerrainDamage(camX, camY){
+    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W);
+    for(let wy=range.startY;wy<=range.endY;wy++) for(let wx=range.startX;wx<=range.endX;wx++) {
+      if (!isExplored(wx, wy)) continue;
+      drawTileDamage(get(wx,wy), (wx-camX)*TILE, (wy-camY)*TILE);
+    }
+  }
+
   function draw(){
     const p = state.player;
     const camX = Math.max(0, Math.min(WORLD_W-W, state.camX));
-    const camY = Math.max(0, Math.min(WORLD_H-H, state.camY));
-    const startX = Math.floor(camX), startY = Math.floor(camY);
-    const offX = (startX - camX) * TILE, offY = (startY - camY) * TILE;
+    const camY = Math.max(0, state.camY);
     const sky = ctx.createLinearGradient(0,0,0,VIEW_HEIGHT);
     sky.addColorStop(0,'#163762'); sky.addColorStop(.25,'#0e1d31'); sky.addColorStop(.26,'#2a1a11'); sky.addColorStop(1,'#050301');
     ctx.fillStyle = sky; ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
-    for(let y=-1;y<=H+1;y++) for(let x=-1;x<=W+1;x++){
-      const wx=x+startX, wy=y+startY, t=get(wx,wy), sx=x*TILE+offX, sy=y*TILE+offY;
-      drawTile(t, wx, wy, sx, sy);
-    }
+    drawTerrain(camX, camY);
+    drawTerrainDamage(camX, camY);
     drawTerrainBlendOverlay(camY);
     drawSurface(camX, camY);
     drawEnemies(camX, camY);
     for (const pt of state.particles) {
+      if (!isExplored(Math.floor(pt.x), Math.floor(pt.y))) continue;
       const sx = (pt.x - camX) * TILE, sy = (pt.y - camY) * TILE;
       ctx.globalAlpha = Math.max(0, Math.min(1, pt.life / 28));
       ctx.fillStyle = pt.color;
       ctx.fillRect(sx, sy, pt.size*TILE, pt.size*TILE);
       ctx.globalAlpha = 1;
     }
+    drawRemotePlayers(camX, camY);
+    drawFog(camX, camY);
     const sx=(p.drawX-camX)*TILE, sy=(p.drawY-camY)*TILE;
+    drawTeleportEffect(camX, camY, false);
     ctx.save();
+    if (state.teleportEffect) ctx.globalAlpha = Math.min(1, .32 + state.teleportEffect.frame / Math.max(1, state.teleportEffect.duration * .42));
     ctx.translate(sx+TILE*.5, sy+TILE*.5 + Math.sin(state.tick*.45)*p.bob*TILE*.08);
     ctx.rotate((p.x - p.drawX) * -0.12 + (p.y - p.drawY) * 0.08 + (p.drillDy > 0 ? p.drillAnim * 0.10 : 0));
     ctx.scale(p.facing, 1);
-    drawShip(p);
+    drawShip(p, false, state.input?.sprintDirection);
     ctx.restore();
+    drawTeleportEffect(camX, camY, true);
+    drawPartnerIndicators(camX, camY, sx + TILE*.5, sy + TILE*.5);
     if(state.gameOver){
       ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
       ctx.fillStyle='#fff'; ctx.textAlign='center';
@@ -41,24 +157,148 @@ export function createRenderer({ state, get, rand }) {
       ctx.textAlign='left';
     }
   }
+  function drawFog(camX, camY) {
+    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W);
+    ctx.fillStyle = '#030608';
+    for (let wy=range.startY; wy<=range.endY; wy++) for (let wx=range.startX; wx<=range.endX; wx++) {
+      if (isExplored(wx, wy)) continue;
+      const sx = (wx-camX)*TILE, sy = (wy-camY)*TILE;
+      ctx.fillRect(sx-1, sy-1, TILE+2, TILE+2);
+
+      const grainX = sx + TILE*(.14 + rand(wx+17, wy-11)*.72);
+      const grainY = sy + TILE*(.14 + rand(wx-13, wy+19)*.72);
+      ctx.fillStyle = `rgba(112,137,143,${.10 + rand(wx+5, wy+7)*.07})`;
+      ctx.fillRect(grainX, grainY, 2 + rand(wx, wy+31)*3, 2 + rand(wx+29, wy)*2);
+
+      const veinY = sy + TILE*(.27 + rand(wx-7, wy+3)*.46);
+      ctx.strokeStyle = `rgba(77,102,108,${.16 + rand(wx+23, wy-5)*.10})`;
+      ctx.lineWidth = 1 + rand(wx-17, wy+13)*1.5;
+      ctx.beginPath();
+      ctx.moveTo(sx+TILE*.08, veinY);
+      ctx.bezierCurveTo(
+        sx+TILE*.32, veinY+TILE*(rand(wx+3, wy)-.5)*.18,
+        sx+TILE*.68, veinY+TILE*(rand(wx, wy+3)-.5)*.18,
+        sx+TILE*.92, veinY+TILE*(rand(wx+11, wy+11)-.5)*.10
+      );
+      ctx.stroke();
+      ctx.fillStyle = '#030608';
+    }
+  }
+  function drawTeleportEffect(camX, camY, foreground) {
+    const effect = state.teleportEffect;
+    if (!effect) return;
+    const progress = effect.frame / Math.max(1, effect.duration - 1);
+    const arrivalX = (effect.destinationX - camX + .5) * TILE;
+    const arrivalY = (effect.destinationY - camY + .5) * TILE;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.globalCompositeOperation = 'screen';
+
+    if (!foreground) {
+      const arrival = Math.min(1, progress * 2.4 + .12);
+      const beam = TILE * (1.7 - arrival * .85);
+      const glow = ctx.createRadialGradient(arrivalX, arrivalY, 0, arrivalX, arrivalY, beam);
+      glow.addColorStop(0, `rgba(225,250,255,${.5 * (1-progress) + .12})`);
+      glow.addColorStop(.25, `rgba(92,200,255,${.34 * (1-progress)})`);
+      glow.addColorStop(1, 'rgba(105,92,255,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(arrivalX, arrivalY, beam, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = `rgba(180,239,255,${.2 * (1-progress)})`;
+      ctx.fillRect(arrivalX-TILE*.17, arrivalY-TILE*2.1, TILE*.34, TILE*4.2);
+    } else {
+      const departure = Math.max(0, 1 - progress * 1.8);
+      if (departure > 0) {
+        const radius = TILE * (.18 + departure * .82);
+        ctx.globalAlpha = departure;
+        ctx.strokeStyle = '#8eeaff'; ctx.lineWidth = 3 + departure * 5;
+        ctx.shadowColor = '#805cff'; ctx.shadowBlur = 22;
+        ctx.beginPath(); ctx.arc(effect.originScreenX, effect.originScreenY, radius, 0, Math.PI*2); ctx.stroke();
+        ctx.strokeStyle = '#fff4b0'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(effect.originScreenX, effect.originScreenY, radius*.54, 0, Math.PI*2); ctx.stroke();
+      }
+
+      ctx.globalAlpha = 1 - progress;
+      ctx.strokeStyle = '#b7f3ff'; ctx.shadowColor = '#5cc8ff'; ctx.shadowBlur = 18;
+      for (let i=0;i<3;i++) {
+        const radius = TILE * (.42 + (1-progress)*(.72+i*.24));
+        const rotation = effect.reducedMotion ? 0 : progress * Math.PI * (i%2 ? -1.4 : 1.7);
+        ctx.lineWidth = Math.max(1, 5-i);
+        ctx.beginPath(); ctx.arc(arrivalX, arrivalY, radius, rotation+i*.7, rotation+i*.7+Math.PI*1.35); ctx.stroke();
+      }
+      ctx.fillStyle = '#fff6bd';
+      for (let i=0;i<8;i++) {
+        const angle = i*Math.PI/4 + (effect.reducedMotion ? 0 : progress*1.8);
+        const radius = TILE*(.48 + (i%3)*.16)*(1-progress*.5);
+        ctx.fillRect(arrivalX+Math.cos(angle)*radius-2, arrivalY+Math.sin(angle)*radius-2, 4, 4);
+      }
+    }
+    ctx.restore();
+  }
+  function drawRemotePlayers(camX, camY) {
+    for (const remote of state.remotePlayers) {
+      if (!isExplored(Math.round(remote.x), Math.round(remote.y))) continue;
+      const sx = (remote.drawX - camX) * TILE, sy = (remote.drawY - camY) * TILE;
+      if (sx < -TILE || sy < -TILE || sx > VIEW_WIDTH + TILE || sy > VIEW_HEIGHT + TILE) continue;
+      ctx.save();
+      ctx.globalAlpha = 0.56;
+      ctx.translate(sx + TILE*.5, sy + TILE*.5 + Math.sin(state.tick*.45)*remote.bob*TILE*.08);
+      ctx.rotate((remote.x - remote.drawX) * -0.12 + (remote.y - remote.drawY) * 0.08 + (remote.drillDy > 0 ? remote.drillAnim * 0.10 : 0));
+      ctx.scale(remote.facing, 1);
+      drawShip(remote, true);
+      ctx.restore();
+      ctx.save();
+      ctx.fillStyle = '#bfeaff';
+      ctx.font = `bold ${Math.max(10, Math.floor(TILE*.16))}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('PARTNER', sx + TILE*.5, sy - TILE*.16);
+      ctx.restore();
+    }
+  }
+  function drawPartnerIndicators(camX, camY, playerX, playerY) {
+    for (const remote of state.remotePlayers) {
+      if (!isExplored(Math.round(remote.x), Math.round(remote.y))) continue;
+      const targetX = (remote.drawX - camX + .5) * TILE;
+      const targetY = (remote.drawY - camY + .5) * TILE;
+      const indicator = getPartnerIndicator(
+        playerX, playerY, targetX, targetY,
+        VIEW_WIDTH, VIEW_HEIGHT, TILE*.65, 64
+      );
+      if (!indicator) continue;
+
+      ctx.save();
+      ctx.translate(indicator.x, indicator.y);
+      ctx.fillStyle = 'rgba(7,20,34,.82)';
+      ctx.strokeStyle = '#bfeaff';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#5cc8ff';
+      ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.rotate(indicator.angle);
+      ctx.fillStyle = '#bfeaff';
+      ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-7, -9); ctx.lineTo(-3, 0); ctx.lineTo(-7, 9); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
   function drawEnemies(camX, camY) {
     for (const e of state.enemies) {
       if (!e.alive) continue;
+      if (!isExplored(Math.round(e.x), Math.round(e.y))) continue;
       const sx = (e.drawX - camX) * TILE, sy = (e.drawY - camY) * TILE;
       if (sx < -TILE || sy < -TILE || sx > VIEW_WIDTH + TILE || sy > VIEW_HEIGHT + TILE) continue;
-      drawEnemyBody(sx, sy, e.hp / e.maxHp, e.flash);
+      drawEnemyBody(sx, sy, e.kind, e.hp / e.maxHp, e.flash);
     }
   }
-  function drawEnemyBody(sx, sy, hpPct=1, flash=0) {
+  function drawEnemyBody(sx, sy, kind: EnemyKind, hpPct=1, flash=0) {
+    const enemyType = getEnemyType(kind);
     ctx.save();
     ctx.translate(sx + TILE*.5, sy + TILE*.5 + Math.sin(state.tick*.34)*TILE*.05);
     ctx.rotate(Math.sin(state.tick*.18) * .08);
-    ctx.shadowColor = flash > .1 ? '#fff6a8' : '#72ff4a';
+    ctx.shadowColor = flash > .1 ? '#fff6a8' : enemyType.glow;
     ctx.shadowBlur = flash > .1 ? 22 : 10;
     const body = ctx.createRadialGradient(-TILE*.12,-TILE*.16,TILE*.06,0,0,TILE*.45);
-    body.addColorStop(0, flash > .1 ? '#fff6a8' : '#c5ff62');
-    body.addColorStop(.45, '#4fa23d');
-    body.addColorStop(1, '#17391e');
+    body.addColorStop(0, flash > .1 ? '#fff6a8' : enemyType.colors[0]);
+    body.addColorStop(.45, enemyType.colors[1]);
+    body.addColorStop(1, enemyType.colors[2]);
     ctx.fillStyle = body;
     ctx.beginPath(); ctx.ellipse(0, 0, TILE*.34, TILE*.28, 0, 0, Math.PI*2); ctx.fill();
     ctx.shadowBlur = 0;
@@ -66,16 +306,18 @@ export function createRenderer({ state, get, rand }) {
     ctx.beginPath(); ctx.arc(-TILE*.12, -TILE*.06, TILE*.055, 0, Math.PI*2); ctx.arc(TILE*.12, -TILE*.06, TILE*.055, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#fff8c4';
     ctx.beginPath(); ctx.moveTo(-TILE*.12,TILE*.10); ctx.lineTo(-TILE*.05,TILE*.23); ctx.lineTo(TILE*.02,TILE*.10); ctx.lineTo(TILE*.09,TILE*.23); ctx.lineTo(TILE*.16,TILE*.10); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#1d4f24'; ctx.lineWidth = 5;
+    ctx.strokeStyle = enemyType.colors[2]; ctx.lineWidth = kind === 'ironback' ? 8 : 5;
     for (let i=-1;i<=1;i+=2) {
       ctx.beginPath(); ctx.moveTo(i*TILE*.24, TILE*.02); ctx.lineTo(i*TILE*.48, TILE*.14); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(i*TILE*.20, -TILE*.10); ctx.lineTo(i*TILE*.42, -TILE*.25); ctx.stroke();
     }
     ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(-TILE*.28, -TILE*.43, TILE*.56, TILE*.055);
-    ctx.fillStyle = '#8cff58'; ctx.fillRect(-TILE*.28, -TILE*.43, TILE*.56*Math.max(0,hpPct), TILE*.055);
+    ctx.fillStyle = enemyType.glow; ctx.fillRect(-TILE*.28, -TILE*.43, TILE*.56*Math.max(0,hpPct), TILE*.055);
     ctx.restore();
   }
   function drawTile(t, wx, wy, sx, sy) {
+    const ctx = drawingContext;
+    if (t.type === 'enemy') t = {type: 'dirt', hp: t.hp, maxHp: t.maxHp};
     const pad = 1.5; // overdraw slightly so adjacent cells have no visible seams
     if(t.type==='air') {
       if (wy >= SURFACE_HEIGHT){
@@ -91,8 +333,18 @@ export function createRenderer({ state, get, rand }) {
       return;
     }
 
-    if (t.type === 'hazard' || t.type === 'artifact') {
-      const artifact = t.type === 'artifact';
+    if (t.type === 'artifact') {
+      const g = ctx.createRadialGradient(sx+TILE*.50, sy+TILE*.46, TILE*.06, sx+TILE*.5, sy+TILE*.5, TILE*.62);
+      g.addColorStop(0, '#fff8d6'); g.addColorStop(.24, t.artifact.color); g.addColorStop(.62, '#18384a'); g.addColorStop(1, '#071018');
+      ctx.fillStyle = g; ctx.fillRect(sx-pad,sy-pad,TILE+pad*2,TILE+pad*2);
+      ctx.save(); ctx.shadowColor=t.artifact.color; ctx.shadowBlur=18;
+      ctx.fillStyle='#ffe59a'; ctx.strokeStyle='#ffffff'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(sx+TILE*.5,sy+TILE*.17); ctx.lineTo(sx+TILE*.72,sy+TILE*.40); ctx.lineTo(sx+TILE*.62,sy+TILE*.75); ctx.lineTo(sx+TILE*.38,sy+TILE*.75); ctx.lineTo(sx+TILE*.28,sy+TILE*.40); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#172132'; ctx.font=`bold ${Math.floor(TILE*.24)}px sans-serif`; ctx.textAlign='center'; ctx.fillText('$',sx+TILE*.5,sy+TILE*.57); ctx.textAlign='left'; ctx.restore();
+      return;
+    }
+    if (t.type === 'hazard' || t.type === 'motherlode') {
+      const artifact = t.type === 'motherlode';
       const g = ctx.createRadialGradient(sx+TILE*.50, sy+TILE*.45, TILE*.08, sx+TILE*.5, sy+TILE*.5, TILE*.58);
       if (artifact) { g.addColorStop(0, '#fff4b5'); g.addColorStop(.35, '#ff8a1f'); g.addColorStop(1, '#3a0d05'); }
       else { g.addColorStop(0, '#ffd38a'); g.addColorStop(.38, '#d33b16'); g.addColorStop(1, '#200805'); }
@@ -100,23 +352,8 @@ export function createRenderer({ state, get, rand }) {
       ctx.strokeStyle = artifact ? 'rgba(255,236,150,.85)' : 'rgba(255,89,36,.62)'; ctx.lineWidth = artifact ? 5 : 4;
       for (let i=0;i<4;i++) { ctx.beginPath(); ctx.ellipse(sx+TILE*(.30+i*.13), sy+TILE*(.42+rand(wx+i,wy)*.22), TILE*(.10+rand(wx,wy+i)*.08), TILE*.28, rand(wx+i,wy)*Math.PI, 0, Math.PI*2); ctx.stroke(); }
       if (artifact) { ctx.fillStyle = '#fff2a6'; ctx.font = `bold ${Math.floor(TILE*.18)}px sans-serif`; ctx.textAlign='center'; ctx.fillText('CORE', sx+TILE*.5, sy+TILE*.55); ctx.textAlign='left'; }
-      if (t.maxHp && t.hp < t.maxHp) { ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64, TILE*.055); ctx.fillStyle=artifact?'#ffe66d':'#ff7145'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64*Math.max(0,t.hp/t.maxHp), TILE*.055); }
       return;
     }
-    if (t.type === 'enemy') {
-      const g = ctx.createRadialGradient(sx+TILE*.46, sy+TILE*.42, TILE*.08, sx+TILE*.5, sy+TILE*.5, TILE*.55);
-      g.addColorStop(0, '#b7ff5a'); g.addColorStop(.35, '#42612a'); g.addColorStop(1, '#1d120d');
-      ctx.fillStyle = g; ctx.fillRect(sx-pad,sy-pad,TILE+pad*2,TILE+pad*2);
-      ctx.strokeStyle = 'rgba(146,255,85,.55)'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.ellipse(sx+TILE*.5, sy+TILE*.5, TILE*.26, TILE*.32, rand(wx,wy)*.6, 0, Math.PI*2); ctx.stroke();
-      ctx.fillStyle = '#10180d'; ctx.beginPath(); ctx.arc(sx+TILE*.42, sy+TILE*.44, TILE*.04, 0, Math.PI*2); ctx.arc(sx+TILE*.58, sy+TILE*.44, TILE*.04, 0, Math.PI*2); ctx.fill();
-      if (t.maxHp && t.hp < t.maxHp) {
-        ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(sx+TILE*.20, sy+TILE*.12, TILE*.60, TILE*.055);
-        ctx.fillStyle = '#8cff58'; ctx.fillRect(sx+TILE*.20, sy+TILE*.12, TILE*.60*Math.max(0,t.hp/t.maxHp), TILE*.055);
-      }
-      return;
-    }
-
     // Smooth neighbor-averaged noise keeps color variation without obvious square patches.
     const n1 = (rand(wx,wy)+rand(wx-1,wy)+rand(wx+1,wy)+rand(wx,wy-1)+rand(wx,wy+1)) / 5;
     const n2 = (rand(wx*2+11,wy*2-7)+rand((wx-1)*2+11,wy*2-7)+rand((wx+1)*2+11,wy*2-7)+rand(wx*2+11,(wy-1)*2-7)+rand(wx*2+11,(wy+1)*2-7)) / 5;
@@ -189,7 +426,15 @@ export function createRenderer({ state, get, rand }) {
     if(t.type==='rock'){
       ctx.fillStyle='rgba(210,220,240,.11)'; ctx.fillRect(sx+TILE*.12,sy+TILE*.22,TILE*.72,TILE*.10); ctx.fillRect(sx+TILE*.29,sy+TILE*.61,TILE*.56,TILE*.10);
     }
-    if (t.maxHp && t.hp < t.maxHp) {
+  }
+  function drawTileDamage(t, sx, sy) {
+    if (!t.maxHp || t.hp >= t.maxHp) return;
+    if (t.type === 'hazard' || t.type === 'artifact' || t.type === 'motherlode') {
+      ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64, TILE*.055);
+      ctx.fillStyle=t.type === 'hazard'?'#ff7145':t.type === 'artifact'?t.artifact.color:'#ffe66d'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64*Math.max(0,t.hp/t.maxHp), TILE*.055);
+      return;
+    }
+    if (t.type !== 'air') {
       const damage = 1 - t.hp / t.maxHp;
       ctx.strokeStyle = `rgba(255,238,178,${0.25 + damage*.55})`;
       ctx.lineWidth = 2 + damage * 4;
@@ -332,10 +577,11 @@ export function createRenderer({ state, get, rand }) {
       ctx.fill();
     }
   }
-  function drawShip(p) {
-    const dead = state.gameOver;
+  function drawShip(p, remote=false, sprintDirection: [number, number] | null = null) {
+    const dead = !remote && state.gameOver;
     const wobble = Math.sin(state.tick*.22) * p.bob * TILE*.025;
     ctx.translate(0, wobble);
+    if (!dead && sprintDirection) drawBoostFlames(sprintDirection, p.facing);
     // engine flame + drill pulse
     const flame = TILE*(.22 + Math.sin(state.tick*.55)*.04);
     ctx.fillStyle = dead ? '#433' : '#ffb02e'; ctx.beginPath(); ctx.moveTo(-TILE*.16,TILE*.28); ctx.lineTo(0,TILE*.54+flame*.18); ctx.lineTo(TILE*.16,TILE*.28); ctx.fill();
@@ -352,6 +598,33 @@ export function createRenderer({ state, get, rand }) {
     drawDirectionalDrill(p);
     ctx.fillStyle = '#ffd35f'; ctx.fillRect(TILE*.30, -TILE*.09, TILE*.14, TILE*.18);
     ctx.fillStyle = '#182536'; ctx.fillRect(TILE*.33, -TILE*.055, TILE*.08, TILE*.11);
+  }
+  function drawBoostFlames(direction: [number, number], facing: number) {
+    const pulse = state.reducedMotion ? 0 : Math.sin(state.tick*.9) * TILE*.055;
+    const length = TILE*.72 + pulse;
+    ctx.save();
+    // The ship context is mirrored by facing, so convert world travel into local coordinates first.
+    ctx.rotate(Math.atan2(direction[1], direction[0] * facing));
+    ctx.globalCompositeOperation = 'screen';
+    ctx.shadowColor = '#43d9ff';
+    ctx.shadowBlur = state.reducedMotion ? 8 : 15;
+    for (const offset of [-TILE*.17, TILE*.17]) {
+      ctx.fillStyle = 'rgba(65,205,255,.88)';
+      ctx.beginPath();
+      ctx.moveTo(-TILE*.28, offset-TILE*.085);
+      ctx.lineTo(-length, offset);
+      ctx.lineTo(-TILE*.28, offset+TILE*.085);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#fff1a3';
+      ctx.beginPath();
+      ctx.moveTo(-TILE*.30, offset-TILE*.035);
+      ctx.lineTo(-length+TILE*.24, offset);
+      ctx.lineTo(-TILE*.30, offset+TILE*.035);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
   }
   function drawRedStar(cx, cy, r, color='#ffd95a') {
     ctx.save(); ctx.fillStyle=color; ctx.beginPath();
@@ -393,5 +666,5 @@ export function createRenderer({ state, get, rand }) {
     ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
   }
 
-  return { draw };
+  return { draw, invalidateTerrain };
 }

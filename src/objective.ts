@@ -1,5 +1,5 @@
 import { ECONOMY, FUEL } from './balance';
-import { ORES, START_Y, WORLD_H } from './constants';
+import { MOTHERLODE_ROW, ORES, START_Y } from './constants';
 import { cheapestUpgrade } from './economy';
 import { oreMinimumDepthMeters } from './prospecting';
 import type { Ore, Player } from './types';
@@ -16,15 +16,15 @@ export interface ObjectiveInput {
   extractionPhase?: ExtractionPhase;
   ores?: Ore[];
   startY?: number;
-  worldH?: number;
+  motherlodeRow?: number;
 }
 
 export function currentDepthMeters(playerY: number, startY = START_Y): number {
   return Math.max(0, playerY - startY) * 10;
 }
 
-export function motherlodeDepthMeters(worldH = WORLD_H, startY = START_Y): number {
-  return Math.max(0, worldH - 2 - startY) * 10;
+export function motherlodeDepthMeters(motherlodeRow = MOTHERLODE_ROW, startY = START_Y): number {
+  return Math.max(0, motherlodeRow - startY) * 10;
 }
 
 export function nextOreMilestone(depthMeters: number, ores: Ore[] = ORES, startY = START_Y): { name: string; depthMeters: number } | null {
@@ -42,7 +42,7 @@ export function formatExpeditionObjective({
   extractionPhase = 'none',
   ores = ORES,
   startY = START_Y,
-  worldH = WORLD_H
+  motherlodeRow = MOTHERLODE_ROW
 }: ObjectiveInput): string {
   if (extractionPhase === 'returning') {
     return 'Objective: Motherlode core secured — return alive to the surface depot to complete extraction.';
@@ -86,7 +86,7 @@ export function formatExpeditionObjective({
     return `Objective: dig toward ${nextOre.name} around ${nextOre.depthMeters} m while keeping fuel for the trip home.`;
   }
 
-  const coreDepth = motherlodeDepthMeters(worldH, startY);
+  const coreDepth = motherlodeDepthMeters(motherlodeRow, startY);
   const remaining = Math.max(0, coreDepth - depth);
   if (remaining > 0) {
     return `Objective: push toward the Motherlode core at ${coreDepth} m (${remaining} m deeper).`;

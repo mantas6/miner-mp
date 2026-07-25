@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill, cargoValue, cheapestUpgrade, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from '../src/economy';
+import { refuelCost, repairCost, cargoCost, tankCost, hullCost, drillCost, partialFill, cargoValue, cheapestUpgrade, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from '../src/economy';
 import { STARTING, ECONOMY } from '../src/balance';
 
 describe('cost functions', () => {
@@ -22,6 +22,11 @@ describe('cost functions', () => {
     expect(tankCost({ fuelMax: STARTING.fuelMax })).toBe(150);
   });
 
+  it('hullCost at baseline and one step up', () => {
+    expect(hullCost({ hullMax: STARTING.hullMax })).toBe(180);
+    expect(hullCost({ hullMax: STARTING.hullMax + ECONOMY.hull.step })).toBe(249);
+  });
+
   it('drillCost at baseline and one level up', () => {
     expect(drillCost({ drill: STARTING.drill })).toBe(200);
     expect(drillCost({ drill: STARTING.drill + 1 })).toBe(310);
@@ -29,22 +34,33 @@ describe('cost functions', () => {
 });
 
 describe('cargo and upgrade feedback', () => {
-  const baselinePlayer = { cargoMax: STARTING.cargoMax, fuelMax: STARTING.fuelMax, drill: STARTING.drill };
+  const baselinePlayer = { cargoMax: STARTING.cargoMax, fuelMax: STARTING.fuelMax, hullMax: STARTING.hullMax, drill: STARTING.drill };
 
   it('sums current cargo value from ore entries', () => {
     expect(cargoValue([{ value: 6 }, { value: 12 }, { value: 6 }])).toBe(24);
   });
 
   it('selects the cheapest next ship upgrade', () => {
-    expect(cheapestUpgrade(baselinePlayer)).toEqual({ label: 'Cargo +10', cost: 120 });
+    expect(cheapestUpgrade(baselinePlayer)).toEqual({ label: 'Cargo +5', cost: 120 });
+  });
+
+  it('recommends hull reinforcement when it is the cheapest next upgrade', () => {
+    const upgradedPlayer = {
+      cargoMax: STARTING.cargoMax + ECONOMY.cargo.step * 2,
+      fuelMax: STARTING.fuelMax + ECONOMY.tank.step,
+      hullMax: STARTING.hullMax,
+      drill: STARTING.drill + ECONOMY.drill.step
+    };
+
+    expect(cheapestUpgrade(upgradedPlayer)).toEqual({ label: 'Hull +20', cost: 180 });
   });
 
   it('formats remaining progress when cargo plus cash cannot yet afford the cheapest upgrade', () => {
-    expect(formatCargoUpgradeFeedback(baselinePlayer, 40, 25)).toBe('Cargo value $25 · Next Cargo +10 $120 (need $55 more)');
+    expect(formatCargoUpgradeFeedback(baselinePlayer, 40, 25)).toBe('Cargo value $25 · Next Cargo +5 $120 (need $55 more)');
   });
 
   it('formats ready feedback when selling cargo would afford the next upgrade', () => {
-    expect(formatCargoUpgradeFeedback(baselinePlayer, 70, 55)).toBe('Cargo value $55 · Next Cargo +10 $120 (ready after sell)');
+    expect(formatCargoUpgradeFeedback(baselinePlayer, 70, 55)).toBe('Cargo value $55 · Next Cargo +5 $120 (ready after sell)');
   });
 });
 

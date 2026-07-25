@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ECONOMY, ENEMY, FUEL, HULL } from '../src/balance';
-import { DANGER, START_Y, WORLD_H } from '../src/constants';
+import { DANGER, MOTHERLODE_ROW, START_Y } from '../src/constants';
 import { buildDangerGuideRows } from '../src/danger';
 
 describe('danger guide helpers', () => {
@@ -17,7 +17,7 @@ describe('danger guide helpers', () => {
     expect(byTitle.get('Fiend bounties')).toContain(`$${ENEMY.bounty.base}`);
     expect(byTitle.get('Fiend bounties')).toContain(`$${ENEMY.bounty.step}`);
     expect(byTitle.get('Fuel discipline')).toContain(`${FUEL.lowFuelFraction * 100}% fuel`);
-    expect(byTitle.get('Motherlode core')).toContain(`≈${(WORLD_H - 2 - START_Y) * 10} m`);
+    expect(byTitle.get('Motherlode core')).toContain(`≈${(MOTHERLODE_ROW - START_Y) * 10} m`);
     expect(byTitle.get('Motherlode core')).toContain(`$${ECONOMY.artifactReward}`);
   });
 });

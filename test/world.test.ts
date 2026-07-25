@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { rand, naturalAirPocket, makeTile, starterOreForCoordinate } from '../src/world';
-import { SURFACE_HEIGHT, WORLD_W, WORLD_H } from '../src/constants';
+import { artifactForDepthRoll, ensureWorldRow, rand, naturalAirPocket, makeTile, oreForDepthRoll, oreSpawnChanceAtDepth, starterOreForCoordinate } from '../src/world';
+import { ARTIFACTS, MAX_WORLD_ROW, MOTHERLODE_ROW, ORES, START_Y, SURFACE_HEIGHT, WORLD_CHUNK_ROWS, WORLD_W } from '../src/constants';
 
 describe('rand', () => {
   it('is deterministic for the same coordinate', () => {
@@ -58,6 +58,101 @@ describe('starterOreForCoordinate', () => {
   });
 });
 
+describe('ore depth distribution', () => {
+  const sampledNames = (depth: number) => {
+    const names = new Set<string>();
+    for (let i = 0; i < 10000; i++) {
+      const ore = oreForDepthRoll(depth, (i + .5) / 10000);
+      if (ore) names.add(ore.name);
+    }
+    return names;
+  };
+
+  it('preserves the original mineral bands and extends the deepest resources below 10 km', () => {
+    expect(ORES.map(ore => ({
+      name: ore.name,
+      min: (ore.min - START_Y) * 10,
+      max: (ore.max - START_Y) * 10
+    }))).toEqual([
+      {name: 'Coal', min: 0, max: 1800},
+      {name: 'Copper', min: 50, max: 3200},
+      {name: 'Silver', min: 600, max: 4600},
+      {name: 'Gold', min: 1500, max: 6000},
+      {name: 'Ruby', min: 2600, max: 7400},
+      {name: 'Emerald', min: 3900, max: 8500},
+      {name: 'Alienite', min: 5400, max: 9400},
+      {name: 'Uranium', min: 7000, max: (MAX_WORLD_ROW - START_Y) * 10},
+      {name: 'Core Shard', min: 8500, max: (MAX_WORLD_ROW - START_Y) * 10}
+    ]);
+
+    for (let depth = SURFACE_HEIGHT; depth <= MOTHERLODE_ROW + 100; depth++) {
+      expect(oreForDepthRoll(depth, .5)).not.toBeNull();
+    }
+  });
+
+  it('enforces both edges of every mineral band', () => {
+    for (const ore of ORES) {
+      expect(sampledNames(ore.min)).toContain(ore.name);
+      expect(sampledNames(ore.max)).toContain(ore.name);
+      expect(sampledNames(ore.min - 1)).not.toContain(ore.name);
+      expect(sampledNames(ore.max + 1)).not.toContain(ore.name);
+    }
+  });
+
+  it('weights low tiers early and reserves the richest tiers for deep bands', () => {
+    expect([...sampledNames(START_Y + 100)]).toEqual(['Coal', 'Copper', 'Silver']);
+    expect([...sampledNames(START_Y + 300)]).toEqual(['Copper', 'Silver', 'Gold', 'Ruby']);
+    expect([...sampledNames(START_Y + 900)]).toEqual(['Alienite', 'Uranium', 'Core Shard']);
+
+    const earlyCounts = new Map<string, number>();
+    for (let i = 0; i < 10000; i++) {
+      const name = oreForDepthRoll(START_Y + 100, (i + .5) / 10000)?.name;
+      if (name) earlyCounts.set(name, (earlyCounts.get(name) || 0) + 1);
+    }
+    expect(earlyCounts.get('Coal')).toBeGreaterThan(earlyCounts.get('Copper')!);
+    expect(earlyCounts.get('Copper')).toBeGreaterThan(earlyCounts.get('Silver')!);
+  });
+
+  it('keeps ore frequency stable when mineral tiers transition', () => {
+    expect(oreSpawnChanceAtDepth(SURFACE_HEIGHT)).toBeGreaterThan(.10);
+    expect(oreSpawnChanceAtDepth(START_Y + 600)).toBeCloseTo(.22);
+    expect(oreSpawnChanceAtDepth(MOTHERLODE_ROW)).toBeCloseTo(.22);
+  });
+});
+
+describe('rare artifact distribution', () => {
+  it('enforces depth eligibility and absolute rarity without changing ore bands', () => {
+    for (const artifact of ARTIFACTS) {
+      const rollFor = (depth: number) => ARTIFACTS
+        .slice(0, ARTIFACTS.indexOf(artifact))
+        .filter(candidate => depth >= candidate.min && depth <= candidate.max)
+        .reduce((roll, candidate) => roll + candidate.chance, artifact.chance / 2);
+      expect(artifactForDepthRoll(artifact.min, rollFor(artifact.min))?.name).toBe(artifact.name);
+      expect(artifactForDepthRoll(artifact.max, rollFor(artifact.max))?.name).toBe(artifact.name);
+      expect(artifactForDepthRoll(artifact.min - 1, artifact.chance / 2)?.name).not.toBe(artifact.name);
+      expect(artifactForDepthRoll(artifact.max + 1, artifact.chance / 2)?.name).not.toBe(artifact.name);
+    }
+    expect(ARTIFACTS.reduce((sum, artifact) => sum + artifact.chance, 0)).toBeLessThan(.0011);
+  });
+
+  it('generates a deterministic, genuinely rare set across the full mine', () => {
+    const artifacts = [];
+    let ores = 0;
+    for (let y = SURFACE_HEIGHT; y <= MOTHERLODE_ROW; y++) {
+      for (let x = 1; x < WORLD_W - 1; x++) {
+        const tile = makeTile(x, y);
+        if (tile.type === 'artifact') artifacts.push(tile);
+        if (tile.type === 'ore') ores++;
+      }
+    }
+
+    expect(artifacts.length).toBeGreaterThanOrEqual(10);
+    expect(artifacts.length).toBeLessThan(50);
+    expect(artifacts.length).toBeLessThan(ores / 100);
+    expect(new Set(artifacts.map(tile => tile.artifact.name))).toEqual(new Set(ARTIFACTS.map(artifact => artifact.name)));
+  });
+});
+
 describe('makeTile', () => {
   it('is deterministic', () => {
     expect(makeTile(10, 50)).toEqual(makeTile(10, 50));
@@ -73,7 +168,7 @@ describe('makeTile', () => {
   });
 
   it('never spawns ore above its minimum depth', () => {
-    const maxY = Math.min(250, WORLD_H);
+    const maxY = MOTHERLODE_ROW + 2;
     for (let x = 0; x < WORLD_W; x += 3) {
       for (let y = 0; y < maxY; y++) {
         const tile = makeTile(x, y);
@@ -86,7 +181,7 @@ describe('makeTile', () => {
 
   it('generates at least one ore in a deep scan', () => {
     let foundOre = false;
-    const maxY = Math.min(250, WORLD_H);
+    const maxY = MOTHERLODE_ROW + 2;
     for (let x = 0; x < WORLD_W && !foundOre; x += 3) {
       for (let y = 0; y < maxY; y++) {
         if (makeTile(x, y).type === 'ore') { foundOre = true; break; }
@@ -115,12 +210,27 @@ describe('makeTile', () => {
   });
 
   it('keeps late-game landmarks and hazards intact', () => {
-    const artifactXs = [Math.floor(WORLD_W / 2) - 1, Math.floor(WORLD_W / 2), Math.floor(WORLD_W / 2) + 1];
-    for (const x of artifactXs) {
-      expect(makeTile(x, WORLD_H - 2).type).toBe('artifact');
+    const motherlodeXs = [Math.floor(WORLD_W / 2) - 1, Math.floor(WORLD_W / 2), Math.floor(WORLD_W / 2) + 1];
+    for (const x of motherlodeXs) {
+      expect(makeTile(x, MOTHERLODE_ROW).type).toBe('motherlode');
     }
 
     expect(makeTile(24, 151).type).toBe('hazard');
     expect(makeTile(36, 17).type).toBe('enemy');
+  });
+
+  it('generates deterministic terrain chunks on demand beyond 10,000 m', () => {
+    const deepRow = MOTHERLODE_ROW + 137;
+    const first = [];
+    const second = [];
+
+    const firstRow = ensureWorldRow(first, deepRow);
+    const secondRow = ensureWorldRow(second, deepRow);
+
+    expect(first.length).toBe(Math.ceil((deepRow + 1) / WORLD_CHUNK_ROWS) * WORLD_CHUNK_ROWS);
+    expect(first[100]).toBeUndefined();
+    expect(firstRow).toEqual(secondRow);
+    expect(firstRow?.[17]).toEqual(makeTile(17, deepRow));
+    expect(firstRow?.[17].type).not.toBe('motherlode');
   });
 });

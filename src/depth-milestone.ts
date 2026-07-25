@@ -1,4 +1,4 @@
-import { ORES, START_Y, WORLD_H } from './constants';
+import { MOTHERLODE_ROW, ORES, START_Y } from './constants';
 import { oreMinimumDepthMeters } from './prospecting';
 import type { Ore } from './types';
 
@@ -20,7 +20,7 @@ export function getDepthMilestone(
   playerY: number,
   ores: Ore[] = ORES,
   startY = START_Y,
-  worldH = WORLD_H
+  motherlodeRow = MOTHERLODE_ROW
 ): DepthMilestone {
   const depthMeters = Math.max(0, playerY - startY) * 10;
   const starterOres = ores.slice(0, 2);
@@ -46,7 +46,7 @@ export function getDepthMilestone(
     };
   }
 
-  const targetDepth = Math.max(0, worldH - 2 - startY) * 10;
+  const targetDepth = Math.max(0, motherlodeRow - startY) * 10;
   return {
     kind: 'motherlode',
     target: 'Motherlode core',
@@ -56,7 +56,7 @@ export function getDepthMilestone(
 }
 
 /** Formats the compact, always-visible progress readout used by the HUD. */
-export function formatDepthMilestone(playerY: number, ores: Ore[] = ORES, startY = START_Y, worldH = WORLD_H): string {
-  const milestone = getDepthMilestone(playerY, ores, startY, worldH);
+export function formatDepthMilestone(playerY: number, ores: Ore[] = ORES, startY = START_Y, motherlodeRow = MOTHERLODE_ROW): string {
+  const milestone = getDepthMilestone(playerY, ores, startY, motherlodeRow);
   return `Depth target: ${milestone.target} — ${milestone.remainingMeters} m deeper.`;
 }

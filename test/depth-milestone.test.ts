@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ORES, START_Y, WORLD_H } from '../src/constants';
+import { MOTHERLODE_ROW, ORES, START_Y } from '../src/constants';
 import { formatDepthMilestone, getDepthMilestone } from '../src/depth-milestone';
 
 describe('expedition depth milestone helper', () => {
@@ -17,18 +17,18 @@ describe('expedition depth milestone helper', () => {
     expect(getDepthMilestone(START_Y + 5)).toEqual({
       kind: 'ore',
       target: 'Silver',
-      depthMeters: 160,
-      remainingMeters: 110
+      depthMeters: 600,
+      remainingMeters: 550
     });
   });
 
   it('uses the Motherlode after the last ore band and never reports negative distance', () => {
-    const coreRow = WORLD_H - 2;
-    expect(getDepthMilestone(START_Y + 250, ORES, START_Y, WORLD_H)).toMatchObject({
+    const coreRow = MOTHERLODE_ROW;
+    expect(getDepthMilestone(START_Y + 860, ORES, START_Y, MOTHERLODE_ROW)).toMatchObject({
       kind: 'motherlode',
       target: 'Motherlode core',
-      depthMeters: 3160,
-      remainingMeters: 660
+      depthMeters: 10000,
+      remainingMeters: 1400
     });
     expect(formatDepthMilestone(coreRow + 20)).toBe('Depth target: Motherlode core — 0 m deeper.');
   });

@@ -1,6 +1,19 @@
 import { START_Y, WORLD_W } from './constants';
 import { STARTING } from './balance';
-import type { GameState } from './types';
+import type { GameState, Player } from './types';
+
+export function respawnPlayer(player: Player): void {
+  const x = Math.floor(WORLD_W / 2);
+  Object.assign(player, {
+    x,
+    y: START_Y,
+    drawX: x,
+    drawY: START_Y,
+    fuel: player.fuelMax,
+    hull: player.hullMax,
+    cargo: []
+  });
+}
 
 /**
  * @typedef {Object} Player
@@ -19,6 +32,8 @@ import type { GameState } from './types';
  * @property {number} hullMax    Maximum hull integrity.
  * @property {number} cargoMax   Maximum cargo slots.
  * @property {number} drill      Drill power level.
+ * @property {number} dynamite   Carried dynamite charges.
+ * @property {number} teleporters Carried teleporter charges.
  * @property {Object[]} cargo    Collected ore objects.
  */
 
@@ -54,19 +69,29 @@ export function createInitialState(): GameState {
       maxDepth: 0,
       totalCashEarned: 0,
       oreMined: 0,
+      artifactsFound: 0,
       enemiesDestroyed: 0,
       deaths: 0,
       motherlodeClaims: 0,
       motherlodeExtractions: 0
     },
     extractionPhase: 'none',
+    role: null,
+    connected: false,
+    remotePlayers: [],
+    teleportEffect: null,
+    teleportReturnPosition: null,
+    reducedMotion: false,
+    exploredTiles: new Set<number>(),
     input: {
       keyImpulse: null,
+      sprintDirection: null,
       lastKeyboardMove: 0,
       keyboardRepeatMs: 105,
       touchHoldDir: null,
       lastTouchMove: 0,
-      touchRepeatMs: 130
+      touchRepeatMs: 130,
+      gunArmed: false
     },
     player: {
       x: Math.floor(WORLD_W / 2),
@@ -84,6 +109,11 @@ export function createInitialState(): GameState {
       hullMax: STARTING.hullMax,
       cargoMax: STARTING.cargoMax,
       drill: STARTING.drill,
+      dynamite: STARTING.dynamite,
+      teleporters: STARTING.teleporters,
+      gunOwned: STARTING.gunOwned,
+      bullets: STARTING.bullets,
+      visibility: STARTING.visibility,
       cargo: []
     }
   };

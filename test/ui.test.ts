@@ -11,6 +11,7 @@ const GAME_DOM_IDS = [
   'hud',
   'soundBtn',
   'soundStatus',
+  'connectionStatus',
   'serviceStatus',
   'cash',
   'depth',
@@ -29,21 +30,42 @@ const GAME_DOM_IDS = [
   'extractionInfoStatus',
   'cargoFeedback',
   'sell',
+  'shopBtn',
+  'shop-screen',
+  'shop-card',
+  'shopCloseBtn',
   'fuelBtn',
   'repairBtn',
   'cargoBtn',
   'tankBtn',
+  'hullBtn',
   'drillBtn',
+  'visibilityBtn',
+  'dynamiteBtn',
+  'teleporterBtn',
+  'gunBtn',
+  'shopDynamiteBtn',
+  'shopTeleporterBtn',
+  'shopGunBtn',
+  'shopBulletsBtn',
   'infoBtn',
   'info-screen',
   'info-card',
   'infoCloseBtn',
+  'resetPlayerDataBtn',
+  'resetWorldStateBtn',
   'cargoList',
   'expeditionStats',
+  'developerUpgrades',
   'prospectingGuide',
   'dangerGuide',
   'fuel-warning',
   'toast',
+  'lobby-screen',
+  'serverUrl',
+  'lobbyConnectionStatus',
+  'connectBtn',
+  'soloBtn',
   'intro'
 ];
 
@@ -60,8 +82,57 @@ describe('React GUI shell', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
     expect(markup).toContain('0/10');
+    expect(markup).toContain('Cargo +5 $120');
     expect(markup).toContain('Objective: mine the starter Coal/Copper seam below the depot, then return to sell.');
     expect(markup).toContain('Cargo value $0');
+  });
+
+  it('offers hull reinforcement alongside the other ship upgrades', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('id="hullBtn"');
+    expect(markup).toContain('data-shop-upgrade="hull"');
+    expect(markup).toContain('Next: 100 → 120 strength');
+    expect(markup).toContain('Buy · $180');
+    expect(markup).toContain('choose tank, hull, cargo, drill, and sensor upgrades carefully');
+  });
+
+  it('exposes dynamite purchasing and keyboard/touch detonation controls', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('id="dynamiteBtn"');
+    expect(markup).toContain('data-shop-item="dynamite"');
+    expect(markup).toContain('Buy one · $50');
+    expect(markup).toContain('<kbd>E</kbd>');
+    expect(markup).toContain('blasts yield no cargo');
+  });
+
+  it('exposes teleporter purchasing, inventory, and desktop/mobile use controls', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('id="teleporterBtn"');
+    expect(markup).toContain('data-shop-item="teleporter"');
+    expect(markup).toContain('Buy one · $250');
+    expect(markup).toContain('<kbd>T</kbd>');
+    expect(markup).toContain('At 100 m or deeper');
+    expect(markup).toContain('without unloading or servicing the ship');
+  });
+
+  it('shows permanent gun ownership, prerequisite ammunition, and keyboard/touch instructions', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+    expect(markup).toContain('data-shop-gun="true"');
+    expect(markup).toContain('Buy · $1500');
+    expect(markup).toContain('data-shop-item="bullets"');
+    expect(markup).toContain('Buy 6 · $120');
+    expect(markup).toContain('<kbd>G</kbd>, then a direction');
+    expect(markup).toContain('touch players use Arm Gun then tap a direction');
+    expect(markup).toContain('up to 8 tiles');
+  });
+
+  it('explains that sprinting only applies in open space', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('Sprint through open space at increased fuel cost; open-space descent is free and drilling stays normal');
   });
 
   it('renders objective and terrain scanner readout hooks in the HUD and Info / Cargo overlay', () => {
@@ -106,9 +177,9 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Prospecting Guide');
     expect(markup).toContain('Coal');
     expect(markup).toContain('$8');
-    expect(markup).toContain('starter seam');
+    expect(markup).toContain('starter–≈1800 m');
     expect(markup).toContain('Copper');
-    expect(markup).toContain('≈50 m+');
+    expect(markup).toContain('≈50–3200 m');
     expect(markup).toContain('first Coal/Copper seam');
   });
 
@@ -121,6 +192,60 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Max depth');
     expect(markup).toContain('Cash earned');
     expect(markup).toContain('Start digging to set a record');
+  });
+
+  it('keeps clearly labeled developer upgrade controls visible in the info modal', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('id="info-developer"');
+    expect(markup).toContain('Debug / Developer');
+    expect(markup).toContain('grant local-player cash, restore fuel or hull, or permanently grant normal player upgrades for exactly $0');
+    expect(markup).toContain('Money Cheat');
+    expect(markup).toContain('Local player only');
+    expect(markup).toContain('data-developer-cash="true"');
+    expect(markup).toContain('Developer: Grant +$1,000');
+    expect(markup).toContain('data-developer-service="fuel"');
+    expect(markup).toContain('data-developer-service="hull"');
+    expect(markup).toContain('Developer: Refuel (already full)');
+    expect(markup).toContain('Developer: Repair Hull (already full)');
+    expect(markup).toContain('data-developer-upgrade="cargo"');
+    expect(markup).toContain('data-developer-upgrade="tank"');
+    expect(markup).toContain('data-developer-upgrade="hull"');
+    expect(markup).toContain('data-developer-upgrade="drill"');
+    expect(markup).toContain('data-developer-upgrade="visibility"');
+    expect(markup).toContain('Level 0/198');
+  });
+
+  it('offers the paid sensor upgrade and explains persistent shared fog', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+    expect(markup).toContain('data-shop-upgrade="visibility"');
+    expect(markup).toContain('Sensor Array');
+    expect(markup).toContain('Next: 3 → 4 tiles wide');
+    expect(markup).toContain('Buy · $175');
+    expect(markup).toContain('Co-op miners share explored tiles');
+  });
+
+  it('separates surface services, permanent upgrades, and consumable equipment in a modal shop', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('id="shop-screen" class="hidden" role="dialog" aria-modal="true"');
+    expect(markup).toContain('Shop &amp; Equipment');
+    expect(markup).toContain('Depot Services');
+    expect(markup).toContain('Permanent Upgrades');
+    expect(markup).toContain('Consumable Equipment');
+    expect(markup).toContain('Pay what you have for a proportional partial service');
+    expect(markup).toContain('Control: <kbd>E</kbd> or Detonate');
+    expect(markup).toContain('Control: <kbd>T</kbd> or Teleport');
+  });
+
+  it('keeps purchase actions out of the compact surface action bar', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+    const actionBar = markup.match(/<div class="shop">([\s\S]*?)<\/div>/)?.[1];
+
+    expect(actionBar).toContain('id="shopBtn"');
+    expect(actionBar).not.toContain('id="cargoBtn"');
+    expect(actionBar).not.toContain('id="fuelBtn"');
+    expect(actionBar).not.toContain('Buy one');
   });
 
   it('renders the hazard and fiend survival guide with its stable hook', () => {
@@ -144,5 +269,26 @@ describe('React GUI shell', () => {
       expect(markup).toContain(`id="${section.id}"`);
     }
     expect(getInfoNavigationSection('not-a-section')).toBeUndefined();
+  });
+
+  it('places the confirmed player-data reset at the bottom of the info modal', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+    const infoCard = markup.slice(markup.indexOf('<div id="info-card"'), markup.indexOf('<div id="fuel-warning"'));
+
+    expect(infoCard).toContain('id="resetPlayerDataBtn"');
+    expect(infoCard).toContain('Reset All Player Data');
+    expect(infoCard).toContain('shared mine terrain');
+    expect(infoCard.indexOf('id="resetPlayerDataBtn"')).toBeGreaterThan(infoCard.indexOf('id="info-controls"'));
+  });
+
+  it('places a visually separate world reset after player reset with preservation copy', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+    const infoCard = markup.slice(markup.indexOf('<div id="info-card"'), markup.indexOf('<div id="fuel-warning"'));
+
+    expect(infoCard).toContain('class="world-state-reset"');
+    expect(infoCard).toContain('id="resetWorldStateBtn"');
+    expect(infoCard).toContain('Reset World State');
+    expect(infoCard).toContain('without changing any player&#x27;s cash, upgrades, inventory, stats, ship condition, or settings');
+    expect(infoCard.indexOf('id="resetWorldStateBtn"')).toBeGreaterThan(infoCard.indexOf('id="resetPlayerDataBtn"'));
   });
 });

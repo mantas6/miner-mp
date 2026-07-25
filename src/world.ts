@@ -1,7 +1,8 @@
 // Pure deterministic world generation. DOM-free / testable.
 // No imports from dom.js, game.js, or balance.js.
-import { DANGER, ORES, SURFACE_HEIGHT, WORLD_W, WORLD_H } from './constants';
+import { ARTIFACTS, DANGER, MAX_WORLD_ROW, MOTHERLODE_ROW, ORES, SURFACE_HEIGHT, WORLD_CHUNK_ROWS, WORLD_W } from './constants';
 import type { Tile } from './types';
+import { enemyHealth, enemyKindForDepthRoll } from './enemy-types';
 
 /**
  * Deterministic pseudo-random value in [0,1) for a tile coordinate.
@@ -46,6 +47,31 @@ export function starterOreForCoordinate(x: number, y: number) {
   return ORES.find(ore => ore.name === patch.oreName && y >= ore.min) || null;
 }
 
+export function oreSpawnChanceAtDepth(depth: number): number {
+  return .10 * Math.min(2.2, 1 + depth / 90);
+}
+
+export function oreForDepthRoll(depth: number, roll: number) {
+  const eligible = ORES.filter(ore => depth >= ore.min && depth <= ore.max);
+  const totalWeight = eligible.reduce((total, ore) => total + ore.chance, 0);
+  let target = roll * totalWeight;
+  for (const ore of eligible) {
+    target -= ore.chance;
+    if (target < 0) return ore;
+  }
+  return eligible.at(-1) || null;
+}
+
+export function artifactForDepthRoll(depth: number, roll: number) {
+  let target = roll;
+  for (const artifact of ARTIFACTS) {
+    if (depth < artifact.min || depth > artifact.max) continue;
+    target -= artifact.chance;
+    if (target < 0) return artifact;
+  }
+  return null;
+}
+
 /**
  * Generate the tile at a world coordinate. Deterministic for a given (x,y).
  * @param {number} x
@@ -58,14 +84,13 @@ export function makeTile(x: number, y: number): Tile {
   if (naturalAirPocket(x,y)) return {type:'air'};
   const r = rand(x,y), depth = y;
   let ore = starterOreForCoordinate(x, y);
-  if (!ore) {
-    for (let i = ORES.length - 1; i >= 0; i--) {
-      const o = ORES[i];
-      if (depth >= o.min && r < o.chance * Math.min(2.2, 1 + depth / 90)) { ore = o; break; }
-    }
+  if (!ore && r < oreSpawnChanceAtDepth(depth)) {
+    ore = oreForDepthRoll(depth, rand(x + 73, y - 47));
   }
-  if (y === WORLD_H - 2 && Math.abs(x - Math.floor(WORLD_W/2)) <= 1) return {type:'artifact', hp:24, maxHp:24};
+  if (y === MOTHERLODE_ROW && Math.abs(x - Math.floor(WORLD_W/2)) <= 1) return {type:'motherlode', hp:24, maxHp:24};
   if (ore) { const hp = Math.max(3, Math.ceil((depth/28)+4)); return {type:'ore', ore, hp, maxHp: hp}; }
+  const artifact = artifactForDepthRoll(depth, rand(x - 181, y + 263));
+  if (artifact) { const hp = Math.max(4, Math.ceil(depth/240)+3); return {type:'artifact', artifact, hp, maxHp:hp}; }
   const rockChance = y > 190 ? .036 : .018;
   if (rand(x+9,y-3) < rockChance && y >= DANGER.rockMinRow) return {type:'rock', hp: 999};
   if (y >= DANGER.hazardMinRow && rand(x+51,y-91) < Math.min(.026, .007 + y / 13000)) {
@@ -73,8 +98,21 @@ export function makeTile(x: number, y: number): Tile {
     return {type:'hazard', hp, maxHp: hp};
   }
   if (y >= DANGER.enemyMinRow && rand(x-37,y+83) < Math.min(.046, .008 + y / 6500)) {
-    const hp = Math.max(4, Math.ceil(3 + y / 35));
-    return {type:'enemy', hp, maxHp: hp};
+    const kind = enemyKindForDepthRoll(y, rand(x+211,y-157));
+    const hp = enemyHealth(kind, Math.max(4, Math.ceil(3 + y / 35)));
+    return {type:'enemy', kind, hp, maxHp: hp};
   }
   { const hp = Math.max(2, Math.ceil(depth/42)+1 + (depth > 210 ? 2 : 0)); return {type:'dirt', hp, maxHp: hp}; }
+}
+
+/** Generate the containing row chunk on first access. */
+export function ensureWorldRow(world: Tile[][], y: number, tileFactory: (x: number, y: number) => Tile = makeTile): Tile[] | undefined {
+  if (!Number.isInteger(y) || y < 0 || y > MAX_WORLD_ROW) return undefined;
+  if (world[y]) return world[y];
+  const start = Math.floor(y / WORLD_CHUNK_ROWS) * WORLD_CHUNK_ROWS;
+  const end = Math.min(MAX_WORLD_ROW + 1, start + WORLD_CHUNK_ROWS);
+  for (let rowY = start; rowY < end; rowY++) {
+    if (!world[rowY]) world[rowY] = Array.from({length: WORLD_W}, (_, x) => tileFactory(x, rowY));
+  }
+  return world[y];
 }

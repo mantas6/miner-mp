@@ -4,6 +4,8 @@
 
 A small browser-based Motherload-style mining game. Mine ore, return to the surface depot, sell cargo, upgrade the ship, and survive deeper hazards/enemies until you reach the Motherlode core.
 
+Underground fog of war is persistent. Movement initially reveals a 3x3 square; each Sensor Array level adds one tile to both dimensions, up to 8x8. For even sizes the ship is the top-left cell of the central 2x2, so 4x4 covers offsets `-1..2` horizontally and vertically. Surface rows are always visible. Co-op miners union and persist their explored tiles because terrain and enemies already use a shared-world model, while each miner's sensor level remains individual.
+
 ## Project structure
 
 ```text
@@ -26,9 +28,8 @@ miner/
 │   └── assets/
 │       ├── soviet-soundtrack.mp3
 │       └── soviet-soundtrack.ogg
-└── .github/
-    └── workflows/
-        └── build.yml
+└── server/
+    └── index.js
 ```
 
 | Path | Purpose |
@@ -42,21 +43,11 @@ miner/
 | `src/audio.js` | Sound effects, music file playback, and synth fallback. |
 | `src/renderer.js` | Canvas drawing code for terrain, enemies, ship, surface, and overlays. |
 | `src/game.js` | Gameplay orchestration: world generation, mining, enemies, shop, input, HUD, and loop. |
-| `vite.config.js` | Vite config, including relative asset paths for GitHub Pages. |
-| `.github/workflows/build.yml` | CI workflow that installs dependencies and verifies `npm run build`. |
+| `vite.config.js` | Vite config. |
+| `server/index.js` | Co-op multiplayer relay server (Node + `ws`). |
 | `soundtrack_source.py` | Editable source generator for the soundtrack. |
 | `public/assets/soviet-soundtrack.mp3` | Browser music asset used when MP3 is supported. |
 | `public/assets/soviet-soundtrack.ogg` | Browser music fallback asset. |
-
-## Play online
-
-The previous GitHub Pages URL was:
-
-```text
-https://sigmund687.github.io/miner/
-```
-
-Because the repo is currently private and the current GitHub plan does not support Pages for this private repo, use `npm run dev` or `npm run preview` locally unless the repo is made public again.
 
 ## Run locally
 
@@ -92,11 +83,53 @@ Preview the built site locally:
 npm run preview
 ```
 
-## Deployment
+## Multiplayer (co-op)
 
-This repository is currently private, and the current GitHub plan does not support GitHub Pages for this private repo. The project is still configured for a normal Vite production build via `npm run build`; the committed GitHub Actions workflow verifies that build on pushes to `main`.
+Co-op play uses an authoritative WebSocket world server in `server/`. It is a
+Node process built on the [`ws`](https://github.com/websockets/ws) library.
 
-If the repo is made public again, the `dist/` output can be deployed to GitHub Pages using the standard Vite Pages workflow.
+Start the relay server:
+
+```bash
+node server/index.js
+```
+
+The server listens on the port given by the `PORT` environment variable and
+defaults to `8081`:
+
+```bash
+PORT=9000 node server/index.js
+```
+
+The server persists the shared mine to `server/data/world-state.json` by
+default. Set `WORLD_STATE_PATH` to a writable file on a durable mounted volume
+for relay/container deployments whose application filesystem is ephemeral:
+
+```bash
+WORLD_STATE_PATH=/var/lib/moleload/world-state.json PORT=9000 node server/index.js
+```
+
+The ignored runtime file is versioned JSON (`version: 1`) containing the world
+revision, generated non-air tile values, explicit air/dug overrides, active
+world enemies, and shared exploration ranges. Input is schema-, coordinate-,
+count-, and size-validated; updates are written through a same-directory
+temporary file and atomic rename. Clients receive this authoritative snapshot
+before their pairing event, and every mutation carries a world revision so
+traffic from before a reset cannot repopulate the new mine.
+
+`Reset World State` is at the bottom of Info / Cargo, separately from player
+data reset. After confirmation it regenerates terrain, enemies, caches, and fog
+for all connected clients while preserving each player's cash, upgrades,
+inventory/cargo, stats, ship condition, and settings. In solo mode the same
+action resets the local world and fog only.
+
+The client connects to the relay via the `VITE_MP_SERVER_URL` environment
+variable, which defaults to `ws://localhost:8081` in development. Set it when
+running the dev server or building to point at a different relay:
+
+```bash
+VITE_MP_SERVER_URL=ws://localhost:9000 npm run dev
+```
 
 ## Controls
 
@@ -107,6 +140,7 @@ If the repo is made public again, the `dist/` output can be deployed to GitHub P
 | Sell cargo | `Enter` or Sell button | Sell button |
 | Surface service | `Space` repairs first, then refuels | Repair / Refuel buttons |
 | Restart after game over | `R` or tap/click | Tap anywhere |
+| Reset shared world | Info / Cargo -> Reset World State | Same |
 | Toggle sound | Sound button | Sound button or first touch gesture may auto-enable |
 
 ## Gameplay notes

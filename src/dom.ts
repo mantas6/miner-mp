@@ -1,7 +1,7 @@
 import { TILE } from './constants';
 
-export const VIEW_WIDTH = 960;
-export const VIEW_HEIGHT = 640;
+export let VIEW_WIDTH = 960;
+export let VIEW_HEIGHT = 640;
 
 function requireElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -12,18 +12,28 @@ function requireElement<T extends HTMLElement>(id: string): T {
 export const canvas = requireElement<HTMLCanvasElement>('game');
 export const gamePanel = requireElement<HTMLElement>('game-panel');
 
-const deviceScale = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-canvas.width = Math.round(VIEW_WIDTH * deviceScale);
-canvas.height = Math.round(VIEW_HEIGHT * deviceScale);
-canvas.style.aspectRatio = `${VIEW_WIDTH} / ${VIEW_HEIGHT}`;
-
 export const ctx = canvas.getContext('2d');
 if (!ctx) throw new Error('2D canvas rendering context is unavailable.');
-ctx.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
-ctx.imageSmoothingEnabled = true;
 
-export const W = Math.floor(VIEW_WIDTH / TILE);
-export const H = Math.floor(VIEW_HEIGHT / TILE);
+export let W = Math.floor(VIEW_WIDTH / TILE);
+export let H = Math.floor(VIEW_HEIGHT / TILE);
+
+function resizeCanvas(): void {
+  VIEW_WIDTH = Math.max(1, Math.round(gamePanel.clientWidth || window.innerWidth));
+  VIEW_HEIGHT = Math.max(1, Math.round(gamePanel.clientHeight || window.innerHeight));
+  W = Math.floor(VIEW_WIDTH / TILE);
+  H = Math.floor(VIEW_HEIGHT / TILE);
+
+  const deviceScale = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  canvas.width = Math.round(VIEW_WIDTH * deviceScale);
+  canvas.height = Math.round(VIEW_HEIGHT * deviceScale);
+  ctx.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+}
+
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
 export const keys = new Set();
 
 export const ui = {
@@ -45,22 +55,44 @@ export const ui = {
   cargoFeedback: requireElement<HTMLElement>('cargoFeedback'),
   cargoList: requireElement<HTMLElement>('cargoList'),
   expeditionStats: requireElement<HTMLElement>('expeditionStats'),
+  developerUpgrades: requireElement<HTMLElement>('developerUpgrades'),
   toast: requireElement<HTMLElement>('toast'),
   fuelWarning: requireElement<HTMLElement>('fuel-warning'),
   soundBtn: requireElement<HTMLButtonElement>('soundBtn'),
   soundStatus: requireElement<HTMLElement>('soundStatus'),
+  connectionStatus: requireElement<HTMLElement>('connectionStatus'),
   serviceStatus: requireElement<HTMLElement>('serviceStatus'),
+  lobby: requireElement<HTMLElement>('lobby-screen'),
+  lobbyConnectionStatus: requireElement<HTMLElement>('lobbyConnectionStatus'),
+  serverUrl: requireElement<HTMLInputElement>('serverUrl'),
+  connectBtn: requireElement<HTMLButtonElement>('connectBtn'),
+  soloBtn: requireElement<HTMLButtonElement>('soloBtn'),
   intro: requireElement<HTMLElement>('intro'),
   sell: requireElement<HTMLButtonElement>('sell'),
+  shopBtn: requireElement<HTMLButtonElement>('shopBtn'),
   fuelBtn: requireElement<HTMLButtonElement>('fuelBtn'),
   repairBtn: requireElement<HTMLButtonElement>('repairBtn'),
   cargoBtn: requireElement<HTMLButtonElement>('cargoBtn'),
   tankBtn: requireElement<HTMLButtonElement>('tankBtn'),
+  hullBtn: requireElement<HTMLButtonElement>('hullBtn'),
   drillBtn: requireElement<HTMLButtonElement>('drillBtn'),
+  visibilityBtn: requireElement<HTMLButtonElement>('visibilityBtn'),
+  dynamiteBtn: requireElement<HTMLButtonElement>('dynamiteBtn'),
+  teleporterBtn: requireElement<HTMLButtonElement>('teleporterBtn'),
+  gunBtn: requireElement<HTMLButtonElement>('gunBtn'),
+  shopDynamiteBtn: requireElement<HTMLButtonElement>('shopDynamiteBtn'),
+  shopTeleporterBtn: requireElement<HTMLButtonElement>('shopTeleporterBtn'),
+  shopGunBtn: requireElement<HTMLButtonElement>('shopGunBtn'),
+  shopBulletsBtn: requireElement<HTMLButtonElement>('shopBulletsBtn'),
+  shopScreen: requireElement<HTMLElement>('shop-screen'),
+  shopCard: requireElement<HTMLElement>('shop-card'),
+  shopCloseBtn: requireElement<HTMLButtonElement>('shopCloseBtn'),
   infoBtn: requireElement<HTMLButtonElement>('infoBtn'),
   infoScreen: requireElement<HTMLElement>('info-screen'),
   infoCard: requireElement<HTMLElement>('info-card'),
-  infoCloseBtn: requireElement<HTMLButtonElement>('infoCloseBtn')
+  infoCloseBtn: requireElement<HTMLButtonElement>('infoCloseBtn'),
+  resetPlayerDataBtn: requireElement<HTMLButtonElement>('resetPlayerDataBtn'),
+  resetWorldStateBtn: requireElement<HTMLButtonElement>('resetWorldStateBtn')
 };
 
 export type GameUi = typeof ui;

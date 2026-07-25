@@ -1,9 +1,11 @@
-import type { Direction, Tile } from './types';
+import { getEnemyType } from './enemy-types';
+import type { Direction, EnemyKind, Tile } from './types';
 
 export interface TerrainScannerInput {
   tile: Tile;
   direction: Direction;
-  activeEnemy?: boolean;
+  activeEnemy?: EnemyKind | boolean;
+  explored?: boolean;
 }
 
 function directionLabel([dx, dy]: Direction): string {
@@ -19,9 +21,13 @@ function hitsLabel(hp: number): string {
 }
 
 /** Formats a concise, DOM-free warning for the adjacent movement/drill target. */
-export function formatTerrainScanner({ tile, direction, activeEnemy = false }: TerrainScannerInput): string {
+export function formatTerrainScanner({ tile, direction, activeEnemy = false, explored = true }: TerrainScannerInput): string {
   const prefix = `Scanner ${directionLabel(direction)}:`;
-  if (activeEnemy) return `${prefix} active fiend — drill it before it chews hull.`;
+  if (!explored) return `${prefix} unexplored — advance to map terrain.`;
+  if (activeEnemy) {
+    const name = typeof activeEnemy === 'string' ? getEnemyType(activeEnemy).name.toLowerCase() : 'fiend';
+    return `${prefix} active ${name} — drill it before it chews hull.`;
+  }
 
   switch (tile.type) {
     case 'air':
@@ -35,8 +41,10 @@ export function formatTerrainScanner({ tile, direction, activeEnemy = false }: T
     case 'hazard':
       return `${prefix} magma — hull risk, ${hitsLabel(tile.hp)} to vent.`;
     case 'enemy':
-      return `${prefix} dormant fiend — drill with caution, ${hitsLabel(tile.hp)}.`;
+      return `${prefix} dirt — drillable, ${hitsLabel(tile.hp)}.`;
     case 'artifact':
+      return `${prefix} RARE ${tile.artifact.name} — $${tile.artifact.value} CASH NOW, ${hitsLabel(tile.hp)}; uses no cargo.`;
+    case 'motherlode':
       return `${prefix} Motherlode core — ${hitsLabel(tile.hp)} to crack; claim it and return alive.`;
   }
 }

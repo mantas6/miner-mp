@@ -1,5 +1,6 @@
 import { ECONOMY, ENEMY, FUEL, HULL } from './balance';
-import { DANGER, START_Y, WORLD_H } from './constants';
+import { DANGER, MOTHERLODE_ROW, START_Y } from './constants';
+import { ENEMY_TYPES } from './enemy-types';
 
 export interface DangerGuideRow {
   title: string;
@@ -15,7 +16,7 @@ function depthLabel(row: number, startY = START_Y): string {
  * balance configuration, so the overlay remains accurate as tuning changes.
  */
 export function buildDangerGuideRows(): DangerGuideRow[] {
-  const coreRow = WORLD_H - 2;
+  const coreRow = MOTHERLODE_ROW;
   return [
     {
       title: 'Solid rock',
@@ -31,7 +32,7 @@ export function buildDangerGuideRows(): DangerGuideRow[] {
     },
     {
       title: 'Active fiends',
-      detail: `Drill them back before they chew the hull. Their bites start at ${HULL.enemyBite.base} hull damage and grow deeper down.`
+      detail: `Drill them back before they chew the hull. Bites start at ${HULL.enemyBite.base} hull damage; faster ${ENEMY_TYPES.skitterling.name}s appear near ${depthLabel(ENEMY_TYPES.skitterling.minRow)}, armored ${ENEMY_TYPES.ironback.name}s near ${depthLabel(ENEMY_TYPES.ironback.minRow)}, and ${ENEMY_TYPES.abyssStalker.name}s beyond ${depthLabel(ENEMY_TYPES.abyssStalker.minRow)}.`
     },
     {
       title: 'Fiend bounties',

@@ -50,6 +50,6 @@ export function formatExtractionPresentation({
 
   return {
     hud: null,
-    info: 'Crack the Motherlode core at the bottom, then return alive to the surface depot to complete extraction.'
+    info: 'Crack the Motherlode core at 10,000 m, then return alive to the surface depot to complete extraction.'
   };
 }

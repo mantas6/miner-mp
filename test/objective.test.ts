@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STARTING } from '../src/balance';
 import { formatExpeditionObjective, motherlodeDepthMeters, nextOreMilestone } from '../src/objective';
-import { ORES, START_Y, WORLD_H } from '../src/constants';
+import { MOTHERLODE_ROW, ORES, START_Y } from '../src/constants';
 
 const player = {
   y: START_Y,
@@ -33,7 +33,7 @@ describe('expedition objective helper', () => {
       cargoCount: 2,
       currentCargoValue: cargoValue,
       atSurface: false
-    })).toBe('Objective: return and sell $24; Cargo +10 is ready after sale.');
+    })).toBe('Objective: return and sell $24; Cargo +5 is ready after sale.');
   });
 
   it('prioritizes low fuel return warnings underground', () => {
@@ -47,14 +47,14 @@ describe('expedition objective helper', () => {
   });
 
   it('points deeper players toward the next ore band', () => {
-    expect(nextOreMilestone(80)).toEqual({ name: 'Silver', depthMeters: 160 });
+    expect(nextOreMilestone(80)).toEqual({ name: 'Silver', depthMeters: 600 });
     expect(formatExpeditionObjective({
       player: { ...player, y: START_Y + 8 },
       cash: 20,
       cargoCount: 0,
       currentCargoValue: 0,
       atSurface: false
-    })).toBe('Objective: dig toward Silver around 160 m while keeping fuel for the trip home.');
+    })).toBe('Objective: dig toward Silver around 600 m while keeping fuel for the trip home.');
   });
 
   it('prioritizes taking a secured Motherlode core back to the depot', () => {
@@ -69,13 +69,13 @@ describe('expedition objective helper', () => {
   });
 
   it('uses Motherlode progress once all ore bands are unlocked', () => {
-    expect(motherlodeDepthMeters(WORLD_H, START_Y)).toBe(3160);
+    expect(motherlodeDepthMeters(MOTHERLODE_ROW, START_Y)).toBe(10000);
     expect(formatExpeditionObjective({
-      player: { ...player, y: START_Y + 260 },
+      player: { ...player, y: START_Y + 860 },
       cash: 200,
       cargoCount: 0,
       currentCargoValue: 0,
       atSurface: false
-    })).toBe('Objective: push toward the Motherlode core at 3160 m (560 m deeper).');
+    })).toBe('Objective: push toward the Motherlode core at 10000 m (1400 m deeper).');
   });
 });

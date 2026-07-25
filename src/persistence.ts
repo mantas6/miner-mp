@@ -1,10 +1,15 @@
-import { LIMITS } from './balance';
+import { ECONOMY, LIMITS, STARTING } from './balance';
+import { encodeExploration, mergeExploration } from './exploration';
 
 export const SAVE_KEY = 'moleload-progress-v1';
+export const SAVE_VERSION = 3;
+const LEGACY_CARGO_STEP = 10;
+const CARGO_BALANCE_SAVE_VERSION = 2;
 export const DEFAULT_STATS = {
   maxDepth: 0,
   totalCashEarned: 0,
   oreMined: 0,
+  artifactsFound: 0,
   enemiesDestroyed: 0,
   deaths: 0,
   motherlodeClaims: 0,
@@ -27,8 +32,18 @@ export function load(state) {
     state.cash = numeric(save.cash, state.cash, 0);
     p.fuelMax = numeric(save.fuelMax, p.fuelMax, LIMITS.fuelMax.min, LIMITS.fuelMax.max);
     p.hullMax = numeric(save.hullMax, p.hullMax, LIMITS.hullMax.min, LIMITS.hullMax.max);
-    p.cargoMax = numeric(save.cargoMax, p.cargoMax, LIMITS.cargoMax.min, LIMITS.cargoMax.max);
+    const savedCargoMax = numeric(save.cargoMax, p.cargoMax, LIMITS.cargoMax.min, LIMITS.cargoMax.max);
+    const cargoUpgradeLevel = Math.max(0, Math.round((savedCargoMax - STARTING.cargoMax) / LEGACY_CARGO_STEP));
+    p.cargoMax = numeric(save.version, 1, 1) < CARGO_BALANCE_SAVE_VERSION
+      ? STARTING.cargoMax + cargoUpgradeLevel * ECONOMY.cargo.step
+      : savedCargoMax;
     p.drill = numeric(save.drill, p.drill, LIMITS.drill.min, LIMITS.drill.max);
+    p.dynamite = Math.floor(numeric(save.dynamite, p.dynamite, LIMITS.dynamite.min, LIMITS.dynamite.max));
+    p.teleporters = Math.floor(numeric(save.teleporters, p.teleporters, LIMITS.teleporters.min, LIMITS.teleporters.max));
+    p.gunOwned = save.gunOwned === true;
+    p.bullets = Math.floor(numeric(save.bullets, p.bullets, LIMITS.bullets.min, LIMITS.bullets.max));
+    p.visibility = Math.floor(numeric(save.visibility, p.visibility, LIMITS.visibility.min, LIMITS.visibility.max));
+    mergeExploration(state.exploredTiles, save.explored);
     state.stats = {...DEFAULT_STATS, ...(save.stats || {})};
     for (const key of Object.keys(DEFAULT_STATS)) state.stats[key] = numeric(state.stats[key], DEFAULT_STATS[key], 0);
   } catch (err) {
@@ -41,12 +56,18 @@ export function save(state) {
   try {
     const p = state.player;
     localStorage.setItem(SAVE_KEY, JSON.stringify({
-      version: 1,
+      version: SAVE_VERSION,
       cash: Math.floor(state.cash),
       fuelMax: p.fuelMax,
       hullMax: p.hullMax,
       cargoMax: p.cargoMax,
       drill: p.drill,
+      dynamite: p.dynamite,
+      teleporters: p.teleporters,
+      gunOwned: p.gunOwned,
+      bullets: p.bullets,
+      visibility: p.visibility,
+      explored: encodeExploration(state.exploredTiles),
       stats: state.stats,
       savedAt: Date.now()
     }));
