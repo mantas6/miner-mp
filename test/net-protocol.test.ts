@@ -12,8 +12,10 @@ import {
   enemyEntryFrom,
   applyTileDiff,
   applyTileToWorld,
+  applyWorldSyncToWorld,
   tileDiffToArray,
   tileKey,
+  worldSyncFrom,
   mergeEnemySnapshot,
   applyEnemySpawn,
   applyEnemyDead,
@@ -249,6 +251,24 @@ describe('tile diff reducers', () => {
     applyTileToWorld(world, { x: 5, y: 0, tile: { type: 'rock', hp: 999 } });
     applyTileToWorld(world, { x: 0, y: 9, tile: { type: 'rock', hp: 999 } });
     expect(world).toHaveLength(2);
+  });
+
+  it('builds and applies a compact world sync without replacing the generated grid', () => {
+    let diff: TileDiff = {};
+    diff = applyTileDiff(diff, { x: 0, y: 0, tile: { type: 'air' } });
+    diff = applyTileDiff(diff, { x: 1, y: 1, tile: { type: 'dirt', hp: 1, maxHp: 2 } });
+    const sync = worldSyncFrom(diff);
+    const world: Tile[][] = [
+      [{ type: 'dirt', hp: 2, maxHp: 2 }, { type: 'rock', hp: 999 }],
+      [{ type: 'ore', ore: ORE, hp: 4, maxHp: 4 }, { type: 'dirt', hp: 2, maxHp: 2 }]
+    ];
+
+    expect(sync).toEqual({ type: 'worldSync', tiles: tileDiffToArray(diff), enemies: [] });
+    expect(applyWorldSyncToWorld(world, sync)).toBe(world);
+    expect(world).toEqual([
+      [{ type: 'air' }, { type: 'rock', hp: 999 }],
+      [{ type: 'ore', ore: ORE, hp: 4, maxHp: 4 }, { type: 'dirt', hp: 1, maxHp: 2 }]
+    ]);
   });
 });
 

@@ -18,7 +18,7 @@ import { formatDepthMilestone } from './depth-milestone';
 import { beginExtraction, cancelExtraction, completeExtractionAtDepot } from './extraction-phase';
 import { formatExtractionPresentation } from './extraction-presentation';
 import { createNet, type NetClient } from './net';
-import { applyRemotePlayerState, interpolateRemotePlayers, playerStateFrom, remotePlayerFrom } from './net-protocol';
+import { applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, interpolateRemotePlayers, playerStateFrom, remotePlayerFrom, worldSyncFrom, type TileDiff } from './net-protocol';
 
 const state = createInitialState();
 let audio;
@@ -28,6 +28,7 @@ let resetConfirmUntil = 0;
 let toastTimer = 0;
 let net: NetClient | null = null;
 let connectionIssue: string | null = null;
+let tileDiff: TileDiff = {};
 
 state.stats = {...DEFAULT_STATS};
 
@@ -44,6 +45,7 @@ function addCash(amount) {
 function generate(){
   state.enemies = [];
   state.world = Array.from({length: WORLD_H}, (_,y)=>Array.from({length: WORLD_W},(_,x)=>makeTile(x,y)));
+  tileDiff = {};
   resetPlayer(false);
 }
 function resetShipUpgradesAfterDeath(){
@@ -64,7 +66,13 @@ function resetPlayer(full=true){
   state.gameOver = false; toast('Fresh drill deployed.');
 }
 function get(x,y){ return state.world[y]?.[x] || {type:'rock', hp:999}; }
-function set(x,y,t){ if(state.world[y]) state.world[y][x] = t; }
+function set(x,y,t, broadcast=true){
+  const row = state.world[y];
+  if (!row || x < 0 || x >= row.length) return;
+  row[x] = t;
+  if (state.role === 'host') tileDiff = applyTileDiff(tileDiff, {x, y, tile: t});
+  if (broadcast && state.connected && net?.paired) net.send({type:'tile', x, y, tile:t});
+}
 function cargoUsed(){ return state.player.cargo.length; }
 function currentCargoValue(){ return cargoValue(state.player.cargo); }
 function toast(msg){ ui.toast.textContent = msg; ui.toast.classList.add('show'); clearTimeout(toastTimer); toastTimer=window.setTimeout(()=>ui.toast.classList.remove('show'),1800); }
@@ -99,6 +107,7 @@ function startOnline(url: string){
       onPeerJoined(){
         if (state.role !== 'host') return;
         setConnectionStatus('Host - paired');
+        net?.send(worldSyncFrom(tileDiff));
         startOnlineGame();
       },
       onPeerLeft(){
@@ -111,6 +120,8 @@ function startOnline(url: string){
       },
       onMessage(msg){
         if (msg.type === 'playerState') state.remotePlayers = applyRemotePlayerState(state.remotePlayers, msg);
+        if (msg.type === 'tile') set(msg.x, msg.y, msg.tile, false);
+        if (msg.type === 'worldSync') applyWorldSyncToWorld(state.world, msg);
         if (msg.type === 'died') state.remotePlayers = [];
         if (msg.type === 'respawned') {
           state.remotePlayers = [remotePlayerFrom({
@@ -214,6 +225,7 @@ function damageEnemyTile(x,y){
     toast(`Dormant enemy drilled out +$${bounty} bounty.`);
     wakeEnemiesNear(x,y);
   } else {
+    set(x,y,tile);
     toast(`Drilling enemy cocoon... ${Math.ceil(tile.hp)} HP left`);
   }
   return true;
@@ -311,8 +323,8 @@ function move(dx,dy){
   if (tile.type !== 'air' && dx !== 0 && dy === 0 && !grounded()) { p.drillDx = dx; p.drillDy = 0; p.drillAnim = 0.55; audio.bump(); toast('Side drilling needs solid ground underneath.'); return; }
   if (tile.type === 'rock') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.2; damage(HULL.rockBump); p.fuel -= dig(0); spawnDust(nx, ny, '#444857', 8); audio.bump(); toast('Solid rock blocks the drill.'); return; }
   if (tile.type === 'enemy') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; p.fuel -= dig(FUEL.dig.enemy); damageEnemyTile(nx, ny); return; }
-  if (tile.type === 'hazard') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; tile.hp -= p.drill; p.fuel -= dig(FUEL.dig.hazard); damage(HULL.hazardBase + Math.floor(ny/HULL.hazardDepthDivisor)); spawnDust(nx, ny, '#ff5f24', 18); audio.alarm(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); spawnExplosion(nx,ny); wakeEnemiesNear(nx,ny); toast('Magma pocket vented — hull scorched!'); } else toast(`Venting magma... ${Math.ceil(tile.hp)} hits left`); return; }
-  if (tile.type === 'artifact') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; p.fuel -= dig(FUEL.dig.artifact); spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); const extraction = beginExtraction(state.extractionPhase); state.extractionPhase = extraction.phase; if (extraction.changed) { addCash(ECONOMY.artifactReward); state.stats.motherlodeClaims++; saveProgress(); } spawnExplosion(nx,ny); toast('Motherlode core secured +$5000! Return it to the depot alive.'); } else toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); return; }
+  if (tile.type === 'hazard') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; tile.hp -= p.drill; p.fuel -= dig(FUEL.dig.hazard); damage(HULL.hazardBase + Math.floor(ny/HULL.hazardDepthDivisor)); spawnDust(nx, ny, '#ff5f24', 18); audio.alarm(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); spawnExplosion(nx,ny); wakeEnemiesNear(nx,ny); toast('Magma pocket vented — hull scorched!'); } else { set(nx,ny,tile); toast(`Venting magma... ${Math.ceil(tile.hp)} hits left`); } return; }
+  if (tile.type === 'artifact') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; p.fuel -= dig(FUEL.dig.artifact); spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); const extraction = beginExtraction(state.extractionPhase); state.extractionPhase = extraction.phase; if (extraction.changed) { addCash(ECONOMY.artifactReward); state.stats.motherlodeClaims++; saveProgress(); } spawnExplosion(nx,ny); toast('Motherlode core secured +$5000! Return it to the depot alive.'); } else { set(nx,ny,tile); toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); } return; }
   if (tile.type !== 'air') {
     p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65;
     tile.hp -= p.drill;
@@ -321,12 +333,12 @@ function move(dx,dy){
     audio.mine();
     if (tile.hp <= 0) {
       if (tile.type === 'ore') {
-        if (cargoUsed() >= p.cargoMax) { tile.hp = 1; toast('Cargo bay full. Go sell at the surface.'); audio.alarm(); return; }
+        if (cargoUsed() >= p.cargoMax) { tile.hp = 1; set(nx,ny,tile); toast('Cargo bay full. Go sell at the surface.'); audio.alarm(); return; }
         p.cargo.push(tile.ore); state.stats.oreMined++; saveProgress(); toast(`Mined ${tile.ore.name} +$${tile.ore.value}`); audio.ore(tile.ore.value);
       }
       set(nx,ny,{type:'air'});
       wakeEnemiesNear(nx, ny);
-    } else { toast(`Drilling... ${Math.max(1, tile.hp)} hits left`); return; }
+    } else { set(nx,ny,tile); toast(`Drilling... ${Math.max(1, tile.hp)} hits left`); return; }
   } else {
     p.fuel -= flyCost;
     if (performance.now() - audio.lastMove > 120) { audio.blip(150 + Math.abs(dy)*35, 0.035, 'triangle', 0.02); audio.lastMove = performance.now(); }

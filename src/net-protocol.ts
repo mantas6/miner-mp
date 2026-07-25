@@ -378,6 +378,11 @@ export function tileDiffToArray(diff: TileDiff): TileDiffEntry[] {
   return Object.values(diff);
 }
 
+/** Build a compact late-join world sync from the accumulated tile mutations. */
+export function worldSyncFrom(diff: TileDiff, enemies: Enemy[] = []): WorldSyncMsg {
+  return { type: 'worldSync', tiles: tileDiffToArray(diff), enemies: enemies.map(enemyEntryFrom) };
+}
+
 /**
  * Apply a tile mutation onto a 2D world grid. Mutates and returns the grid (the
  * grid is a plain array of plain tiles). No-op if the coordinate is out of range.
@@ -385,6 +390,12 @@ export function tileDiffToArray(diff: TileDiff): TileDiffEntry[] {
 export function applyTileToWorld(world: Tile[][], msg: Pick<TileMsg, 'x' | 'y' | 'tile'>): Tile[][] {
   const row = world[msg.y];
   if (row && msg.x >= 0 && msg.x < row.length) row[msg.x] = msg.tile;
+  return world;
+}
+
+/** Apply a host's compact tile diff to a deterministic local world grid. */
+export function applyWorldSyncToWorld(world: Tile[][], msg: WorldSyncMsg): Tile[][] {
+  for (const tile of msg.tiles) applyTileToWorld(world, tile);
   return world;
 }
 
