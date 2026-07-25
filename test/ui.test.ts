@@ -34,6 +34,7 @@ const GAME_DOM_IDS = [
   'repairBtn',
   'cargoBtn',
   'tankBtn',
+  'hullBtn',
   'drillBtn',
   'infoBtn',
   'info-screen',
@@ -68,6 +69,14 @@ describe('React GUI shell', () => {
     expect(markup).toContain('0/10');
     expect(markup).toContain('Objective: mine the starter Coal/Copper seam below the depot, then return to sell.');
     expect(markup).toContain('Cargo value $0');
+  });
+
+  it('offers hull reinforcement alongside the other ship upgrades', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('id="hullBtn"');
+    expect(markup).toContain('Hull +20 $180');
+    expect(markup).toContain('choose tank, hull, cargo, and drill upgrades carefully');
   });
 
   it('renders objective and terrain scanner readout hooks in the HUD and Info / Cargo overlay', () => {

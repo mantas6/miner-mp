@@ -72,6 +72,7 @@ export const ui = {
   repairBtn: requireElement<HTMLButtonElement>('repairBtn'),
   cargoBtn: requireElement<HTMLButtonElement>('cargoBtn'),
   tankBtn: requireElement<HTMLButtonElement>('tankBtn'),
+  hullBtn: requireElement<HTMLButtonElement>('hullBtn'),
   drillBtn: requireElement<HTMLButtonElement>('drillBtn'),
   infoBtn: requireElement<HTMLButtonElement>('infoBtn'),
   infoScreen: requireElement<HTMLElement>('info-screen'),

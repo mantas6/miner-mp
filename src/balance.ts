@@ -58,6 +58,7 @@ export const ECONOMY = Object.freeze({
   repair: Object.freeze({ base: 30, perHull: 0.45 }),
   cargo: Object.freeze({ base: 120, growth: 1.32, step: 10 }),
   tank: Object.freeze({ base: 150, growth: 1.34, step: 20 }),
+  hull: Object.freeze({ base: 180, growth: 1.38, step: 20 }),
   drill: Object.freeze({ base: 200, growth: 1.55, step: 1 }),
   artifactReward: 5000
 });

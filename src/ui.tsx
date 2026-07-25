@@ -43,6 +43,7 @@ export function MinerApp() {
             <button id="repairBtn">Repair $30</button>
             <button id="cargoBtn">Cargo +10 $120</button>
             <button id="tankBtn">Tank +20 $150</button>
+            <button id="hullBtn">Hull +20 $180</button>
             <button id="drillBtn">Drill +1 $200</button>
             <button id="infoBtn">Info / Cargo</button>
           </div>
@@ -164,7 +165,7 @@ export function MinerApp() {
                 <li><strong>Do not die:</strong> deep magma pockets, tougher rock, and tunnel fiends scale with depth.</li>
                 <li><strong>Enemies:</strong> drilling nearby blocks wakes them; drill them back before they chew the hull.</li>
                 <li><strong>Goal:</strong> reach the Motherlode core at the bottom, crack it, and get home alive.</li>
-                <li><strong>Upgrade:</strong> prices rise, so choose tank, cargo, and drill upgrades carefully.</li>
+                <li><strong>Upgrade:</strong> prices rise, so choose tank, hull, cargo, and drill upgrades carefully.</li>
                 <li><strong>Sound:</strong> optional soundtrack starts only after the Sound button or a trusted tap/click.</li>
               </ul>
               <p className="intro-warning">Low fuel below 25% means return to the surface immediately.</p>

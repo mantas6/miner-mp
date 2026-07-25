@@ -5,7 +5,7 @@ import { shouldAttemptAutoAudio } from './audio-permission';
 import { createInitialState, respawnPlayer } from './state';
 import { createRenderer } from './renderer';
 import { STARTING, FUEL, HULL, ENEMY, ECONOMY } from './balance';
-import { refuelCost, repairCost, cargoCost, tankCost, drillCost, partialFill, cargoValue, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
+import { refuelCost, repairCost, cargoCost, tankCost, hullCost, drillCost, partialFill, cargoValue, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from './hud-alerts';
 import { formatExpeditionObjective } from './objective';
 import { load, save, DEFAULT_STATS } from './persistence';
@@ -502,6 +502,7 @@ function bindButtons(){
   ui.repairBtn.onclick = () => repair();
   ui.cargoBtn.onclick = () => spend(cargoCost(state.player),()=>state.player.cargoMax+=ECONOMY.cargo.step,'Cargo bay expanded.');
   ui.tankBtn.onclick = () => spend(tankCost(state.player),()=>{state.player.fuelMax+=ECONOMY.tank.step; state.player.fuel=state.player.fuelMax;},'Fuel tank upgraded.');
+  ui.hullBtn.onclick = () => spend(hullCost(state.player),()=>{state.player.hullMax+=ECONOMY.hull.step; state.player.hull=state.player.hullMax;},'Hull reinforced.');
   ui.drillBtn.onclick = () => spend(drillCost(state.player),()=>state.player.drill+=ECONOMY.drill.step,'Drill power increased.');
   ui.soundBtn.addEventListener('pointerdown', e => e.stopPropagation());
   ui.soundBtn.onclick = e => { e.stopPropagation(); audio.toggle(); };
@@ -558,17 +559,19 @@ function renderExpeditionStats(){
 }
 function updateButtonStates(){
   const p = state.player, surf = atSurface();
-  for (const button of [ui.sell, ui.fuelBtn, ui.repairBtn, ui.cargoBtn, ui.tankBtn, ui.drillBtn]) button.hidden = !surf;
+  for (const button of [ui.sell, ui.fuelBtn, ui.repairBtn, ui.cargoBtn, ui.tankBtn, ui.hullBtn, ui.drillBtn]) button.hidden = !surf;
   ui.sell.disabled = !surf || currentCargoValue() <= 0;
   ui.fuelBtn.textContent = `Refuel $${refuelCost(p)}`;
   ui.repairBtn.textContent = `Repair $${repairCost(p)}`;
   ui.cargoBtn.textContent = `Cargo +10 $${cargoCost(p)}`;
   ui.tankBtn.textContent = `Tank +20 $${tankCost(p)}`;
+  ui.hullBtn.textContent = `Hull +20 $${hullCost(p)}`;
   ui.drillBtn.textContent = `Drill +1 $${drillCost(p)}`;
   ui.fuelBtn.disabled = !surf || state.cash <= 0 || p.fuel >= p.fuelMax;
   ui.repairBtn.disabled = !surf || state.cash <= 0 || p.hull >= p.hullMax;
   ui.cargoBtn.disabled = !surf || state.cash < cargoCost(p);
   ui.tankBtn.disabled = !surf || state.cash < tankCost(p);
+  ui.hullBtn.disabled = !surf || state.cash < hullCost(p);
   ui.drillBtn.disabled = !surf || state.cash < drillCost(p);
 }
 const movementKeys = {
