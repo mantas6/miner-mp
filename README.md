@@ -26,9 +26,8 @@ miner/
 │   └── assets/
 │       ├── soviet-soundtrack.mp3
 │       └── soviet-soundtrack.ogg
-└── .github/
-    └── workflows/
-        └── build.yml
+└── server/
+    └── index.js
 ```
 
 | Path | Purpose |
@@ -42,21 +41,11 @@ miner/
 | `src/audio.js` | Sound effects, music file playback, and synth fallback. |
 | `src/renderer.js` | Canvas drawing code for terrain, enemies, ship, surface, and overlays. |
 | `src/game.js` | Gameplay orchestration: world generation, mining, enemies, shop, input, HUD, and loop. |
-| `vite.config.js` | Vite config, including relative asset paths for GitHub Pages. |
-| `.github/workflows/build.yml` | CI workflow that installs dependencies and verifies `npm run build`. |
+| `vite.config.js` | Vite config. |
+| `server/index.js` | Co-op multiplayer relay server (Node + `ws`). |
 | `soundtrack_source.py` | Editable source generator for the soundtrack. |
 | `public/assets/soviet-soundtrack.mp3` | Browser music asset used when MP3 is supported. |
 | `public/assets/soviet-soundtrack.ogg` | Browser music fallback asset. |
-
-## Play online
-
-The previous GitHub Pages URL was:
-
-```text
-https://sigmund687.github.io/miner/
-```
-
-Because the repo is currently private and the current GitHub plan does not support Pages for this private repo, use `npm run dev` or `npm run preview` locally unless the repo is made public again.
 
 ## Run locally
 
@@ -92,11 +81,31 @@ Preview the built site locally:
 npm run preview
 ```
 
-## Deployment
+## Multiplayer (co-op)
 
-This repository is currently private, and the current GitHub plan does not support GitHub Pages for this private repo. The project is still configured for a normal Vite production build via `npm run build`; the committed GitHub Actions workflow verifies that build on pushes to `main`.
+Co-op play uses a small WebSocket relay server that lives in `server/`. It is a
+Node process built on the [`ws`](https://github.com/websockets/ws) library.
 
-If the repo is made public again, the `dist/` output can be deployed to GitHub Pages using the standard Vite Pages workflow.
+Start the relay server:
+
+```bash
+node server/index.js
+```
+
+The server listens on the port given by the `PORT` environment variable and
+defaults to `8081`:
+
+```bash
+PORT=9000 node server/index.js
+```
+
+The client connects to the relay via the `VITE_MP_SERVER_URL` environment
+variable, which defaults to `ws://localhost:8081` in development. Set it when
+running the dev server or building to point at a different relay:
+
+```bash
+VITE_MP_SERVER_URL=ws://localhost:9000 npm run dev
+```
 
 ## Controls
 
