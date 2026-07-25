@@ -11,7 +11,7 @@ import { formatExpeditionObjective } from './objective';
 import { load, save, DEFAULT_STATS } from './persistence';
 import { formatExpeditionStats } from './stats';
 import { rand, makeTile } from './world';
-import { getInfoNavigationSection } from './info-navigation';
+import { getInfoNavigationSection, resolveActiveInfoSection } from './info-navigation';
 import { formatTerrainScanner } from './scanner';
 import { formatFuelReserveForecast } from './fuel-reserve';
 import { formatDepthMilestone } from './depth-milestone';
@@ -299,6 +299,19 @@ function surfaceService(){
   toast('Cargo empty, hull and fuel are full.');
 }
 function atSurface(){ return state.player.y < SURFACE_HEIGHT; }
+function updateActiveInfoNavigation(){
+  if (ui.infoScreen.classList.contains('hidden')) return;
+  const sections = [...ui.infoCard.querySelectorAll<HTMLElement>('section[id]')].map(section => ({
+    id: section.id,
+    top: section.offsetTop,
+    bottom: section.offsetTop + section.offsetHeight
+  }));
+  const activeId = resolveActiveInfoSection(sections, ui.infoCard.scrollTop, ui.infoCard.clientHeight, ui.infoCard.scrollHeight);
+  if (!activeId) return;
+  for (const navButton of ui.infoScreen.querySelectorAll<HTMLButtonElement>('[data-info-section]')) {
+    navButton.toggleAttribute('aria-current', navButton.dataset.infoSection === activeId);
+  }
+}
 function bindButtons(){
   ui.sell.onclick = sell;
   ui.fuelBtn.onclick = () => refuel();
@@ -311,6 +324,7 @@ function bindButtons(){
   ui.infoBtn.onclick = e => { e.stopPropagation(); openInfoScreen(); };
   ui.infoCloseBtn.onclick = e => { e.stopPropagation(); closeInfoScreen(); };
   ui.infoScreen.addEventListener('pointerdown', e => { if (e.target === ui.infoScreen) closeInfoScreen(); });
+  ui.infoCard.addEventListener('scroll', updateActiveInfoNavigation, {passive:true});
   ui.infoScreen.addEventListener('click', e => {
     const button = (e.target as Element).closest<HTMLButtonElement>('[data-info-section]');
     if (!button) return;
@@ -322,16 +336,14 @@ function bindButtons(){
     for (const navButton of ui.infoScreen.querySelectorAll<HTMLButtonElement>('[data-info-section]')) {
       navButton.toggleAttribute('aria-current', navButton === button);
     }
+    requestAnimationFrame(updateActiveInfoNavigation);
   });
 }
 function openInfoScreen(){
   ui.infoScreen.classList.remove('hidden');
-  const firstInfoSection = ui.infoScreen.querySelector<HTMLButtonElement>('[data-info-section]');
-  for (const navButton of ui.infoScreen.querySelectorAll<HTMLButtonElement>('[data-info-section]')) {
-    navButton.toggleAttribute('aria-current', navButton === firstInfoSection);
-  }
   renderCargoDetails();
   renderExpeditionStats();
+  updateActiveInfoNavigation();
 }
 function closeInfoScreen(){
   ui.infoScreen.classList.add('hidden');

@@ -50,7 +50,7 @@ export function MinerApp() {
         </div>
 
         <div id="info-screen" className="hidden" role="dialog" aria-modal="true" aria-labelledby="info-title">
-          <div className="info-card">
+          <div id="info-card" className="info-card">
             <div className="info-header">
               <h2 id="info-title">Cargo &amp; Controls</h2>
               <button id="infoCloseBtn" className="close-btn" aria-label="Close info screen">×</button>

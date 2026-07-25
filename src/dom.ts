@@ -59,6 +59,7 @@ export const ui = {
   drillBtn: requireElement<HTMLButtonElement>('drillBtn'),
   infoBtn: requireElement<HTMLButtonElement>('infoBtn'),
   infoScreen: requireElement<HTMLElement>('info-screen'),
+  infoCard: requireElement<HTMLElement>('info-card'),
   infoCloseBtn: requireElement<HTMLButtonElement>('infoCloseBtn')
 };
 

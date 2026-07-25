@@ -36,6 +36,7 @@ const GAME_DOM_IDS = [
   'drillBtn',
   'infoBtn',
   'info-screen',
+  'info-card',
   'infoCloseBtn',
   'cargoList',
   'expeditionStats',
