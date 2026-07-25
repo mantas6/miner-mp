@@ -155,7 +155,7 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
   .objective-status, .terrain-scanner, .fuel-reserve, .depth-milestone, .extraction-status, .cargo-feedback { padding: 6px 7px; font-size: 9px; line-height: 1.25; }
   meter { height: 15px; }
   .shop { width: calc(50% - 5px); grid-template-columns: 1fr; gap: 4px; padding: 6px; border-radius: 14px; bottom: 4px; right: 0; z-index: 2; }
-  .service-status { width: calc(50% - 5px); right: 0; bottom: 302px; padding: 6px 7px; font-size: 9px; line-height: 1.25; z-index: 2; }
+  .service-status { width: calc(50% - 5px); right: 0; bottom: 336px; padding: 6px 7px; font-size: 9px; line-height: 1.25; z-index: 2; }
   button { padding: 7px 6px; font-size: 11px; border-radius: 9px; }
   button.sound { width: 38px; height: 38px; font-size: 19px; }
    #toast { bottom: 134px; width: max-content; max-width: 88vw; font-size: 13px; padding: 9px 12px; text-align: center; }

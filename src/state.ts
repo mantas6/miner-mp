@@ -33,6 +33,7 @@ export function respawnPlayer(player: Player): void {
  * @property {number} cargoMax   Maximum cargo slots.
  * @property {number} drill      Drill power level.
  * @property {number} dynamite   Carried dynamite charges.
+ * @property {number} teleporters Carried teleporter charges.
  * @property {Object[]} cargo    Collected ore objects.
  */
 
@@ -102,6 +103,7 @@ export function createInitialState(): GameState {
       cargoMax: STARTING.cargoMax,
       drill: STARTING.drill,
       dynamite: STARTING.dynamite,
+      teleporters: STARTING.teleporters,
       cargo: []
     }
   };

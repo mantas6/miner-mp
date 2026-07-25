@@ -68,6 +68,7 @@ export interface Player {
   cargoMax: number;
   drill: number;
   dynamite: number;
+  teleporters: number;
   cargo: any[];
 }
 

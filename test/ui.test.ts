@@ -37,6 +37,7 @@ const GAME_DOM_IDS = [
   'hullBtn',
   'drillBtn',
   'dynamiteBtn',
+  'teleporterBtn',
   'infoBtn',
   'info-screen',
   'info-card',
@@ -87,6 +88,15 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Dynamite $50');
     expect(markup).toContain('<kbd>E</kbd>');
     expect(markup).toContain('blasts yield no cargo');
+  });
+
+  it('exposes teleporter purchasing, inventory, and desktop/mobile use controls', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('id="teleporterBtn"');
+    expect(markup).toContain('Teleporter $250 · x0');
+    expect(markup).toContain('<kbd>T</kbd>');
+    expect(markup).toContain('without unloading or servicing the ship');
   });
 
   it('explains that sprinting only applies in open space', () => {

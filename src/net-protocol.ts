@@ -101,6 +101,13 @@ export interface RespawnedMsg {
   y: number;
 }
 
+/** Inform partner the local ship teleported to a coordinate. */
+export interface TeleportedMsg {
+  type: 'teleported';
+  x: number;
+  y: number;
+}
+
 /** A single accumulated tile diff entry. */
 export interface TileDiffEntry {
   x: number;
@@ -126,6 +133,7 @@ export type NetMessage =
   | BountyMsg
   | DiedMsg
   | RespawnedMsg
+  | TeleportedMsg
   | WorldSyncMsg;
 
 export type NetMessageType = NetMessage['type'];
@@ -245,6 +253,8 @@ export function validateMessage(v: unknown): NetMessage | null {
       return { type: 'died' };
     case 'respawned':
       return isNum(v.x) && isNum(v.y) ? (v as unknown as RespawnedMsg) : null;
+    case 'teleported':
+      return isNum(v.x) && isNum(v.y) ? (v as unknown as TeleportedMsg) : null;
     case 'worldSync':
       return Array.isArray(v.tiles) &&
         v.tiles.every(isTileDiffEntry) &&

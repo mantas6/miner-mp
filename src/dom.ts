@@ -75,6 +75,7 @@ export const ui = {
   hullBtn: requireElement<HTMLButtonElement>('hullBtn'),
   drillBtn: requireElement<HTMLButtonElement>('drillBtn'),
   dynamiteBtn: requireElement<HTMLButtonElement>('dynamiteBtn'),
+  teleporterBtn: requireElement<HTMLButtonElement>('teleporterBtn'),
   infoBtn: requireElement<HTMLButtonElement>('infoBtn'),
   infoScreen: requireElement<HTMLElement>('info-screen'),
   infoCard: requireElement<HTMLElement>('info-card'),

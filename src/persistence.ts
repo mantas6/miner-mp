@@ -30,6 +30,7 @@ export function load(state) {
     p.cargoMax = numeric(save.cargoMax, p.cargoMax, LIMITS.cargoMax.min, LIMITS.cargoMax.max);
     p.drill = numeric(save.drill, p.drill, LIMITS.drill.min, LIMITS.drill.max);
     p.dynamite = Math.floor(numeric(save.dynamite, p.dynamite, LIMITS.dynamite.min, LIMITS.dynamite.max));
+    p.teleporters = Math.floor(numeric(save.teleporters, p.teleporters, LIMITS.teleporters.min, LIMITS.teleporters.max));
     state.stats = {...DEFAULT_STATS, ...(save.stats || {})};
     for (const key of Object.keys(DEFAULT_STATS)) state.stats[key] = numeric(state.stats[key], DEFAULT_STATS[key], 0);
   } catch (err) {
@@ -49,6 +50,7 @@ export function save(state) {
       cargoMax: p.cargoMax,
       drill: p.drill,
       dynamite: p.dynamite,
+      teleporters: p.teleporters,
       stats: state.stats,
       savedAt: Date.now()
     }));

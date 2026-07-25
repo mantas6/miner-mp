@@ -46,6 +46,7 @@ export function MinerApp() {
             <button id="hullBtn">Hull +20 $180</button>
             <button id="drillBtn">Drill +1 $200</button>
             <button id="dynamiteBtn">Dynamite $50</button>
+            <button id="teleporterBtn">Teleporter $250 · x0</button>
             <button id="infoBtn">Info / Cargo</button>
           </div>
           <div id="serviceStatus" className="service-status" aria-live="polite">
@@ -122,6 +123,7 @@ export function MinerApp() {
                 <li><kbd>Enter</kbd><span>Sell cargo at the surface depot</span></li>
                 <li><kbd>Space</kbd><span>Repair or refuel at the surface</span></li>
                 <li><kbd>E</kbd> / <kbd>Detonate</kbd><span>Use one carried dynamite underground; blasts yield no cargo</span></li>
+                <li><kbd>T</kbd> / <kbd>Teleport</kbd><span>Use one carried teleporter underground to return to the depot without unloading or servicing the ship</span></li>
                 <li><kbd>R</kbd> then <kbd>R</kbd><span>Confirm reset while alive</span></li>
               </ul>
             </section>
@@ -166,6 +168,7 @@ export function MinerApp() {
                 <li><strong>Move &amp; dig:</strong> WASD / arrows, or tap around the ship.</li>
                 <li><strong>Make money:</strong> mine ore, return to surface, press Sell or Enter. Space repairs/refuels.</li>
                 <li><strong>Dynamite:</strong> buy charges at the depot, then press E or Detonate underground to clear terrain.</li>
+                <li><strong>Teleporter:</strong> buy one at the depot, then press T or Teleport underground for an emergency return.</li>
                 <li><strong>Do not die:</strong> deep magma pockets, tougher rock, and tunnel fiends scale with depth.</li>
                 <li><strong>Enemies:</strong> drilling nearby blocks wakes them; drill them back before they chew the hull.</li>
                 <li><strong>Goal:</strong> reach the Motherlode core at the bottom, crack it, and get home alive.</li>

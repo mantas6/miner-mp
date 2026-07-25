@@ -9,7 +9,8 @@ export const STARTING = Object.freeze({
   hullMax: 100,
   cargoMax: 10,
   drill: 1,
-  dynamite: 0
+  dynamite: 0,
+  teleporters: 0
 });
 
 export const LIMITS = Object.freeze({
@@ -17,7 +18,8 @@ export const LIMITS = Object.freeze({
   hullMax: Object.freeze({ min: 100, max: 1000 }),
   cargoMax: Object.freeze({ min: STARTING.cargoMax, max: 1000 }),
   drill: Object.freeze({ min: 1, max: 100 }),
-  dynamite: Object.freeze({ min: 0, max: 999 })
+  dynamite: Object.freeze({ min: 0, max: 999 }),
+  teleporters: Object.freeze({ min: 0, max: 999 })
 });
 
 export const FUEL = Object.freeze({
@@ -67,5 +69,6 @@ export const ECONOMY = Object.freeze({
   hull: Object.freeze({ base: 180, growth: 1.38, step: 20 }),
   drill: Object.freeze({ base: 200, growth: 1.55, step: 1 }),
   dynamite: Object.freeze({ price: 50, radius: 2 }),
+  teleporter: Object.freeze({ price: 250 }),
   artifactReward: 5000
 });

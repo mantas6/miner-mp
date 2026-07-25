@@ -22,6 +22,7 @@ import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff,
 import { loadServerUrl, saveServerUrl } from './multiplayer-settings';
 import { fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs } from './movement';
 import { getDynamiteBlastTargets } from './dynamite';
+import { teleportPlayerToSurface } from './teleporter';
 import type { Enemy } from './types';
 
 const state = createInitialState();
@@ -71,7 +72,7 @@ function generate(){
 }
 function resetPlayer(full=true){
   state.extractionPhase = cancelExtraction();
-  if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.player.dynamite=STARTING.dynamite; state.stats = {...DEFAULT_STATS}; saveProgress(); }
+  if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.player.dynamite=STARTING.dynamite; state.player.teleporters=STARTING.teleporters; state.stats = {...DEFAULT_STATS}; saveProgress(); }
   respawnPlayer(state.player);
   state.camX = Math.max(0, state.player.x - Math.floor(W/2));
   state.camY = 0;
@@ -166,7 +167,7 @@ function startOnline(url: string){
         if (msg.type === 'wakeNear' && isPairedHost()) wakeEnemiesNear(msg.x, msg.y);
         if (msg.type === 'bounty' && isGuestEnemyReplica()) creditEnemyBounty(msg.amount);
         if (msg.type === 'died') state.remotePlayers = [];
-        if (msg.type === 'respawned') {
+        if (msg.type === 'respawned' || msg.type === 'teleported') {
           state.remotePlayers = [remotePlayerFrom({
             type: 'playerState', x: msg.x, y: msg.y, drawX: msg.x, drawY: msg.y,
             facing: 1, drillAnim: 0, drillDx: 0, drillDy: 1, bob: 0
@@ -503,6 +504,23 @@ function useDynamiteControl(){
   if (atSurface()) buyDynamite();
   else detonateDynamite();
 }
+function buyTeleporter(){
+  spend(ECONOMY.teleporter.price, () => state.player.teleporters++, 'Teleporter loaded. Press T or Teleport underground.');
+}
+function useTeleporter(){
+  const p = state.player;
+  if (state.gameOver) return;
+  if (atSurface()) return toast('Teleporter can only be used underground.');
+  if (p.teleporters <= 0) { audio.alarm(); return toast('No teleporter. Buy one at the surface depot.'); }
+  if (!teleportPlayerToSurface(p)) return;
+  state.input.keyImpulse = null;
+  state.input.touchHoldDir = null;
+  state.camX = Math.max(0, p.x - Math.floor(W/2));
+  state.camY = 0;
+  saveProgress();
+  if (state.connected && net?.paired) net.send({type:'teleported', x:p.x, y:p.y});
+  toast('Teleported safely to the depot. Cargo and ship condition unchanged.');
+}
 function surfaceService(){
   const p = state.player;
   if (!atSurface()) return toast('Service depot is on the surface.');
@@ -534,6 +552,7 @@ function bindButtons(){
   ui.hullBtn.onclick = () => spend(hullCost(state.player),()=>{state.player.hullMax+=ECONOMY.hull.step; state.player.hull=state.player.hullMax;},'Hull reinforced.');
   ui.drillBtn.onclick = () => spend(drillCost(state.player),()=>state.player.drill+=ECONOMY.drill.step,'Drill power increased.');
   ui.dynamiteBtn.onclick = useDynamiteControl;
+  ui.teleporterBtn.onclick = () => atSurface() ? buyTeleporter() : useTeleporter();
   ui.soundBtn.addEventListener('pointerdown', e => e.stopPropagation());
   ui.soundBtn.onclick = e => { e.stopPropagation(); audio.toggle(); };
   ui.infoBtn.onclick = e => { e.stopPropagation(); openInfoScreen(); };
@@ -598,6 +617,7 @@ function updateButtonStates(){
   ui.hullBtn.textContent = `Hull +20 $${hullCost(p)}`;
   ui.drillBtn.textContent = `Drill +1 $${drillCost(p)}`;
   ui.dynamiteBtn.textContent = surf ? `Dynamite $${ECONOMY.dynamite.price} · x${p.dynamite}` : `Detonate (E) · x${p.dynamite}`;
+  ui.teleporterBtn.textContent = surf ? `Teleporter $${ECONOMY.teleporter.price} · x${p.teleporters}` : `Teleport (T) · x${p.teleporters}`;
   ui.fuelBtn.disabled = !surf || state.cash <= 0 || p.fuel >= p.fuelMax;
   ui.repairBtn.disabled = !surf || state.cash <= 0 || p.hull >= p.hullMax;
   ui.cargoBtn.disabled = !surf || state.cash < cargoCost(p);
@@ -605,6 +625,7 @@ function updateButtonStates(){
   ui.hullBtn.disabled = !surf || state.cash < hullCost(p);
   ui.drillBtn.disabled = !surf || state.cash < drillCost(p);
   ui.dynamiteBtn.disabled = surf ? state.cash < ECONOMY.dynamite.price : p.dynamite <= 0 || state.gameOver;
+  ui.teleporterBtn.disabled = surf ? state.cash < ECONOMY.teleporter.price : p.teleporters <= 0 || state.gameOver;
 }
 const movementKeys = {
   arrowleft: [-1, 0], a: [-1, 0],
@@ -873,6 +894,7 @@ function handleKeyDown(e){
   if (key === 'enter') { sell(); e.preventDefault(); e.stopPropagation(); return; }
   if (key === ' ') { surfaceService(); e.preventDefault(); e.stopPropagation(); return; }
   if (key === 'e') { if (!e.repeat) detonateDynamite(); e.preventDefault(); e.stopPropagation(); return; }
+  if (key === 't') { if (!e.repeat) useTeleporter(); e.preventDefault(); e.stopPropagation(); return; }
   if (key === 'r') { if (!e.repeat) requestReset(); e.preventDefault(); e.stopPropagation(); }
 }
 function handleKeyUp(e){

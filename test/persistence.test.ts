@@ -75,3 +75,34 @@ describe('dynamite persistence', () => {
     expect(state.player.dynamite).toBe(0);
   });
 });
+
+describe('teleporter persistence', () => {
+  it('round-trips carried teleporters with progression', () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value)
+    });
+    const state = createInitialState();
+    state.player.teleporters = 2;
+    save(state);
+
+    const restored = createInitialState();
+    load(restored);
+
+    expect(restored.player.teleporters).toBe(2);
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}').teleporters).toBe(2);
+  });
+
+  it('keeps zero teleporters when loading a legacy save', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify({cash: 90}),
+      setItem: vi.fn()
+    });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(state.player.teleporters).toBe(0);
+  });
+});
