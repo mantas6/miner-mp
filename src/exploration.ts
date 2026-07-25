@@ -1,4 +1,4 @@
-import { SURFACE_HEIGHT, WORLD_H, WORLD_W } from './constants';
+import { MAX_WORLD_ROW, SURFACE_HEIGHT, WORLD_W } from './constants';
 
 export const STARTING_VISIBILITY = 3;
 
@@ -21,7 +21,7 @@ export function revealFootprint(explored: Set<number>, x: number, y: number, siz
   const added: number[] = [];
 
   for (let wy = startY; wy < startY + footprint; wy++) {
-    if (wy < SURFACE_HEIGHT || wy >= WORLD_H) continue;
+    if (wy < SURFACE_HEIGHT || wy > MAX_WORLD_ROW) continue;
     for (let wx = startX; wx < startX + footprint; wx++) {
       if (wx < 0 || wx >= WORLD_W) continue;
       const index = explorationIndex(wx, wy);
@@ -35,7 +35,7 @@ export function revealFootprint(explored: Set<number>, x: number, y: number, siz
 
 export function encodeExploration(explored: Iterable<number>): string {
   const indexes = [...new Set(explored)]
-    .filter(index => Number.isInteger(index) && index >= SURFACE_HEIGHT * WORLD_W && index < WORLD_H * WORLD_W)
+    .filter(index => Number.isSafeInteger(index) && index >= SURFACE_HEIGHT * WORLD_W && index <= MAX_WORLD_ROW * WORLD_W + WORLD_W - 1)
     .sort((a, b) => a - b);
   const ranges: string[] = [];
   for (let i = 0; i < indexes.length; i++) {
@@ -55,7 +55,7 @@ export function mergeExploration(explored: Set<number>, encoded: unknown): numbe
     if (!match) continue;
     const start = Number(match[1]);
     const end = Number(match[2] ?? match[1]);
-    if (end < start || start < SURFACE_HEIGHT * WORLD_W || end >= WORLD_H * WORLD_W) continue;
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end < start || start < SURFACE_HEIGHT * WORLD_W || end > MAX_WORLD_ROW * WORLD_W + WORLD_W - 1) continue;
     for (let index = start; index <= end; index++) {
       if (explored.has(index)) continue;
       explored.add(index);

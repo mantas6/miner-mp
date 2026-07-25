@@ -48,3 +48,21 @@ test('reset advances revision and rejects stale initialization and mutations', t
   assert.equal(store.initialize(1, [{x:1,y:3,tile:{type:'dirt',hp:2,maxHp:2}}]), false);
   assert.deepEqual(store.snapshot(), emptyWorld(2));
 });
+
+test('deep terrain, enemies, and exploration survive relay persistence', t => {
+  const temporary = temporaryState();
+  t.after(() => fs.rmSync(temporary.directory, {recursive:true, force:true}));
+  const deepY = 1205;
+  const deepIndex = deepY * 90 + 45;
+  const store = createWorldStore(temporary.file);
+  assert.equal(store.initialize(1, []), true);
+  assert.equal(store.setTile(1, {x:45,y:deepY,tile:{type:'air'}}), true);
+  assert.equal(store.setEnemies(1, [{id:2,x:45,y:deepY,drawX:45,drawY:deepY,hp:1200,maxHp:1200,alive:true}]), true);
+  assert.equal(store.setExplored(1, `${deepIndex}-${deepIndex + 1}`), true);
+  store.flush();
+
+  const restored = createWorldStore(temporary.file).snapshot();
+  assert.deepEqual(restored.tiles, [{x:45,y:deepY,tile:{type:'air'}}]);
+  assert.equal(restored.enemies[0].y, deepY);
+  assert.equal(restored.explored, `${deepIndex}-${deepIndex + 1}`);
+});

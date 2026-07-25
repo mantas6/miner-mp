@@ -1,6 +1,6 @@
 // Pure deterministic world generation. DOM-free / testable.
 // No imports from dom.js, game.js, or balance.js.
-import { ARTIFACTS, DANGER, ORES, SURFACE_HEIGHT, WORLD_W, WORLD_H } from './constants';
+import { ARTIFACTS, DANGER, MAX_WORLD_ROW, MOTHERLODE_ROW, ORES, SURFACE_HEIGHT, WORLD_CHUNK_ROWS, WORLD_W } from './constants';
 import type { Tile } from './types';
 
 /**
@@ -86,7 +86,7 @@ export function makeTile(x: number, y: number): Tile {
   if (!ore && r < oreSpawnChanceAtDepth(depth)) {
     ore = oreForDepthRoll(depth, rand(x + 73, y - 47));
   }
-  if (y === WORLD_H - 2 && Math.abs(x - Math.floor(WORLD_W/2)) <= 1) return {type:'motherlode', hp:24, maxHp:24};
+  if (y === MOTHERLODE_ROW && Math.abs(x - Math.floor(WORLD_W/2)) <= 1) return {type:'motherlode', hp:24, maxHp:24};
   if (ore) { const hp = Math.max(3, Math.ceil((depth/28)+4)); return {type:'ore', ore, hp, maxHp: hp}; }
   const artifact = artifactForDepthRoll(depth, rand(x - 181, y + 263));
   if (artifact) { const hp = Math.max(4, Math.ceil(depth/240)+3); return {type:'artifact', artifact, hp, maxHp:hp}; }
@@ -101,4 +101,16 @@ export function makeTile(x: number, y: number): Tile {
     return {type:'enemy', hp, maxHp: hp};
   }
   { const hp = Math.max(2, Math.ceil(depth/42)+1 + (depth > 210 ? 2 : 0)); return {type:'dirt', hp, maxHp: hp}; }
+}
+
+/** Generate the containing row chunk on first access. */
+export function ensureWorldRow(world: Tile[][], y: number, tileFactory: (x: number, y: number) => Tile = makeTile): Tile[] | undefined {
+  if (!Number.isInteger(y) || y < 0 || y > MAX_WORLD_ROW) return undefined;
+  if (world[y]) return world[y];
+  const start = Math.floor(y / WORLD_CHUNK_ROWS) * WORLD_CHUNK_ROWS;
+  const end = Math.min(MAX_WORLD_ROW + 1, start + WORLD_CHUNK_ROWS);
+  for (let rowY = start; rowY < end; rowY++) {
+    if (!world[rowY]) world[rowY] = Array.from({length: WORLD_W}, (_, x) => tileFactory(x, rowY));
+  }
+  return world[y];
 }

@@ -1,4 +1,4 @@
-import { SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants';
+import { SURFACE_HEIGHT, TILE, WORLD_W } from './constants';
 import { canvas, ctx, H, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom';
 import { getPartnerIndicator } from './partner-indicator';
 import { getVisibleTileRange, type VisibleTileRange } from './visible-tile-range';
@@ -39,7 +39,7 @@ export function createRenderer({ state, get, rand }) {
     const startX = chunkX * TERRAIN_CHUNK_TILES;
     const startY = chunkY * TERRAIN_CHUNK_TILES;
     const endX = Math.min(WORLD_W - 1, startX + TERRAIN_CHUNK_TILES - 1);
-    const endY = Math.min(WORLD_H - 1, startY + TERRAIN_CHUNK_TILES - 1);
+    const endY = startY + TERRAIN_CHUNK_TILES - 1;
     const width = (endX - startX + 1) * TILE;
     const height = (endY - startY + 1) * TILE;
     const terrainCanvas = document.createElement('canvas');
@@ -67,7 +67,7 @@ export function createRenderer({ state, get, rand }) {
   }
 
   function drawTerrain(camX, camY){
-    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W, WORLD_H);
+    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W);
     // Cache at CSS-pixel resolution so high-DPI screens do not multiply terrain generation cost.
     const scale = Math.min(1, canvas.width / VIEW_WIDTH);
     if (cachedTerrainScale !== scale || cachedTerrainWorld !== state.world) {
@@ -106,7 +106,7 @@ export function createRenderer({ state, get, rand }) {
   }
 
   function drawTerrainDamage(camX, camY){
-    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W, WORLD_H);
+    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W);
     for(let wy=range.startY;wy<=range.endY;wy++) for(let wx=range.startX;wx<=range.endX;wx++) {
       if (!isExplored(wx, wy)) continue;
       drawTileDamage(get(wx,wy), (wx-camX)*TILE, (wy-camY)*TILE);
@@ -116,7 +116,7 @@ export function createRenderer({ state, get, rand }) {
   function draw(){
     const p = state.player;
     const camX = Math.max(0, Math.min(WORLD_W-W, state.camX));
-    const camY = Math.max(0, Math.min(WORLD_H-H, state.camY));
+    const camY = Math.max(0, state.camY);
     const sky = ctx.createLinearGradient(0,0,0,VIEW_HEIGHT);
     sky.addColorStop(0,'#163762'); sky.addColorStop(.25,'#0e1d31'); sky.addColorStop(.26,'#2a1a11'); sky.addColorStop(1,'#050301');
     ctx.fillStyle = sky; ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
@@ -156,7 +156,7 @@ export function createRenderer({ state, get, rand }) {
     }
   }
   function drawFog(camX, camY) {
-    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W, WORLD_H);
+    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W);
     ctx.fillStyle = '#030608';
     for (let wy=range.startY; wy<=range.endY; wy++) for (let wx=range.startX; wx<=range.endX; wx++) {
       if (isExplored(wx, wy)) continue;

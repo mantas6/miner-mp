@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { artifactForDepthRoll, rand, naturalAirPocket, makeTile, oreForDepthRoll, oreSpawnChanceAtDepth, starterOreForCoordinate } from '../src/world';
-import { ARTIFACTS, ORES, START_Y, SURFACE_HEIGHT, WORLD_W, WORLD_H } from '../src/constants';
+import { artifactForDepthRoll, ensureWorldRow, rand, naturalAirPocket, makeTile, oreForDepthRoll, oreSpawnChanceAtDepth, starterOreForCoordinate } from '../src/world';
+import { ARTIFACTS, MAX_WORLD_ROW, MOTHERLODE_ROW, ORES, START_Y, SURFACE_HEIGHT, WORLD_CHUNK_ROWS, WORLD_W } from '../src/constants';
 
 describe('rand', () => {
   it('is deterministic for the same coordinate', () => {
@@ -68,7 +68,7 @@ describe('ore depth distribution', () => {
     return names;
   };
 
-  it('spreads overlapping mineral bands across the full 10 km mine', () => {
+  it('preserves the original mineral bands and extends the deepest resources below 10 km', () => {
     expect(ORES.map(ore => ({
       name: ore.name,
       min: (ore.min - START_Y) * 10,
@@ -81,11 +81,11 @@ describe('ore depth distribution', () => {
       {name: 'Ruby', min: 2600, max: 7400},
       {name: 'Emerald', min: 3900, max: 8500},
       {name: 'Alienite', min: 5400, max: 9400},
-      {name: 'Uranium', min: 7000, max: 10000},
-      {name: 'Core Shard', min: 8500, max: 10000}
+      {name: 'Uranium', min: 7000, max: (MAX_WORLD_ROW - START_Y) * 10},
+      {name: 'Core Shard', min: 8500, max: (MAX_WORLD_ROW - START_Y) * 10}
     ]);
 
-    for (let depth = SURFACE_HEIGHT; depth <= WORLD_H - 2; depth++) {
+    for (let depth = SURFACE_HEIGHT; depth <= MOTHERLODE_ROW + 100; depth++) {
       expect(oreForDepthRoll(depth, .5)).not.toBeNull();
     }
   });
@@ -116,7 +116,7 @@ describe('ore depth distribution', () => {
   it('keeps ore frequency stable when mineral tiers transition', () => {
     expect(oreSpawnChanceAtDepth(SURFACE_HEIGHT)).toBeGreaterThan(.10);
     expect(oreSpawnChanceAtDepth(START_Y + 600)).toBeCloseTo(.22);
-    expect(oreSpawnChanceAtDepth(WORLD_H - 2)).toBeCloseTo(.22);
+    expect(oreSpawnChanceAtDepth(MOTHERLODE_ROW)).toBeCloseTo(.22);
   });
 });
 
@@ -138,7 +138,7 @@ describe('rare artifact distribution', () => {
   it('generates a deterministic, genuinely rare set across the full mine', () => {
     const artifacts = [];
     let ores = 0;
-    for (let y = SURFACE_HEIGHT; y < WORLD_H - 1; y++) {
+    for (let y = SURFACE_HEIGHT; y <= MOTHERLODE_ROW; y++) {
       for (let x = 1; x < WORLD_W - 1; x++) {
         const tile = makeTile(x, y);
         if (tile.type === 'artifact') artifacts.push(tile);
@@ -168,7 +168,7 @@ describe('makeTile', () => {
   });
 
   it('never spawns ore above its minimum depth', () => {
-    const maxY = WORLD_H;
+    const maxY = MOTHERLODE_ROW + 2;
     for (let x = 0; x < WORLD_W; x += 3) {
       for (let y = 0; y < maxY; y++) {
         const tile = makeTile(x, y);
@@ -181,7 +181,7 @@ describe('makeTile', () => {
 
   it('generates at least one ore in a deep scan', () => {
     let foundOre = false;
-    const maxY = WORLD_H;
+    const maxY = MOTHERLODE_ROW + 2;
     for (let x = 0; x < WORLD_W && !foundOre; x += 3) {
       for (let y = 0; y < maxY; y++) {
         if (makeTile(x, y).type === 'ore') { foundOre = true; break; }
@@ -212,10 +212,25 @@ describe('makeTile', () => {
   it('keeps late-game landmarks and hazards intact', () => {
     const motherlodeXs = [Math.floor(WORLD_W / 2) - 1, Math.floor(WORLD_W / 2), Math.floor(WORLD_W / 2) + 1];
     for (const x of motherlodeXs) {
-      expect(makeTile(x, WORLD_H - 2).type).toBe('motherlode');
+      expect(makeTile(x, MOTHERLODE_ROW).type).toBe('motherlode');
     }
 
     expect(makeTile(24, 151).type).toBe('hazard');
     expect(makeTile(36, 17).type).toBe('enemy');
+  });
+
+  it('generates deterministic terrain chunks on demand beyond 10,000 m', () => {
+    const deepRow = MOTHERLODE_ROW + 137;
+    const first = [];
+    const second = [];
+
+    const firstRow = ensureWorldRow(first, deepRow);
+    const secondRow = ensureWorldRow(second, deepRow);
+
+    expect(first.length).toBe(Math.ceil((deepRow + 1) / WORLD_CHUNK_ROWS) * WORLD_CHUNK_ROWS);
+    expect(first[100]).toBeUndefined();
+    expect(firstRow).toEqual(secondRow);
+    expect(firstRow?.[17]).toEqual(makeTile(17, deepRow));
+    expect(firstRow?.[17].type).not.toBe('motherlode');
   });
 });

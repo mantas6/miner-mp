@@ -20,7 +20,7 @@ export function getDynamiteBlastTargets(
   const targets: BlastCoordinate[] = [];
   for (let y = centerY - radius; y <= centerY + radius; y++) {
     const row = world[y];
-    if (!row || y <= SURFACE_HEIGHT || y >= world.length - 1) continue;
+    if (!row || y <= SURFACE_HEIGHT) continue;
     for (let x = centerX - radius; x <= centerX + radius; x++) {
       if (x <= 0 || x >= row.length - 1) continue;
       const dx = x - centerX;

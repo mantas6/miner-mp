@@ -1,4 +1,4 @@
-import { ORES, START_Y, SURFACE_HEIGHT, TILE, WORLD_H, WORLD_W } from './constants';
+import { ORES, START_Y, SURFACE_HEIGHT, TILE, WORLD_W } from './constants';
 import { canvas, gamePanel, ctx, H, keys, ui, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom';
 import { createAudio } from './audio';
 import { shouldAttemptAutoAudio } from './audio-permission';
@@ -10,7 +10,7 @@ import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from './h
 import { formatExpeditionObjective } from './objective';
 import { load, save, DEFAULT_STATS } from './persistence';
 import { formatExpeditionStats } from './stats';
-import { rand, makeTile } from './world';
+import { ensureWorldRow, rand, makeTile } from './world';
 import { getInfoNavigationSection, resolveActiveInfoSection } from './info-navigation';
 import { formatTerrainScanner } from './scanner';
 import { formatFuelReserveForecast } from './fuel-reserve';
@@ -20,11 +20,11 @@ import { formatExtractionPresentation } from './extraction-presentation';
 import { createNet, type NetClient } from './net';
 import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, mergeWorldSync, nextEnemyId, playerStateFrom, remotePlayerFrom, type EnemySnapshotEntry, type TileDiff } from './net-protocol';
 import { loadServerUrl, saveServerUrl } from './multiplayer-settings';
-import { activeSprintDirection, fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs } from './movement';
+import { activeSprintDirection, fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs, movementDestination } from './movement';
 import { getDynamiteBlastTargets } from './dynamite';
 import { advanceTeleportEffect, createTeleportEffect, teleportPlayerToReturn, teleportPlayerToSurface } from './teleporter';
 import { claimArtifact } from './artifacts';
-import type { Enemy } from './types';
+import type { Enemy, Tile } from './types';
 import { applyPlayerUpgrade, getPlayerUpgradeProgress, updateDeveloperUpgradeControls, type PlayerUpgradeId } from './upgrades';
 import { updateShopControls } from './shop';
 import { expandReachableAir } from './enemy-exposure';
@@ -32,7 +32,7 @@ import { encodeExploration, isTileExplored, mergeExploration, revealFootprint } 
 import { consumeBulletForShot, gunKeyAction, resolveShot } from './weapon';
 import { confirmPlayerDataReset, resetPlayerData } from './player-data-reset';
 import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDeveloperCash, updateDeveloperServiceControls, type DeveloperServiceId } from './developer';
-import { confirmWorldStateReset, generatedNonAirTiles, resetWorldTerrain } from './world-state';
+import { confirmWorldStateReset, resetWorldTerrain } from './world-state';
 import { findClosestEnemyTarget, findEnemyPathStep } from './enemy-movement';
 
 const state = createInitialState();
@@ -88,7 +88,7 @@ function mergeEnemyEntries(entries: EnemySnapshotEntry[]){
 
 function generate(){
   state.enemies = [];
-  state.world = Array.from({length: WORLD_H}, (_,y)=>Array.from({length: WORLD_W},(_,x)=>makeTile(x,y)));
+  state.world = [];
   tileDiff = {};
   resetPlayer(false);
   resetEnemyExposure();
@@ -102,14 +102,15 @@ function clearWorldRuntime(){
   renderer?.invalidateTerrain();
 }
 function initializeServerWorld(){
-  net?.send({type:'worldInit', revision:worldRevision, tiles:generatedNonAirTiles(state.world)});
+  net?.send({type:'worldInit', revision:worldRevision, tiles:[]});
 }
 function applyAuthoritativeWorld(msg: Extract<import('./net-protocol').NetMessage, {type:'worldState'}>){
   worldRevision = msg.revision;
-  state.world = Array.from({length: WORLD_H}, (_,y)=>Array.from({length: WORLD_W},(_,x)=>makeTile(x,y)));
+  state.world = [];
   tileDiff = {};
   for (const entry of msg.tiles) {
-    state.world[entry.y][entry.x] = entry.tile;
+    const row = ensureWorldRow(state.world, entry.y);
+    if (row) row[entry.x] = entry.tile;
   }
   applyEnemyEntries(msg.enemies);
   enemyIdCounter = nextEnemyId(state.enemies);
@@ -133,9 +134,12 @@ function resetPlayer(full=true){
   state.particles.length = 0;
   state.gameOver = false; toast('Fresh drill deployed.');
 }
-function get(x,y){ return state.world[y]?.[x] || {type:'rock', hp:999}; }
+function get(x,y): Tile {
+  if (x < 0 || x >= WORLD_W) return {type:'rock', hp:999};
+  return ensureWorldRow(state.world, y)?.[x] || {type:'rock', hp:999};
+}
 function set(x,y,t, broadcast=true){
-  const row = state.world[y];
+  const row = ensureWorldRow(state.world, y);
   if (!row || x < 0 || x >= row.length) return;
   const previousType = row[x].type;
   row[x] = t;
@@ -220,7 +224,7 @@ function startOnline(url: string){
           }
         }
         if (msg.type === 'worldSync' && isGuestEnemyReplica()) {
-          applyWorldSyncToWorld(state.world, msg);
+          applyWorldSyncToWorld(state.world, msg, makeTile);
           renderer.invalidateTerrain();
           tileDiff = mergeWorldSync(tileDiff, [], msg).diff;
           mergeEnemyEntries(msg.enemies);
@@ -470,12 +474,11 @@ function updateEnemyBites(){
 }
 function grounded(){
   const p = state.player;
-  return p.y >= WORLD_H-1 || get(p.x, p.y + 1).type !== 'air';
+  return get(p.x, p.y + 1).type !== 'air';
 }
 function isOpenMovementDestination(dx,dy){
   const p = state.player;
-  const nx = Math.max(1, Math.min(WORLD_W-2, p.x + dx));
-  const ny = Math.max(START_Y, Math.min(WORLD_H-1, p.y + dy));
+  const {x: nx, y: ny} = movementDestination(p.x, p.y, dx, dy, WORLD_W, START_Y);
   return isOpenSpaceDestination(nx !== p.x || ny !== p.y, get(nx,ny).type, Boolean(enemyAt(nx,ny)));
 }
 function restartGame(){
@@ -515,8 +518,7 @@ function move(dx,dy,sprinting=false){
   if (state.gameOver) return;
   const p = state.player;
   if (p.fuel <= 0) { gameOver('Out of fuel — ship exploded. Tap anywhere to restart.'); return; }
-  const nx = Math.max(1, Math.min(WORLD_W-2, p.x + dx));
-  const ny = Math.max(START_Y, Math.min(WORLD_H-1, p.y + dy));
+  const {x: nx, y: ny} = movementDestination(p.x, p.y, dx, dy, WORLD_W, START_Y);
   if (nx === p.x && ny === p.y) {
     if (dy < 0 && p.y === START_Y) toast('Stay low — the surface airspace is for the depot, not flying.');
     return;
@@ -644,6 +646,7 @@ function detonateDynamite(){
   if (state.gameOver) return;
   if (atSurface()) return toast('Dynamite can only be detonated underground.');
   if (p.dynamite <= 0) { audio.alarm(); return toast('No dynamite. Buy a charge at the surface depot.'); }
+  ensureWorldRow(state.world, p.y + ECONOMY.dynamite.radius);
   const targets = getDynamiteBlastTargets(state.world, p.x, p.y, ECONOMY.dynamite.radius);
   p.dynamite--;
   for (const {x, y} of targets) set(x, y, {type:'air'});
@@ -686,6 +689,7 @@ function setGunArmed(armed: boolean){
 function fireGun(direction: [number, number]){
   const p = state.player;
   if (!state.input.gunArmed || state.gameOver || atSurface() || !p.gunOwned || p.bullets <= 0) return false;
+  if (direction[1] > 0) ensureWorldRow(state.world, p.y + ECONOMY.gun.range);
   const shot = resolveShot(state.world, p.x, p.y, direction, ECONOMY.gun.range, state.enemies.filter(enemy => enemy.alive));
   if (!shot) return false;
   if (!consumeBulletForShot(p, state.input.gunArmed, direction)) return false;
@@ -721,7 +725,7 @@ function useTeleporter(){
   if (surf && !state.teleportReturnPosition) return toast('No underground teleport return point.');
   if (!surf && p.teleporters <= 0) { audio.alarm(); return toast('No teleporter. Buy one at the surface depot.'); }
   const camX = Math.max(0, Math.min(WORLD_W-W, state.camX));
-  const camY = Math.max(0, Math.min(WORLD_H-H, state.camY));
+  const camY = Math.max(0, state.camY);
   const originScreenX = (p.drawX - camX + .5) * TILE;
   const originScreenY = (p.drawY - camY + .5) * TILE;
   if (surf) {
@@ -738,7 +742,7 @@ function useTeleporter(){
   state.input.touchHoldDir = null;
   state.input.gunArmed = false;
   state.camX = Math.max(0, p.x - Math.floor(W/2));
-  state.camY = surf ? Math.max(0, Math.min(WORLD_H-H, p.y - Math.floor(H/2))) : 0;
+  state.camY = surf ? Math.max(0, p.y - Math.floor(H/2)) : 0;
   saveProgress();
   if (state.connected && net?.paired) net.send({type:'teleported', x:p.x, y:p.y});
   toast(surf ? 'Returned to the underground teleport point.' : 'Teleported safely to the depot. Press T to return underground.');
@@ -982,7 +986,7 @@ function shipClientPosition(){
   const {rect, scale, offsetX, offsetY} = canvasCoverGeometry();
   const p = state.player;
   const camX = Math.max(0, Math.min(WORLD_W-W, state.camX));
-  const camY = Math.max(0, Math.min(WORLD_H-H, state.camY));
+  const camY = Math.max(0, state.camY);
   return {
     x: rect.left + offsetX + (p.drawX - camX + 0.5) * TILE * scale,
     y: rect.top + offsetY + (p.drawY - camY + 0.5) * TILE * scale
@@ -1044,7 +1048,7 @@ function updateAnimation(){
   state.remotePlayers = interpolateRemotePlayers(state.remotePlayers, 0.23);
   state.teleportEffect = advanceTeleportEffect(state.teleportEffect);
   const targetCamX = Math.max(0, Math.min(WORLD_W-W, p.drawX - W/2 + 0.5));
-  const targetCamY = Math.max(0, Math.min(WORLD_H-H, p.drawY - H/2 + 0.5));
+  const targetCamY = Math.max(0, p.drawY - H/2 + 0.5);
   state.camX += (targetCamX - state.camX) * 0.12;
   state.camY += (targetCamY - state.camY) * 0.12;
   state.particles = state.particles.filter(pt => {

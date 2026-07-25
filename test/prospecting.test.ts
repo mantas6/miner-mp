@@ -28,7 +28,7 @@ describe('prospecting guide helpers', () => {
     expect(rows.at(-1)).toMatchObject({
       name: 'Core Shard',
       valueLabel: '$980',
-      depthLabel: '≈8500–10000 m'
+      depthLabel: '≈8500 m and deeper'
     });
   });
 });

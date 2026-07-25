@@ -155,7 +155,7 @@ export function MinerApp() {
             <section id="info-objective" tabIndex={-1} aria-labelledby="cargo-bay-title">
               <h3 id="cargo-bay-title">Cargo Bay</h3>
               <p id="objectiveInfoStatus" className="objective-info-status">Objective: mine the starter Coal/Copper seam below the depot, then return to sell.</p>
-              <p id="extractionInfoStatus" className="extraction-info-status">Crack the Motherlode core at the bottom, then return alive to the surface depot to complete extraction.</p>
+              <p id="extractionInfoStatus" className="extraction-info-status">Crack the Motherlode core at 10,000 m, then return alive to the surface depot to complete extraction.</p>
               <ul id="cargoList" className="cargo-detail-list"><li className="empty-cargo">Empty</li></ul>
             </section>
             <section id="info-stats" tabIndex={-1} aria-labelledby="expedition-stats-title">
@@ -314,7 +314,7 @@ export function MinerApp() {
                 <li><strong>Gun:</strong> buy the permanent gun and bullet bundles, then press G and a direction; touch players use Arm Gun then tap a direction.</li>
                 <li><strong>Do not die:</strong> deep magma pockets, tougher rock, and tunnel fiends scale with depth.</li>
                 <li><strong>Enemies:</strong> drilling nearby blocks wakes them; drill them back before they chew the hull.</li>
-                <li><strong>Goal:</strong> reach the Motherlode core at the bottom, crack it, and get home alive.</li>
+                <li><strong>Goal:</strong> reach the Motherlode core at 10,000 m, crack it, and get home alive. The mine continues below it.</li>
                 <li><strong>Upgrade:</strong> prices rise, so choose tank, hull, cargo, drill, and sensor upgrades carefully.</li>
                 <li><strong>Sound:</strong> optional soundtrack starts only after the Sound button or a trusted tap/click.</li>
               </ul>

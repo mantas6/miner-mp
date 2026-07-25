@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STARTING } from '../src/balance';
 import { formatExpeditionObjective, motherlodeDepthMeters, nextOreMilestone } from '../src/objective';
-import { ORES, START_Y, WORLD_H } from '../src/constants';
+import { MOTHERLODE_ROW, ORES, START_Y } from '../src/constants';
 
 const player = {
   y: START_Y,
@@ -69,7 +69,7 @@ describe('expedition objective helper', () => {
   });
 
   it('uses Motherlode progress once all ore bands are unlocked', () => {
-    expect(motherlodeDepthMeters(WORLD_H, START_Y)).toBe(10000);
+    expect(motherlodeDepthMeters(MOTHERLODE_ROW, START_Y)).toBe(10000);
     expect(formatExpeditionObjective({
       player: { ...player, y: START_Y + 860 },
       cash: 200,

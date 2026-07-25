@@ -26,9 +26,7 @@ describe('world state reset', () => {
 
     resetWorldTerrain(state, (x, y): Tile => (x === 4 && y === 5 ? {type:'air'} : {type:'dirt', hp:2, maxHp:2}));
 
-    expect(state.world).toHaveLength(1004);
-    expect(state.world[0]).toHaveLength(90);
-    expect(state.world[5][4]).toEqual({type:'air'});
+    expect(state.world).toEqual([]);
     expect(state.enemies).toEqual([]);
     expect(state.exploredTiles.size).toBe(0);
     expect(state.extractionPhase).toBe('none');

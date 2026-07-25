@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { FUEL } from '../src/balance';
 import { partialFill } from '../src/economy';
-import { activeSprintDirection, fuelAfterMovement, isOpenSpaceDestination, isSprintActive, keyboardMovementRepeatMs, movementFuelCost } from '../src/movement';
+import { activeSprintDirection, fuelAfterMovement, isOpenSpaceDestination, isSprintActive, keyboardMovementRepeatMs, movementDestination, movementFuelCost } from '../src/movement';
+
+describe('world boundaries', () => {
+  it('keeps horizontal and surface boundaries but allows downward travel beyond 10,000 m', () => {
+    expect(movementDestination(45, 1002, 0, 1, 90, 2)).toEqual({x:45, y:1003});
+    expect(movementDestination(45, 1205, 0, 1, 90, 2)).toEqual({x:45, y:1206});
+    expect(movementDestination(1, 2, -1, -1, 90, 2)).toEqual({x:1, y:2});
+  });
+});
 
 describe('surface fuel', () => {
   it('charges lateral open-space flight without passively refueling', () => {

@@ -49,7 +49,7 @@ export function resolveShot(
     const x = originX + dx * distance;
     const y = originY + dy * distance;
     const row = world[y];
-    if (!row || x <= 0 || x >= row.length - 1 || y <= SURFACE_HEIGHT || y >= world.length - 1) {
+    if (!row || x <= 0 || x >= row.length - 1 || y <= SURFACE_HEIGHT) {
       return {outcome: 'blocked', path};
     }
     path.push({x, y});

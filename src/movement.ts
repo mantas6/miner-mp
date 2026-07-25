@@ -1,6 +1,13 @@
 import { SPRINT } from './balance';
 import type { Direction } from './types';
 
+export function movementDestination(x: number, y: number, dx: number, dy: number, worldWidth: number, startY: number): {x: number; y: number} {
+  return {
+    x: Math.max(1, Math.min(worldWidth - 2, x + dx)),
+    y: Math.max(startY, y + dy)
+  };
+}
+
 export function isTraversableTerrain(tileType: string): boolean {
   return tileType === 'air';
 }

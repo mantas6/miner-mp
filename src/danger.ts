@@ -1,5 +1,5 @@
 import { ECONOMY, ENEMY, FUEL, HULL } from './balance';
-import { DANGER, START_Y, WORLD_H } from './constants';
+import { DANGER, MOTHERLODE_ROW, START_Y } from './constants';
 
 export interface DangerGuideRow {
   title: string;
@@ -15,7 +15,7 @@ function depthLabel(row: number, startY = START_Y): string {
  * balance configuration, so the overlay remains accurate as tuning changes.
  */
 export function buildDangerGuideRows(): DangerGuideRow[] {
-  const coreRow = WORLD_H - 2;
+  const coreRow = MOTHERLODE_ROW;
   return [
     {
       title: 'Solid rock',

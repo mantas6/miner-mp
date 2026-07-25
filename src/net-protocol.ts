@@ -7,6 +7,7 @@
 // itself is handled in `net.ts`.
 
 import type { Tile, Ore, Artifact, Player, Enemy, RemotePlayer } from './types';
+import { MAX_WORLD_ROW, SURFACE_HEIGHT, WORLD_CHUNK_ROWS, WORLD_W } from './constants';
 
 // --- Message types ---------------------------------------------------------
 
@@ -194,7 +195,7 @@ function isNum(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v);
 }
 function isInt(v: unknown): v is number {
-  return isNum(v) && Number.isInteger(v);
+  return isNum(v) && Number.isSafeInteger(v);
 }
 function isBool(v: unknown): v is boolean {
   return typeof v === 'boolean';
@@ -203,7 +204,8 @@ function isStr(v: unknown): v is string {
   return typeof v === 'string';
 }
 
-const MAX_WORLD_TILES = 90 * 1004;
+const MAX_STATE_TILE_ENTRIES = 100_000;
+const MAX_EXPLORED_TILES = 90 * 1004;
 const MAX_ENEMIES = 2048;
 
 const TILE_TYPES = new Set(['air', 'dirt', 'rock', 'ore', 'hazard', 'artifact', 'motherlode', 'enemy']);
@@ -268,7 +270,7 @@ function isEnemyEntry(v: unknown): v is EnemySnapshotEntry {
 }
 
 function isTileDiffEntry(v: unknown): v is TileDiffEntry {
-  return isObj(v) && isInt(v.x) && v.x >= 0 && v.x < 90 && isInt(v.y) && v.y >= 0 && v.y < 1004 && isTile(v.tile);
+  return isObj(v) && isInt(v.x) && v.x >= 0 && v.x < WORLD_W && isInt(v.y) && v.y >= 0 && v.y <= MAX_WORLD_ROW && isTile(v.tile);
 }
 
 function isRevision(v: unknown): v is number {
@@ -276,14 +278,18 @@ function isRevision(v: unknown): v is number {
 }
 
 function isExploration(v: unknown): v is string {
-  if (!isStr(v) || v.length > MAX_WORLD_TILES * 8) return false;
+  if (!isStr(v) || v.length > MAX_STATE_TILE_ENTRIES * 8) return false;
   if (!v) return true;
+  let count = 0;
   return v.split(',').every(range => {
     const match = /^(\d+)(?:-(\d+))?$/.exec(range);
     if (!match) return false;
     const start = Number(match[1]);
     const end = Number(match[2] ?? match[1]);
-    return start >= 270 && end >= start && end < MAX_WORLD_TILES;
+    count += end - start + 1;
+    return Number.isSafeInteger(start) && Number.isSafeInteger(end) &&
+      start >= SURFACE_HEIGHT * WORLD_W && end >= start && end <= MAX_WORLD_ROW * WORLD_W + WORLD_W - 1 &&
+      count <= MAX_EXPLORED_TILES;
   });
 }
 
@@ -352,13 +358,13 @@ export function validateMessage(v: unknown): NetMessage | null {
         : null;
     case 'worldState':
       return v.version === 1 && isRevision(v.revision) && isBool(v.initialized) &&
-        Array.isArray(v.tiles) && v.tiles.length <= MAX_WORLD_TILES && v.tiles.every(isTileDiffEntry) &&
+        Array.isArray(v.tiles) && v.tiles.length <= MAX_STATE_TILE_ENTRIES && v.tiles.every(isTileDiffEntry) &&
         Array.isArray(v.enemies) && v.enemies.length <= MAX_ENEMIES && v.enemies.every(isEnemyEntry) &&
         isExploration(v.explored)
         ? (v as unknown as WorldStateMsg)
         : null;
     case 'worldInit':
-      return isRevision(v.revision) && Array.isArray(v.tiles) && v.tiles.length <= MAX_WORLD_TILES &&
+      return isRevision(v.revision) && Array.isArray(v.tiles) && v.tiles.length <= MAX_STATE_TILE_ENTRIES &&
         v.tiles.every(entry => isTileDiffEntry(entry) && entry.tile.type !== 'air')
         ? (v as unknown as WorldInitMsg)
         : null;
@@ -504,15 +510,22 @@ export function worldSyncFrom(diff: TileDiff, enemies: Enemy[] = [], explored = 
  * Apply a tile mutation onto a 2D world grid. Mutates and returns the grid (the
  * grid is a plain array of plain tiles). No-op if the coordinate is out of range.
  */
-export function applyTileToWorld(world: Tile[][], msg: Pick<TileMsg, 'x' | 'y' | 'tile'>): Tile[][] {
+export function applyTileToWorld(world: Tile[][], msg: Pick<TileMsg, 'x' | 'y' | 'tile'>, tileFactory?: (x: number, y: number) => Tile): Tile[][] {
+  if (tileFactory) {
+    const start = Math.floor(msg.y / WORLD_CHUNK_ROWS) * WORLD_CHUNK_ROWS;
+    const end = Math.min(MAX_WORLD_ROW + 1, start + WORLD_CHUNK_ROWS);
+    for (let y = start; y < end; y++) {
+      if (!world[y]) world[y] = Array.from({length: WORLD_W}, (_, x) => tileFactory(x, y));
+    }
+  }
   const row = world[msg.y];
   if (row && msg.x >= 0 && msg.x < row.length) row[msg.x] = msg.tile;
   return world;
 }
 
 /** Apply a host's compact tile diff to a deterministic local world grid. */
-export function applyWorldSyncToWorld(world: Tile[][], msg: WorldSyncMsg): Tile[][] {
-  for (const tile of msg.tiles) applyTileToWorld(world, tile);
+export function applyWorldSyncToWorld(world: Tile[][], msg: WorldSyncMsg, tileFactory?: (x: number, y: number) => Tile): Tile[][] {
+  for (const tile of msg.tiles) applyTileToWorld(world, tile, tileFactory);
   return world;
 }
 

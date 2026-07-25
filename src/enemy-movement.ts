@@ -58,7 +58,7 @@ export function findEnemyPathStep(
       const y = current.y + dy;
       const tile = world[y]?.[x];
       const tileKey = key(x, y);
-      if (x <= 0 || x >= (world[y]?.length ?? 0) - 1 || y < SURFACE_HEIGHT || y >= world.length - 1) continue;
+      if (x <= 0 || x >= (world[y]?.length ?? 0) - 1 || y < SURFACE_HEIGHT) continue;
       if (!tile || tile.type !== 'air' || blocked.has(tileKey) || visited.has(tileKey)) continue;
       const firstStep = current.firstStep ?? {x, y};
       if (x === target.x && y === target.y) return firstStep;

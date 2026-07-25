@@ -11,7 +11,7 @@ export function getVisibleTileRange(
   visibleColumns: number,
   visibleRows: number,
   worldWidth: number,
-  worldHeight: number,
+  worldHeight?: number,
   overscan = 1
 ): VisibleTileRange {
   const cameraColumn = Math.floor(camX);
@@ -21,6 +21,8 @@ export function getVisibleTileRange(
     startX: Math.max(0, cameraColumn - overscan),
     endX: Math.min(worldWidth - 1, cameraColumn + visibleColumns + overscan),
     startY: Math.max(0, cameraRow - overscan),
-    endY: Math.min(worldHeight - 1, cameraRow + visibleRows + overscan)
+    endY: worldHeight === undefined
+      ? cameraRow + visibleRows + overscan
+      : Math.min(worldHeight - 1, cameraRow + visibleRows + overscan)
   };
 }

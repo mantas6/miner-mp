@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WORLD_H, WORLD_W } from '../src/constants';
+import { WORLD_W } from '../src/constants';
 import { getVisibleTileRange } from '../src/visible-tile-range';
 
 describe('getVisibleTileRange', () => {
@@ -21,12 +21,12 @@ describe('getVisibleTileRange', () => {
     });
   });
 
-  it('clamps the range at the bottom-right world boundary', () => {
-    expect(getVisibleTileRange(80.9, WORLD_H - 4.2, 15, 10, WORLD_W, WORLD_H)).toEqual({
+  it('clamps horizontally but continues below 10 km without a bottom boundary', () => {
+    expect(getVisibleTileRange(80.9, 1004.2, 15, 10, WORLD_W)).toEqual({
       startX: 79,
       endX: WORLD_W - 1,
-      startY: WORLD_H - 6,
-      endY: WORLD_H - 1
+      startY: 1003,
+      endY: 1015
     });
   });
 });

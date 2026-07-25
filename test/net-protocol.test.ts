@@ -171,6 +171,17 @@ describe('isTile', () => {
     expect(worldSyncFrom(diff).tiles).toEqual([{x:8, y:740, tile:{type:'air'}}]);
   });
 
+  it('round-trips and applies tile mutations below 10,000 m', () => {
+    const deep = {type:'tile', revision:1, x:8, y:1205, tile:{type:'air'}} as const;
+    expect(decodeMessage(encodeMessage(deep))).toEqual(deep);
+
+    const world: Tile[][] = [];
+    applyTileToWorld(world, deep, (x, y) => ({type:'dirt', hp:x + y + 1, maxHp:x + y + 1}));
+    expect(world[100]).toBeUndefined();
+    expect(world[1205][8]).toEqual({type:'air'});
+    expect(world[1205][9]).toEqual({type:'dirt', hp:1215, maxHp:1215});
+  });
+
   it('rejects malformed tiles', () => {
     expect(isTile({ type: 'ore', hp: 1, maxHp: 1 })).toBe(false);
     expect(isTile({ type: 'unknown' })).toBe(false);

@@ -3,8 +3,9 @@ import path from 'node:path';
 
 export const WORLD_STATE_VERSION = 1;
 export const WORLD_WIDTH = 90;
-export const WORLD_HEIGHT = 1004;
-export const MAX_TILES = WORLD_WIDTH * WORLD_HEIGHT;
+export const MAX_WORLD_ROW = Math.floor(Number.MAX_SAFE_INTEGER / WORLD_WIDTH) - 1;
+export const MAX_STATE_TILE_ENTRIES = 100_000;
+export const MAX_EXPLORED_TILES = 90 * 1004;
 export const MAX_ENEMIES = 2048;
 export const MAX_STATE_BYTES = 16 * 1024 * 1024;
 
@@ -22,15 +23,15 @@ function shortString(value, max = 100) {
 
 function valuable(value) {
   return object(value) && shortString(value.name) && shortString(value.color, 32) &&
-    finite(value.value, 0, 1_000_000) && finite(value.min, 0, WORLD_HEIGHT) &&
-    finite(value.max, 0, WORLD_HEIGHT) && finite(value.chance, 0, 1);
+    finite(value.value, 0, 1_000_000) && finite(value.min, 0, MAX_WORLD_ROW) &&
+    finite(value.max, 0, MAX_WORLD_ROW) && finite(value.chance, 0, 1);
 }
 
 export function validTile(tile) {
   if (!object(tile) || typeof tile.type !== 'string') return false;
   if (tile.type === 'air') return true;
-  if (tile.type === 'rock') return finite(tile.hp, 0, 1000);
-  if (!finite(tile.hp, 0, 1000) || !finite(tile.maxHp, 1, 1000)) return false;
+  if (tile.type === 'rock') return finite(tile.hp, 0, Number.MAX_SAFE_INTEGER);
+  if (!finite(tile.hp, 0, Number.MAX_SAFE_INTEGER) || !finite(tile.maxHp, 1, Number.MAX_SAFE_INTEGER)) return false;
   if (tile.type === 'ore') return valuable(tile.ore);
   if (tile.type === 'artifact') return valuable(tile.artifact);
   return tile.type === 'dirt' || tile.type === 'hazard' || tile.type === 'motherlode' || tile.type === 'enemy';
@@ -38,14 +39,14 @@ export function validTile(tile) {
 
 export function validTileEntry(entry) {
   return object(entry) && Number.isInteger(entry.x) && entry.x >= 0 && entry.x < WORLD_WIDTH &&
-    Number.isInteger(entry.y) && entry.y >= 0 && entry.y < WORLD_HEIGHT && validTile(entry.tile);
+    Number.isSafeInteger(entry.y) && entry.y >= 0 && entry.y <= MAX_WORLD_ROW && validTile(entry.tile);
 }
 
 export function validEnemy(enemy) {
   return object(enemy) && Number.isInteger(enemy.id) && enemy.id > 0 &&
-    finite(enemy.x, 0, WORLD_WIDTH - 1) && finite(enemy.y, 0, WORLD_HEIGHT - 1) &&
-    finite(enemy.drawX, 0, WORLD_WIDTH - 1) && finite(enemy.drawY, 0, WORLD_HEIGHT - 1) &&
-    finite(enemy.hp, 0, 1000) && finite(enemy.maxHp, 1, 1000) && typeof enemy.alive === 'boolean';
+    finite(enemy.x, 0, WORLD_WIDTH - 1) && finite(enemy.y, 0, MAX_WORLD_ROW) &&
+    finite(enemy.drawX, 0, WORLD_WIDTH - 1) && finite(enemy.drawY, 0, MAX_WORLD_ROW) &&
+    finite(enemy.hp, 0, Number.MAX_SAFE_INTEGER) && finite(enemy.maxHp, 1, Number.MAX_SAFE_INTEGER) && typeof enemy.alive === 'boolean';
 }
 
 export function emptyWorld(revision = 1) {
@@ -53,7 +54,7 @@ export function emptyWorld(revision = 1) {
 }
 
 function explorationIndexes(encoded) {
-  if (typeof encoded !== 'string' || encoded.length > MAX_TILES * 8) return null;
+  if (typeof encoded !== 'string' || encoded.length > MAX_STATE_TILE_ENTRIES * 8) return null;
   const indexes = new Set();
   if (!encoded) return indexes;
   for (const range of encoded.split(',')) {
@@ -61,7 +62,7 @@ function explorationIndexes(encoded) {
     if (!match) return null;
     const start = Number(match[1]);
     const end = Number(match[2] ?? match[1]);
-    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 3 * WORLD_WIDTH || end < start || end >= MAX_TILES) return null;
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 3 * WORLD_WIDTH || end < start || end > MAX_WORLD_ROW * WORLD_WIDTH + WORLD_WIDTH - 1 || indexes.size + end - start + 1 > MAX_EXPLORED_TILES) return null;
     for (let index = start; index <= end; index++) indexes.add(index);
   }
   return indexes;
@@ -81,7 +82,7 @@ function encodeExploration(indexes) {
 
 export function validateWorldState(value) {
   if (!object(value) || value.version !== WORLD_STATE_VERSION || !Number.isInteger(value.revision) || value.revision < 1 ||
-      typeof value.initialized !== 'boolean' || !Array.isArray(value.tiles) || value.tiles.length > MAX_TILES ||
+      typeof value.initialized !== 'boolean' || !Array.isArray(value.tiles) || value.tiles.length > MAX_STATE_TILE_ENTRIES ||
       !value.tiles.every(validTileEntry) || !Array.isArray(value.enemies) || value.enemies.length > MAX_ENEMIES ||
       !value.enemies.every(validEnemy) || explorationIndexes(value.explored) === null) return null;
   if (!value.initialized && (value.tiles.length || value.enemies.length || value.explored)) return null;
@@ -137,7 +138,7 @@ export function createWorldStore(filePath) {
   }
 
   function initialize(revision, tiles) {
-    if (state.initialized || revision !== state.revision || !Array.isArray(tiles) || tiles.length > MAX_TILES ||
+    if (state.initialized || revision !== state.revision || !Array.isArray(tiles) || tiles.length > MAX_STATE_TILE_ENTRIES ||
         !tiles.every(validTileEntry) || tiles.some(entry => entry.tile.type === 'air')) return false;
     const unique = new Map(tiles.map(entry => [`${entry.x},${entry.y}`, entry]));
     if (unique.size !== tiles.length) return false;

@@ -55,7 +55,7 @@ describe('dynamite blast targets', () => {
     expect(world[5][6]).toEqual({type: 'air'});
   });
 
-  it('preserves the Motherlode, protected surface/base tiles, and world boundaries', () => {
+  it('preserves the Motherlode and protected surface/horizontal boundary tiles without inventing a bottom boundary', () => {
     const world: Tile[][] = Array.from({length: 9}, () => Array.from({length: 9}, dirt));
     world[5][5] = {type: 'motherlode', hp: 24, maxHp: 24};
     world[SURFACE_HEIGHT][1] = {type: 'rock', hp: 999};
@@ -68,6 +68,6 @@ describe('dynamite blast targets', () => {
     expect(surfaceTargets).not.toContainEqual({x: 1, y: SURFACE_HEIGHT});
     expect(surfaceTargets).not.toContainEqual({x: 0, y: SURFACE_HEIGHT + 1});
     expect(deepTargets).not.toContainEqual({x: 5, y: 5});
-    expect(bottomTargets).not.toContainEqual({x: 5, y: 8});
+    expect(bottomTargets).toContainEqual({x: 5, y: 8});
   });
 });

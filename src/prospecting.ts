@@ -1,4 +1,4 @@
-import { ORES, START_Y } from './constants';
+import { MAX_WORLD_ROW, ORES, START_Y } from './constants';
 import { ECONOMY } from './balance';
 import type { Ore } from './types';
 
@@ -15,6 +15,7 @@ export function oreMinimumDepthMeters(oreMinRow: number, startY = START_Y): numb
 
 export function formatOreDepthLabel(oreMinRow: number, oreMaxRow: number, startY = START_Y): string {
   const minMeters = oreMinimumDepthMeters(oreMinRow, startY);
+  if (oreMaxRow === MAX_WORLD_ROW) return `≈${minMeters} m and deeper`;
   const maxMeters = oreMinimumDepthMeters(oreMaxRow, startY);
   return minMeters === 0 ? `starter–≈${maxMeters} m` : `≈${minMeters}–${maxMeters} m`;
 }
