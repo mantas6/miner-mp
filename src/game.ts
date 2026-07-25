@@ -21,6 +21,7 @@ import { createNet, type NetClient } from './net';
 import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, mergeWorldSync, nextEnemyId, playerStateFrom, remotePlayerFrom, worldSyncFrom, type EnemySnapshotEntry, type TileDiff } from './net-protocol';
 import { loadServerUrl, saveServerUrl } from './multiplayer-settings';
 import { keyboardMovementRepeatMs, movementFuelCost } from './movement';
+import { getDynamiteBlastTargets } from './dynamite';
 import type { Enemy } from './types';
 
 const state = createInitialState();
@@ -70,7 +71,7 @@ function generate(){
 }
 function resetPlayer(full=true){
   state.extractionPhase = cancelExtraction();
-  if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.stats = {...DEFAULT_STATS}; saveProgress(); }
+  if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.player.dynamite=STARTING.dynamite; state.stats = {...DEFAULT_STATS}; saveProgress(); }
   respawnPlayer(state.player);
   state.camX = Math.max(0, state.player.x - Math.floor(W/2));
   state.camY = 0;
@@ -476,6 +477,26 @@ function repair(){
   toast(p.hull >= p.hullMax ? 'Hull repaired.' : `Partial repair — spent $${Math.round(pay)} (all your cash).`);
   audio.cash(pay);
 }
+function buyDynamite(){
+  spend(ECONOMY.dynamite.price, () => state.player.dynamite++, 'Dynamite loaded. Press E or Detonate underground.');
+}
+function detonateDynamite(){
+  const p = state.player;
+  if (state.gameOver) return;
+  if (atSurface()) return toast('Dynamite can only be detonated underground.');
+  if (p.dynamite <= 0) { audio.alarm(); return toast('No dynamite. Buy a charge at the surface depot.'); }
+  const targets = getDynamiteBlastTargets(state.world, p.x, p.y, ECONOMY.dynamite.radius);
+  p.dynamite--;
+  for (const {x, y} of targets) set(x, y, {type:'air'});
+  spawnExplosion(p.x, p.y);
+  audio.noise(.32, .12, 520);
+  saveProgress();
+  toast(targets.length ? `Dynamite cleared ${targets.length} blocks. Ore was destroyed, not collected.` : 'Dynamite detonated, but no destructible blocks were in range.');
+}
+function useDynamiteControl(){
+  if (atSurface()) buyDynamite();
+  else detonateDynamite();
+}
 function surfaceService(){
   const p = state.player;
   if (!atSurface()) return toast('Service depot is on the surface.');
@@ -506,6 +527,7 @@ function bindButtons(){
   ui.tankBtn.onclick = () => spend(tankCost(state.player),()=>{state.player.fuelMax+=ECONOMY.tank.step; state.player.fuel=state.player.fuelMax;},'Fuel tank upgraded.');
   ui.hullBtn.onclick = () => spend(hullCost(state.player),()=>{state.player.hullMax+=ECONOMY.hull.step; state.player.hull=state.player.hullMax;},'Hull reinforced.');
   ui.drillBtn.onclick = () => spend(drillCost(state.player),()=>state.player.drill+=ECONOMY.drill.step,'Drill power increased.');
+  ui.dynamiteBtn.onclick = useDynamiteControl;
   ui.soundBtn.addEventListener('pointerdown', e => e.stopPropagation());
   ui.soundBtn.onclick = e => { e.stopPropagation(); audio.toggle(); };
   ui.infoBtn.onclick = e => { e.stopPropagation(); openInfoScreen(); };
@@ -569,12 +591,14 @@ function updateButtonStates(){
   ui.tankBtn.textContent = `Tank +20 $${tankCost(p)}`;
   ui.hullBtn.textContent = `Hull +20 $${hullCost(p)}`;
   ui.drillBtn.textContent = `Drill +1 $${drillCost(p)}`;
+  ui.dynamiteBtn.textContent = surf ? `Dynamite $${ECONOMY.dynamite.price} · x${p.dynamite}` : `Detonate (E) · x${p.dynamite}`;
   ui.fuelBtn.disabled = !surf || state.cash <= 0 || p.fuel >= p.fuelMax;
   ui.repairBtn.disabled = !surf || state.cash <= 0 || p.hull >= p.hullMax;
   ui.cargoBtn.disabled = !surf || state.cash < cargoCost(p);
   ui.tankBtn.disabled = !surf || state.cash < tankCost(p);
   ui.hullBtn.disabled = !surf || state.cash < hullCost(p);
   ui.drillBtn.disabled = !surf || state.cash < drillCost(p);
+  ui.dynamiteBtn.disabled = surf ? state.cash < ECONOMY.dynamite.price : p.dynamite <= 0 || state.gameOver;
 }
 const movementKeys = {
   arrowleft: [-1, 0], a: [-1, 0],
@@ -841,6 +865,7 @@ function handleKeyDown(e){
   if (key === 'escape' && !ui.infoScreen.classList.contains('hidden')) { closeInfoScreen(); e.preventDefault(); e.stopPropagation(); return; }
   if (key === 'enter') { sell(); e.preventDefault(); e.stopPropagation(); return; }
   if (key === ' ') { surfaceService(); e.preventDefault(); e.stopPropagation(); return; }
+  if (key === 'e') { if (!e.repeat) detonateDynamite(); e.preventDefault(); e.stopPropagation(); return; }
   if (key === 'r') { if (!e.repeat) requestReset(); e.preventDefault(); e.stopPropagation(); }
 }
 function handleKeyUp(e){

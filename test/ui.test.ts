@@ -36,6 +36,7 @@ const GAME_DOM_IDS = [
   'tankBtn',
   'hullBtn',
   'drillBtn',
+  'dynamiteBtn',
   'infoBtn',
   'info-screen',
   'info-card',
@@ -77,6 +78,15 @@ describe('React GUI shell', () => {
     expect(markup).toContain('id="hullBtn"');
     expect(markup).toContain('Hull +20 $180');
     expect(markup).toContain('choose tank, hull, cargo, and drill upgrades carefully');
+  });
+
+  it('exposes dynamite purchasing and keyboard/touch detonation controls', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+
+    expect(markup).toContain('id="dynamiteBtn"');
+    expect(markup).toContain('Dynamite $50');
+    expect(markup).toContain('<kbd>E</kbd>');
+    expect(markup).toContain('blasts yield no cargo');
   });
 
   it('renders objective and terrain scanner readout hooks in the HUD and Info / Cargo overlay', () => {

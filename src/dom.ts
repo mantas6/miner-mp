@@ -74,6 +74,7 @@ export const ui = {
   tankBtn: requireElement<HTMLButtonElement>('tankBtn'),
   hullBtn: requireElement<HTMLButtonElement>('hullBtn'),
   drillBtn: requireElement<HTMLButtonElement>('drillBtn'),
+  dynamiteBtn: requireElement<HTMLButtonElement>('dynamiteBtn'),
   infoBtn: requireElement<HTMLButtonElement>('infoBtn'),
   infoScreen: requireElement<HTMLElement>('info-screen'),
   infoCard: requireElement<HTMLElement>('info-card'),

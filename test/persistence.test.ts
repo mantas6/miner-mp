@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { DEFAULT_STATS, numeric } from '../src/persistence';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { DEFAULT_STATS, SAVE_KEY, load, numeric, save } from '../src/persistence';
+import { createInitialState } from '../src/state';
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('numeric clamp', () => {
   it('passes through a finite value within range', () => {
@@ -39,5 +42,36 @@ describe('Motherlode extraction save compatibility', () => {
       motherlodeClaims: 1,
       motherlodeExtractions: 0
     });
+  });
+});
+
+describe('dynamite persistence', () => {
+  it('round-trips carried charges with progression', () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value)
+    });
+    const state = createInitialState();
+    state.player.dynamite = 3;
+    save(state);
+
+    const restored = createInitialState();
+    load(restored);
+
+    expect(restored.player.dynamite).toBe(3);
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}').dynamite).toBe(3);
+  });
+
+  it('keeps zero charges when loading a legacy save', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify({cash: 90}),
+      setItem: vi.fn()
+    });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(state.player.dynamite).toBe(0);
   });
 });

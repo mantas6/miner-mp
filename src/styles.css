@@ -49,7 +49,7 @@ meter { width: 100%; height: 18px; }
 }
 .shop { position: absolute; right: 0; bottom: 0; width: min(380px, 42%); border-radius: 18px; padding: 10px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .shop button[hidden] { display: none; }
-.service-status { position: absolute; right: 0; bottom: 244px; width: min(380px, 42%); border-radius: 14px; padding: 9px 11px; color: #ffe39a; font-size: 12px; font-weight: 850; letter-spacing: .03em; line-height: 1.28; text-align: center; pointer-events: none; }
+.service-status { position: absolute; right: 0; bottom: 286px; width: min(380px, 42%); border-radius: 14px; padding: 9px 11px; color: #ffe39a; font-size: 12px; font-weight: 850; letter-spacing: .03em; line-height: 1.28; text-align: center; pointer-events: none; }
 button { margin: 0; padding: 11px 10px; border: 0; border-radius: 12px; background: linear-gradient(#38506f, #22324a); color: var(--ink); font-size: 14px; font-weight: 850; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 8px 18px rgba(0,0,0,.2); text-shadow: 0 1px 0 rgba(0,0,0,.45); touch-action: manipulation; }
 button.sound { min-width: 0; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; font-size: 22px; line-height: 1; background: linear-gradient(#4f4a26, #322d18); color: #ffe6a3; }
 button:hover:not(:disabled) { filter: brightness(1.13); transform: translateY(-1px); }
@@ -155,7 +155,7 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
   .objective-status, .terrain-scanner, .fuel-reserve, .depth-milestone, .extraction-status, .cargo-feedback { padding: 6px 7px; font-size: 9px; line-height: 1.25; }
   meter { height: 15px; }
   .shop { width: calc(50% - 5px); grid-template-columns: 1fr; gap: 4px; padding: 6px; border-radius: 14px; bottom: 4px; right: 0; z-index: 2; }
-  .service-status { width: calc(50% - 5px); right: 0; bottom: 268px; padding: 6px 7px; font-size: 9px; line-height: 1.25; z-index: 2; }
+  .service-status { width: calc(50% - 5px); right: 0; bottom: 302px; padding: 6px 7px; font-size: 9px; line-height: 1.25; z-index: 2; }
   button { padding: 7px 6px; font-size: 11px; border-radius: 9px; }
   button.sound { width: 38px; height: 38px; font-size: 19px; }
    #toast { bottom: 134px; width: max-content; max-width: 88vw; font-size: 13px; padding: 9px 12px; text-align: center; }

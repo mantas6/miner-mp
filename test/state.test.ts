@@ -11,6 +11,7 @@ describe('starting cargo capacity', () => {
     expect(STARTING.cargoMax).toBe(10);
     expect(state.player.cargoMax).toBe(10);
     expect(state.player.cargo).toHaveLength(0);
+    expect(state.player.dynamite).toBe(0);
     expect(state.extractionPhase).toBe('none');
     expect(state.stats.motherlodeExtractions).toBe(0);
   });
@@ -34,6 +35,7 @@ describe('player respawn', () => {
     player.fuelMax += ECONOMY.tank.step;
     player.cargoMax += ECONOMY.cargo.step;
     player.drill += ECONOMY.drill.step;
+    player.dynamite = 2;
     player.cargo = [{ name: 'Coal' }];
 
     respawnPlayer(player);
@@ -46,6 +48,7 @@ describe('player respawn', () => {
       hull: player.hullMax,
       cargoMax: STARTING.cargoMax + ECONOMY.cargo.step,
       drill: STARTING.drill + ECONOMY.drill.step,
+      dynamite: 2,
       cargo: []
     });
   });
