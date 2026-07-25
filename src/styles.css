@@ -31,7 +31,7 @@ h1 { margin: 0; letter-spacing: .04em; font-size: clamp(25px, 3vw, 40px); line-h
 .bar-row { position: absolute; left: 0; bottom: 0; width: min(560px, 54%); border-radius: 18px; padding: 12px; display: grid; gap: 8px; }
 .bar { display: grid; grid-template-columns: 58px 1fr 72px; gap: 10px; align-items: center; border-radius: 12px; padding: 2px 4px; margin: -2px -4px; }
 .bar-value { color: #dbe8ff; text-align: right; font-variant-numeric: tabular-nums; }
-.objective-status, .terrain-scanner, .fuel-reserve, .depth-milestone, .extraction-status, .cargo-feedback { margin-top: 2px; padding: 8px 10px; border-radius: 12px; font-size: 12px; font-weight: 850; letter-spacing: .03em; text-align: center; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.objective-status, .terrain-scanner, .fuel-reserve, .depth-milestone, .extraction-status, .cargo-feedback { display: none; margin-top: 2px; padding: 8px 10px; border-radius: 12px; font-size: 12px; font-weight: 850; letter-spacing: .03em; text-align: center; font-variant-numeric: tabular-nums; line-height: 1.25; }
 .objective-status { background: rgba(92,200,255,.12); border: 1px solid rgba(92,200,255,.28); color: #d9f3ff; }
 .extraction-status { background: rgba(255,200,87,.16); border: 1px solid rgba(255,216,108,.46); color: #fff0bb; }
 .extraction-status.hidden { display: none; }
