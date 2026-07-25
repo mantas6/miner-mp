@@ -20,6 +20,7 @@ describe('world state reset', () => {
     state.enemies = [{id:1,x:1,y:1,drawX:1,drawY:1,hp:2,maxHp:2,alive:true,moveTick:0,biteTick:0,flash:0}];
     state.exploredTiles.add(400);
     state.extractionPhase = 'returning';
+    state.teleportReturnPosition = {x: 17, y: 200};
     const playerBefore = structuredClone(state.player);
     const statsBefore = structuredClone(state.stats);
 
@@ -31,6 +32,7 @@ describe('world state reset', () => {
     expect(state.enemies).toEqual([]);
     expect(state.exploredTiles.size).toBe(0);
     expect(state.extractionPhase).toBe('none');
+    expect(state.teleportReturnPosition).toBeNull();
     expect(state.cash).toBe(9999);
     expect(state.stats).toEqual(statsBefore);
     expect(state.player).toMatchObject({ ...playerBefore, x:45, y:2, drawX:45, drawY:2 });

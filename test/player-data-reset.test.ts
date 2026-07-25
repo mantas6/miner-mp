@@ -38,6 +38,7 @@ describe('player-data reset', () => {
     state.role = 'host';
     state.connected = true;
     state.remotePlayers.push({x:1,y:1,drawX:1,drawY:1,facing:1,drillAnim:0,drillDx:0,drillDy:1,bob:0});
+    state.teleportReturnPosition = {x: 8, y: 80};
     state.exploredTiles.add(1234);
     state.input.gunArmed = true;
 
@@ -48,7 +49,8 @@ describe('player-data reset', () => {
     expect(state).toMatchObject({
       cash: fresh.cash, tick: 0, gameOver: false, camX: 0, camY: 0,
       particles: [], stats: fresh.stats, extractionPhase: 'none', role: null,
-      connected: false, remotePlayers: [], teleportEffect: null, input: fresh.input
+      connected: false, remotePlayers: [], teleportEffect: null,
+      teleportReturnPosition: null, input: fresh.input
     });
     expect(state.exploredTiles.size).toBe(0);
     expect(storage.removeItem).toHaveBeenCalledWith(SAVE_KEY);

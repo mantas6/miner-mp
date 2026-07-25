@@ -22,7 +22,7 @@ import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff,
 import { loadServerUrl, saveServerUrl } from './multiplayer-settings';
 import { activeSprintDirection, fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs } from './movement';
 import { getDynamiteBlastTargets } from './dynamite';
-import { advanceTeleportEffect, createTeleportEffect, teleportPlayerToSurface } from './teleporter';
+import { advanceTeleportEffect, createTeleportEffect, teleportPlayerToReturn, teleportPlayerToSurface } from './teleporter';
 import { claimArtifact } from './artifacts';
 import type { Enemy } from './types';
 import { applyPlayerUpgrade, getPlayerUpgradeProgress, updateDeveloperUpgradeControls, type PlayerUpgradeId } from './upgrades';
@@ -123,6 +123,7 @@ function applyAuthoritativeWorld(msg: Extract<import('./net-protocol').NetMessag
 function resetPlayer(full=true){
   state.extractionPhase = cancelExtraction();
   state.teleportEffect = null;
+  state.teleportReturnPosition = null;
   state.input.gunArmed = false;
   if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.player.visibility=STARTING.visibility; state.player.dynamite=STARTING.dynamite; state.player.teleporters=STARTING.teleporters; state.player.gunOwned=STARTING.gunOwned; state.player.bullets=STARTING.bullets; state.exploredTiles.clear(); state.stats = {...DEFAULT_STATS}; saveProgress(); }
   respawnPlayer(state.player);
@@ -715,23 +716,31 @@ function fireGun(direction: [number, number]){
 function useTeleporter(){
   const p = state.player;
   if (state.gameOver) return;
-  if (atSurface()) return toast('Teleporter can only be used underground.');
-  if (p.teleporters <= 0) { audio.alarm(); return toast('No teleporter. Buy one at the surface depot.'); }
+  const surf = atSurface();
+  if (surf && !state.teleportReturnPosition) return toast('No underground teleport return point.');
+  if (!surf && p.teleporters <= 0) { audio.alarm(); return toast('No teleporter. Buy one at the surface depot.'); }
   const camX = Math.max(0, Math.min(WORLD_W-W, state.camX));
   const camY = Math.max(0, Math.min(WORLD_H-H, state.camY));
   const originScreenX = (p.drawX - camX + .5) * TILE;
   const originScreenY = (p.drawY - camY + .5) * TILE;
-  if (!teleportPlayerToSurface(p)) return;
+  if (surf) {
+    if (!teleportPlayerToReturn(p, state.teleportReturnPosition)) return;
+    state.teleportReturnPosition = null;
+  } else {
+    const returnPosition = teleportPlayerToSurface(p);
+    if (!returnPosition) return;
+    state.teleportReturnPosition = returnPosition;
+  }
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   state.teleportEffect = createTeleportEffect(originScreenX, originScreenY, p.x, p.y, reducedMotion);
   state.input.keyImpulse = null;
   state.input.touchHoldDir = null;
   state.input.gunArmed = false;
   state.camX = Math.max(0, p.x - Math.floor(W/2));
-  state.camY = 0;
+  state.camY = surf ? Math.max(0, Math.min(WORLD_H-H, p.y - Math.floor(H/2))) : 0;
   saveProgress();
   if (state.connected && net?.paired) net.send({type:'teleported', x:p.x, y:p.y});
-  toast('Teleported safely to the depot. Cargo and ship condition unchanged.');
+  toast(surf ? 'Returned to the underground teleport point.' : 'Teleported safely to the depot. Press T to return underground.');
 }
 function surfaceService(){
   const p = state.player;
@@ -891,16 +900,16 @@ function updateButtonStates(){
   ui.sell.hidden = !surf;
   ui.shopBtn.hidden = !surf;
   ui.dynamiteBtn.hidden = surf;
-  ui.teleporterBtn.hidden = surf;
+  ui.teleporterBtn.hidden = surf && !state.teleportReturnPosition;
   ui.gunBtn.hidden = surf || !p.gunOwned;
   ui.sell.disabled = !surf || currentCargoValue() <= 0;
   ui.dynamiteBtn.textContent = `Detonate (E) · x${p.dynamite}`;
-  ui.teleporterBtn.textContent = `Teleport (T) · x${p.teleporters}`;
+  ui.teleporterBtn.textContent = surf ? 'Return (T)' : `Teleport (T) · x${p.teleporters}`;
   ui.gunBtn.textContent = state.input.gunArmed ? `AIMING — tap direction · x${p.bullets}` : `Arm Gun (G) · x${p.bullets}`;
   ui.gunBtn.classList.toggle('armed', state.input.gunArmed);
   ui.gunBtn.setAttribute('aria-pressed', String(state.input.gunArmed));
   ui.dynamiteBtn.disabled = surf || p.dynamite <= 0 || state.gameOver;
-  ui.teleporterBtn.disabled = surf || p.teleporters <= 0 || state.gameOver;
+  ui.teleporterBtn.disabled = state.gameOver || (surf ? !state.teleportReturnPosition : p.teleporters <= 0);
   ui.gunBtn.disabled = surf || !p.gunOwned || p.bullets <= 0 || state.gameOver;
   if (!ui.shopScreen.classList.contains('hidden')) updateShopControls(ui.shopCard, p, state.cash, surf);
 }

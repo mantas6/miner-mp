@@ -80,6 +80,7 @@ export function createInitialState(): GameState {
     connected: false,
     remotePlayers: [],
     teleportEffect: null,
+    teleportReturnPosition: null,
     reducedMotion: false,
     exploredTiles: new Set<number>(),
     input: {

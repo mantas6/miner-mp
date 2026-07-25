@@ -141,6 +141,11 @@ export interface TeleportEffect {
   reducedMotion: boolean;
 }
 
+export interface TeleportReturnPosition {
+  x: number;
+  y: number;
+}
+
 export interface GameStats {
   maxDepth: number;
   totalCashEarned: number;
@@ -185,6 +190,7 @@ export interface GameState {
   /** Partner ships (transform-only). For 2-player co-op this holds 0 or 1. */
   remotePlayers: RemotePlayer[];
   teleportEffect: TeleportEffect | null;
+  teleportReturnPosition: TeleportReturnPosition | null;
   reducedMotion: boolean;
   /** Explored underground cells as row-major indexes; surface rows are implicitly visible. */
   exploredTiles: Set<number>;

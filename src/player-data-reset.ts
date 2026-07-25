@@ -24,6 +24,7 @@ export function resetPlayerData(state: GameState): void {
   state.connected = fresh.connected;
   state.remotePlayers = fresh.remotePlayers;
   state.teleportEffect = fresh.teleportEffect;
+  state.teleportReturnPosition = fresh.teleportReturnPosition;
   state.exploredTiles = fresh.exploredTiles;
   state.input = fresh.input;
   Object.assign(state.player, fresh.player);

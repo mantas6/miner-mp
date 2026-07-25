@@ -28,6 +28,7 @@ export function resetWorldTerrain(state: GameState, makeTile: (x: number, y: num
   state.particles = [];
   state.extractionPhase = 'none';
   state.teleportEffect = null;
+  state.teleportReturnPosition = null;
   state.gameOver = false;
   state.input.gunArmed = false;
   state.player.x = Math.floor(WORLD_W / 2);
