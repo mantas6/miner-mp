@@ -37,6 +37,8 @@ export function formatTerrainScanner({ tile, direction, activeEnemy = false }: T
     case 'enemy':
       return `${prefix} dormant fiend — drill with caution, ${hitsLabel(tile.hp)}.`;
     case 'artifact':
+      return `${prefix} RARE ${tile.artifact.name} — $${tile.artifact.value} CASH NOW, ${hitsLabel(tile.hp)}; uses no cargo.`;
+    case 'motherlode':
       return `${prefix} Motherlode core — ${hitsLabel(tile.hp)} to crack; claim it and return alive.`;
   }
 }

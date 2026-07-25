@@ -3,6 +3,8 @@ import { DEFAULT_STATS, SAVE_KEY, SAVE_VERSION, load, numeric, save } from '../s
 import { createInitialState } from '../src/state';
 import { ECONOMY } from '../src/balance';
 import { cargoCost } from '../src/economy';
+import { claimArtifact } from '../src/artifacts';
+import { ARTIFACTS } from '../src/constants';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -44,6 +46,26 @@ describe('Motherlode extraction save compatibility', () => {
       motherlodeClaims: 1,
       motherlodeExtractions: 0
     });
+  });
+});
+
+describe('artifact payout persistence', () => {
+  it('round-trips immediately banked cash and artifact count without cargo', () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value)
+    });
+    const state = createInitialState();
+    claimArtifact(state, ARTIFACTS[0]);
+    save(state);
+
+    const restored = createInitialState();
+    load(restored);
+    expect(restored.cash).toBe(240);
+    expect(restored.stats.artifactsFound).toBe(1);
+    expect(restored.stats.totalCashEarned).toBe(180);
+    expect(restored.player.cargo).toEqual([]);
   });
 });
 

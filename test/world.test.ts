@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { rand, naturalAirPocket, makeTile, oreForDepthRoll, oreSpawnChanceAtDepth, starterOreForCoordinate } from '../src/world';
-import { ORES, START_Y, SURFACE_HEIGHT, WORLD_W, WORLD_H } from '../src/constants';
+import { artifactForDepthRoll, rand, naturalAirPocket, makeTile, oreForDepthRoll, oreSpawnChanceAtDepth, starterOreForCoordinate } from '../src/world';
+import { ARTIFACTS, ORES, START_Y, SURFACE_HEIGHT, WORLD_W, WORLD_H } from '../src/constants';
 
 describe('rand', () => {
   it('is deterministic for the same coordinate', () => {
@@ -120,6 +120,39 @@ describe('ore depth distribution', () => {
   });
 });
 
+describe('rare artifact distribution', () => {
+  it('enforces depth eligibility and absolute rarity without changing ore bands', () => {
+    for (const artifact of ARTIFACTS) {
+      const rollFor = (depth: number) => ARTIFACTS
+        .slice(0, ARTIFACTS.indexOf(artifact))
+        .filter(candidate => depth >= candidate.min && depth <= candidate.max)
+        .reduce((roll, candidate) => roll + candidate.chance, artifact.chance / 2);
+      expect(artifactForDepthRoll(artifact.min, rollFor(artifact.min))?.name).toBe(artifact.name);
+      expect(artifactForDepthRoll(artifact.max, rollFor(artifact.max))?.name).toBe(artifact.name);
+      expect(artifactForDepthRoll(artifact.min - 1, artifact.chance / 2)?.name).not.toBe(artifact.name);
+      expect(artifactForDepthRoll(artifact.max + 1, artifact.chance / 2)?.name).not.toBe(artifact.name);
+    }
+    expect(ARTIFACTS.reduce((sum, artifact) => sum + artifact.chance, 0)).toBeLessThan(.0011);
+  });
+
+  it('generates a deterministic, genuinely rare set across the full mine', () => {
+    const artifacts = [];
+    let ores = 0;
+    for (let y = SURFACE_HEIGHT; y < WORLD_H - 1; y++) {
+      for (let x = 1; x < WORLD_W - 1; x++) {
+        const tile = makeTile(x, y);
+        if (tile.type === 'artifact') artifacts.push(tile);
+        if (tile.type === 'ore') ores++;
+      }
+    }
+
+    expect(artifacts.length).toBeGreaterThanOrEqual(10);
+    expect(artifacts.length).toBeLessThan(50);
+    expect(artifacts.length).toBeLessThan(ores / 100);
+    expect(new Set(artifacts.map(tile => tile.artifact.name))).toEqual(new Set(ARTIFACTS.map(artifact => artifact.name)));
+  });
+});
+
 describe('makeTile', () => {
   it('is deterministic', () => {
     expect(makeTile(10, 50)).toEqual(makeTile(10, 50));
@@ -177,9 +210,9 @@ describe('makeTile', () => {
   });
 
   it('keeps late-game landmarks and hazards intact', () => {
-    const artifactXs = [Math.floor(WORLD_W / 2) - 1, Math.floor(WORLD_W / 2), Math.floor(WORLD_W / 2) + 1];
-    for (const x of artifactXs) {
-      expect(makeTile(x, WORLD_H - 2).type).toBe('artifact');
+    const motherlodeXs = [Math.floor(WORLD_W / 2) - 1, Math.floor(WORLD_W / 2), Math.floor(WORLD_W / 2) + 1];
+    for (const x of motherlodeXs) {
+      expect(makeTile(x, WORLD_H - 2).type).toBe('motherlode');
     }
 
     expect(makeTile(24, 151).type).toBe('hazard');

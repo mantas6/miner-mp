@@ -1,4 +1,4 @@
-import type { Ore } from './types';
+import type { Artifact, Ore } from './types';
 
 export const TILE = 64; // Show 50% more world in each viewport dimension.
 export const WORLD_W = 90;
@@ -25,4 +25,11 @@ export const ORES: Ore[] = [
   {name:'Alienite', color:'#8d7cff', value:360, min:542, max:942, chance:.012},
   {name:'Uranium', color:'#b7ff45', value:620, min:702, max:1002, chance:.008},
   {name:'Core Shard', color:'#ff7a1f', value:980, min:852, max:1002, chance:.005}
+];
+
+// Absolute per-tile chances, checked only after ordinary ore generation.
+export const ARTIFACTS: Artifact[] = [
+  {name:'Ancient Coin Cache', color:'#ffd166', value:180, min:202, max:502, chance:.00045},
+  {name:'Lost Cosmonaut Medal', color:'#71e5ff', value:450, min:452, max:802, chance:.00035},
+  {name:'Alien Reliquary', color:'#ff78e1', value:900, min:702, max:992, chance:.00025}
 ];

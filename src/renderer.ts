@@ -241,8 +241,18 @@ export function createRenderer({ state, get, rand }) {
       return;
     }
 
-    if (t.type === 'hazard' || t.type === 'artifact') {
-      const artifact = t.type === 'artifact';
+    if (t.type === 'artifact') {
+      const g = ctx.createRadialGradient(sx+TILE*.50, sy+TILE*.46, TILE*.06, sx+TILE*.5, sy+TILE*.5, TILE*.62);
+      g.addColorStop(0, '#fff8d6'); g.addColorStop(.24, t.artifact.color); g.addColorStop(.62, '#18384a'); g.addColorStop(1, '#071018');
+      ctx.fillStyle = g; ctx.fillRect(sx-pad,sy-pad,TILE+pad*2,TILE+pad*2);
+      ctx.save(); ctx.shadowColor=t.artifact.color; ctx.shadowBlur=18;
+      ctx.fillStyle='#ffe59a'; ctx.strokeStyle='#ffffff'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(sx+TILE*.5,sy+TILE*.17); ctx.lineTo(sx+TILE*.72,sy+TILE*.40); ctx.lineTo(sx+TILE*.62,sy+TILE*.75); ctx.lineTo(sx+TILE*.38,sy+TILE*.75); ctx.lineTo(sx+TILE*.28,sy+TILE*.40); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#172132'; ctx.font=`bold ${Math.floor(TILE*.24)}px sans-serif`; ctx.textAlign='center'; ctx.fillText('$',sx+TILE*.5,sy+TILE*.57); ctx.textAlign='left'; ctx.restore();
+      return;
+    }
+    if (t.type === 'hazard' || t.type === 'motherlode') {
+      const artifact = t.type === 'motherlode';
       const g = ctx.createRadialGradient(sx+TILE*.50, sy+TILE*.45, TILE*.08, sx+TILE*.5, sy+TILE*.5, TILE*.58);
       if (artifact) { g.addColorStop(0, '#fff4b5'); g.addColorStop(.35, '#ff8a1f'); g.addColorStop(1, '#3a0d05'); }
       else { g.addColorStop(0, '#ffd38a'); g.addColorStop(.38, '#d33b16'); g.addColorStop(1, '#200805'); }
@@ -337,9 +347,9 @@ export function createRenderer({ state, get, rand }) {
   }
   function drawTileDamage(t, sx, sy) {
     if (!t.maxHp || t.hp >= t.maxHp) return;
-    if (t.type === 'hazard' || t.type === 'artifact') {
+    if (t.type === 'hazard' || t.type === 'artifact' || t.type === 'motherlode') {
       ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64, TILE*.055);
-      ctx.fillStyle=t.type === 'artifact'?'#ffe66d':'#ff7145'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64*Math.max(0,t.hp/t.maxHp), TILE*.055);
+      ctx.fillStyle=t.type === 'hazard'?'#ff7145':t.type === 'artifact'?t.artifact.color:'#ffe66d'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64*Math.max(0,t.hp/t.maxHp), TILE*.055);
       return;
     }
     if (t.type === 'enemy') {

@@ -25,7 +25,14 @@ describe('terrain scanner helper', () => {
       .toBe('Scanner →: dormant fiend — drill with caution, 4 hits.');
     expect(formatTerrainScanner({ tile: { type: 'air' }, direction: [-1, 0], activeEnemy: true }))
       .toBe('Scanner ←: active fiend — drill it before it chews hull.');
-    expect(formatTerrainScanner({ tile: { type: 'artifact', hp: 24, maxHp: 24 }, direction: [0, 1] }))
+    expect(formatTerrainScanner({ tile: { type: 'motherlode', hp: 24, maxHp: 24 }, direction: [0, 1] }))
       .toBe('Scanner ↓: Motherlode core — 24 hits to crack; claim it and return alive.');
+  });
+
+  it('makes immediate artifact cash and zero cargo use explicit', () => {
+    expect(formatTerrainScanner({
+      tile: {type:'artifact', artifact:{name:'Alien Reliquary', color:'#ff78e1', value:900, min:702, max:992, chance:.00025}, hp:7, maxHp:7},
+      direction: [1, 0]
+    })).toBe('Scanner →: RARE Alien Reliquary — $900 CASH NOW, 7 hits; uses no cargo.');
   });
 });

@@ -69,6 +69,7 @@ export function createInitialState(): GameState {
       maxDepth: 0,
       totalCashEarned: 0,
       oreMined: 0,
+      artifactsFound: 0,
       enemiesDestroyed: 0,
       deaths: 0,
       motherlodeClaims: 0,

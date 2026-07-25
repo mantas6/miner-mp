@@ -26,7 +26,7 @@ describe('sprint movement', () => {
   });
 
   it('keeps drill timing and fuel ordinary while Shift is held', () => {
-    for (const tileType of ['dirt', 'ore', 'rock', 'hazard', 'artifact', 'enemy']) {
+    for (const tileType of ['dirt', 'ore', 'rock', 'hazard', 'artifact', 'motherlode', 'enemy']) {
       const destinationOpen = isOpenSpaceDestination(true, tileType, false);
       expect(keyboardMovementRepeatMs(100, true, destinationOpen)).toBe(100);
       expect(movementFuelCost(2, true, destinationOpen, false)).toBe(2);

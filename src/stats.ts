@@ -25,6 +25,7 @@ export function formatExpeditionStats(stats: Partial<GameStats> = {}): Expeditio
   const maxDepth = whole(stats.maxDepth);
   const totalCashEarned = whole(stats.totalCashEarned);
   const oreMined = whole(stats.oreMined);
+  const artifactsFound = whole(stats.artifactsFound);
   const enemiesDestroyed = whole(stats.enemiesDestroyed);
   const deaths = whole(stats.deaths);
   const motherlodeClaims = whole(stats.motherlodeClaims);
@@ -45,6 +46,11 @@ export function formatExpeditionStats(stats: Partial<GameStats> = {}): Expeditio
       label: 'Ore mined',
       value: count(oreMined, 'ore'),
       detail: oreMined > 0 ? 'Total pieces extracted' : 'Coal and Copper await below'
+    },
+    {
+      label: 'Artifacts recovered',
+      value: count(artifactsFound, 'artifact'),
+      detail: artifactsFound > 0 ? 'Rare finds paid directly to cash' : 'Rare finds are hidden in the deep mine'
     },
     {
       label: 'Enemies destroyed',

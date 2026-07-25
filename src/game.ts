@@ -23,6 +23,7 @@ import { loadServerUrl, saveServerUrl } from './multiplayer-settings';
 import { fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs } from './movement';
 import { getDynamiteBlastTargets } from './dynamite';
 import { teleportPlayerToSurface } from './teleporter';
+import { claimArtifact } from './artifacts';
 import type { Enemy } from './types';
 
 const state = createInitialState();
@@ -421,17 +422,23 @@ function move(dx,dy,sprinting=false){
   if (tile.type === 'rock') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.2; damage(HULL.rockBump); useFuel(dig(0)); spawnDust(nx, ny, '#444857', 8); audio.bump(); toast('Solid rock blocks the drill.'); return; }
   if (tile.type === 'enemy') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; useFuel(dig(FUEL.dig.enemy)); damageEnemyTile(nx, ny); return; }
   if (tile.type === 'hazard') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; tile.hp -= p.drill; useFuel(dig(FUEL.dig.hazard)); damage(HULL.hazardBase + Math.floor(ny/HULL.hazardDepthDivisor)); spawnDust(nx, ny, '#ff5f24', 18); audio.alarm(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); spawnExplosion(nx,ny); wakeEnemiesNear(nx,ny); toast('Magma pocket vented — hull scorched!'); } else { set(nx,ny,tile); toast(`Venting magma... ${Math.ceil(tile.hp)} hits left`); } return; }
-  if (tile.type === 'artifact') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; useFuel(dig(FUEL.dig.artifact)); spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); const extraction = beginExtraction(state.extractionPhase); state.extractionPhase = extraction.phase; if (extraction.changed) { addCash(ECONOMY.artifactReward); state.stats.motherlodeClaims++; saveProgress(); } spawnExplosion(nx,ny); toast('Motherlode core secured +$5000! Return it to the depot alive.'); } else { set(nx,ny,tile); toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); } return; }
+  if (tile.type === 'motherlode') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; useFuel(dig(FUEL.dig.artifact)); spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); const extraction = beginExtraction(state.extractionPhase); state.extractionPhase = extraction.phase; if (extraction.changed) { addCash(ECONOMY.artifactReward); state.stats.motherlodeClaims++; saveProgress(); } spawnExplosion(nx,ny); toast('Motherlode core secured +$5000! Return it to the depot alive.'); } else { set(nx,ny,tile); toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); } return; }
   if (tile.type !== 'air') {
     p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65;
     tile.hp -= p.drill;
     useFuel(dig(FUEL.dig.dig));
-    spawnDust(nx, ny, tile.type === 'ore' ? tile.ore.color : '#9d6a42', tile.type === 'ore' ? 14 : 9);
+    spawnDust(nx, ny, tile.type === 'ore' ? tile.ore.color : tile.type === 'artifact' ? tile.artifact.color : '#9d6a42', tile.type === 'ore' || tile.type === 'artifact' ? 14 : 9);
     audio.mine();
     if (tile.hp <= 0) {
       if (tile.type === 'ore') {
         if (cargoUsed() >= p.cargoMax) { tile.hp = 1; set(nx,ny,tile); toast('Cargo bay full. Go sell at the surface.'); audio.alarm(); return; }
         p.cargo.push(tile.ore); state.stats.oreMined++; saveProgress(); toast(`Mined ${tile.ore.name} +$${tile.ore.value}`); audio.ore(tile.ore.value);
+      }
+      if (tile.type === 'artifact') {
+        const payout = claimArtifact(state, tile.artifact);
+        saveProgress();
+        toast(`ARTIFACT RECOVERED: ${tile.artifact.name} +$${payout} CASH NOW · Cargo unchanged.`);
+        audio.cash(payout);
       }
       set(nx,ny,{type:'air'});
       wakeEnemiesNear(nx, ny);
@@ -498,7 +505,7 @@ function detonateDynamite(){
   spawnExplosion(p.x, p.y);
   audio.noise(.32, .12, 520);
   saveProgress();
-  toast(targets.length ? `Dynamite cleared ${targets.length} blocks. Ore was destroyed, not collected.` : 'Dynamite detonated, but no destructible blocks were in range.');
+  toast(targets.length ? `Dynamite cleared ${targets.length} blocks. Ore and artifacts were destroyed; no rewards granted.` : 'Dynamite detonated, but no destructible blocks were in range.');
 }
 function useDynamiteControl(){
   if (atSurface()) buyDynamite();

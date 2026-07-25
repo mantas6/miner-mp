@@ -7,6 +7,15 @@ export interface Ore {
   chance: number;
 }
 
+export interface Artifact {
+  name: string;
+  color: string;
+  value: number;
+  min: number;
+  max: number;
+  chance: number;
+}
+
 export type Direction = [number, number];
 
 export interface AirTile {
@@ -39,6 +48,13 @@ export interface HazardTile {
 
 export interface ArtifactTile {
   type: 'artifact';
+  artifact: Artifact;
+  hp: number;
+  maxHp: number;
+}
+
+export interface MotherlodeTile {
+  type: 'motherlode';
   hp: number;
   maxHp: number;
 }
@@ -49,7 +65,7 @@ export interface DormantEnemyTile {
   maxHp: number;
 }
 
-export type Tile = AirTile | DirtTile | RockTile | OreTile | HazardTile | ArtifactTile | DormantEnemyTile;
+export type Tile = AirTile | DirtTile | RockTile | OreTile | HazardTile | ArtifactTile | MotherlodeTile | DormantEnemyTile;
 
 export interface Player {
   x: number;
@@ -116,6 +132,7 @@ export interface GameStats {
   maxDepth: number;
   totalCashEarned: number;
   oreMined: number;
+  artifactsFound: number;
   enemiesDestroyed: number;
   deaths: number;
   motherlodeClaims: number;

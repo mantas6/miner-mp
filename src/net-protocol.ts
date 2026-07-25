@@ -6,7 +6,7 @@
 // carried inside the relay envelope (`{ t: 'relay', payload }`); the envelope
 // itself is handled in `net.ts`.
 
-import type { Tile, Ore, Player, Enemy, RemotePlayer } from './types';
+import type { Tile, Ore, Artifact, Player, Enemy, RemotePlayer } from './types';
 
 // --- Message types ---------------------------------------------------------
 
@@ -156,7 +156,7 @@ function isStr(v: unknown): v is string {
   return typeof v === 'string';
 }
 
-const TILE_TYPES = new Set(['air', 'dirt', 'rock', 'ore', 'hazard', 'artifact', 'enemy']);
+const TILE_TYPES = new Set(['air', 'dirt', 'rock', 'ore', 'hazard', 'artifact', 'motherlode', 'enemy']);
 
 function isOre(v: unknown): v is Ore {
   return (
@@ -165,6 +165,18 @@ function isOre(v: unknown): v is Ore {
     isStr(v.color) &&
     isNum(v.value) &&
     isNum(v.min) &&
+    isNum(v.chance)
+  );
+}
+
+function isArtifact(v: unknown): v is Artifact {
+  return (
+    isObj(v) &&
+    isStr(v.name) &&
+    isStr(v.color) &&
+    isNum(v.value) &&
+    isNum(v.min) &&
+    isNum(v.max) &&
     isNum(v.chance)
   );
 }
@@ -178,9 +190,11 @@ export function isTile(v: unknown): v is Tile {
       return isNum(v.hp);
     case 'ore':
       return isNum(v.hp) && isNum(v.maxHp) && isOre(v.ore);
+    case 'artifact':
+      return isNum(v.hp) && isNum(v.maxHp) && isArtifact(v.artifact);
     case 'dirt':
     case 'hazard':
-    case 'artifact':
+    case 'motherlode':
     case 'enemy':
       return isNum(v.hp) && isNum(v.maxHp);
     default:

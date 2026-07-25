@@ -151,4 +151,22 @@ describe('terrain cache lifecycle', () => {
     renderer.draw();
     expect(mocks.terrainContext.fillRect.mock.calls.length).toBeGreaterThan(initialTileDraws * 1.5);
   });
+
+  it('marks rare artifacts with a visually distinct cash glyph', () => {
+    const state = {
+      world: {}, camX: 10, camY: 200, tick: 0, gameOver: false,
+      particles: [], enemies: [], remotePlayers: [],
+      player: {x:12, y:202, drawX:12, drawY:202, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+    const renderer = createRenderer({
+      state,
+      get: () => ({type:'artifact', artifact:{name:'Ancient Coin Cache', color:'#ffd166', value:180, min:202, max:502, chance:.00045}, hp:5, maxHp:5}),
+      rand: () => 0
+    });
+
+    renderer.draw();
+
+    expect(mocks.terrainContext.fillText).toHaveBeenCalledWith('$', expect.any(Number), expect.any(Number));
+    expect(mocks.terrainContext.createRadialGradient).toHaveBeenCalled();
+  });
 });

@@ -144,10 +144,19 @@ describe('isTile', () => {
       { type: 'rock', hp: 999 },
       { type: 'ore', ore: ORE, hp: 3, maxHp: 3 },
       { type: 'hazard', hp: 4, maxHp: 4 },
-      { type: 'artifact', hp: 24, maxHp: 24 },
+      { type: 'artifact', artifact: {name:'Ancient Coin Cache', color:'#ffd166', value:180, min:202, max:502, chance:.00045}, hp:5, maxHp:5 },
+      { type: 'motherlode', hp: 24, maxHp: 24 },
       { type: 'enemy', hp: 4, maxHp: 4 }
     ];
     for (const t of tiles) expect(isTile(t)).toBe(true);
+  });
+
+  it('preserves artifact metadata and its removal in late-join terrain sync', () => {
+    const artifact: Tile = {type:'artifact', artifact:{name:'Alien Reliquary', color:'#ff78e1', value:900, min:702, max:992, chance:.00025}, hp:7, maxHp:7};
+    expect(decodeMessage(encodeMessage({type:'tile', x:8, y:740, tile:artifact}))).toEqual({type:'tile', x:8, y:740, tile:artifact});
+
+    const diff = applyTileDiff(applyTileDiff({}, {x:8, y:740, tile:artifact}), {x:8, y:740, tile:{type:'air'}});
+    expect(worldSyncFrom(diff).tiles).toEqual([{x:8, y:740, tile:{type:'air'}}]);
   });
 
   it('rejects malformed tiles', () => {

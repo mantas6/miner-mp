@@ -1,5 +1,6 @@
 import React from 'react';
 import { ECONOMY, STARTING } from './balance';
+import { ARTIFACTS, START_Y } from './constants';
 import { buildDangerGuideRows } from './danger';
 import { INFO_NAVIGATION_SECTIONS } from './info-navigation';
 import { DEFAULT_SERVER_URL } from './net';
@@ -92,6 +93,17 @@ export function MinerApp() {
             <section id="info-prospecting" tabIndex={-1} aria-labelledby="prospecting-title">
               <h3 id="prospecting-title">Prospecting Guide</h3>
               <p className="prospecting-tip">{PROSPECTING_TIP}</p>
+              <p className="prospecting-tip"><strong>Rare artifacts:</strong> drill them for immediate cash. They never use cargo, need no surface sale, and dynamite destroys them without payout.</p>
+              <ul className="prospecting-guide" aria-label="Rare artifact values and depth bands">
+                {ARTIFACTS.map(artifact => (
+                  <li key={artifact.name}>
+                    <span className="ore-icon" style={{ background: artifact.color }} aria-hidden="true"></span>
+                    <span className="ore-name">{artifact.name}</span>
+                    <span className="ore-value">${artifact.value} cash now</span>
+                    <span className="ore-depth">{(artifact.min - START_Y) * 10}-{(artifact.max - START_Y) * 10} m</span>
+                  </li>
+                ))}
+              </ul>
               <ul id="prospectingGuide" className="prospecting-guide" aria-label="Ore values and approximate depth bands">
                 {prospectingRows.map(row => (
                   <li key={row.name}>
@@ -123,7 +135,7 @@ export function MinerApp() {
                 <li><kbd>Tap / hold</kbd><span>Move toward the touched side of the ship</span></li>
                 <li><kbd>Enter</kbd><span>Sell cargo at the surface depot</span></li>
                 <li><kbd>Space</kbd><span>Repair or refuel at the surface</span></li>
-                <li><kbd>E</kbd> / <kbd>Detonate</kbd><span>Use one carried dynamite underground; blasts yield no cargo</span></li>
+                <li><kbd>E</kbd> / <kbd>Detonate</kbd><span>Use one carried dynamite underground; blasts yield no cargo, and destroyed artifacts grant no cash</span></li>
                 <li><kbd>T</kbd> / <kbd>Teleport</kbd><span>Use one carried teleporter underground to return to the depot without unloading or servicing the ship</span></li>
                 <li><kbd>R</kbd> then <kbd>R</kbd><span>Confirm reset while alive</span></li>
               </ul>

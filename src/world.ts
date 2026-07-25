@@ -1,6 +1,6 @@
 // Pure deterministic world generation. DOM-free / testable.
 // No imports from dom.js, game.js, or balance.js.
-import { DANGER, ORES, SURFACE_HEIGHT, WORLD_W, WORLD_H } from './constants';
+import { ARTIFACTS, DANGER, ORES, SURFACE_HEIGHT, WORLD_W, WORLD_H } from './constants';
 import type { Tile } from './types';
 
 /**
@@ -61,6 +61,16 @@ export function oreForDepthRoll(depth: number, roll: number) {
   return eligible.at(-1) || null;
 }
 
+export function artifactForDepthRoll(depth: number, roll: number) {
+  let target = roll;
+  for (const artifact of ARTIFACTS) {
+    if (depth < artifact.min || depth > artifact.max) continue;
+    target -= artifact.chance;
+    if (target < 0) return artifact;
+  }
+  return null;
+}
+
 /**
  * Generate the tile at a world coordinate. Deterministic for a given (x,y).
  * @param {number} x
@@ -76,8 +86,10 @@ export function makeTile(x: number, y: number): Tile {
   if (!ore && r < oreSpawnChanceAtDepth(depth)) {
     ore = oreForDepthRoll(depth, rand(x + 73, y - 47));
   }
-  if (y === WORLD_H - 2 && Math.abs(x - Math.floor(WORLD_W/2)) <= 1) return {type:'artifact', hp:24, maxHp:24};
+  if (y === WORLD_H - 2 && Math.abs(x - Math.floor(WORLD_W/2)) <= 1) return {type:'motherlode', hp:24, maxHp:24};
   if (ore) { const hp = Math.max(3, Math.ceil((depth/28)+4)); return {type:'ore', ore, hp, maxHp: hp}; }
+  const artifact = artifactForDepthRoll(depth, rand(x - 181, y + 263));
+  if (artifact) { const hp = Math.max(4, Math.ceil(depth/240)+3); return {type:'artifact', artifact, hp, maxHp:hp}; }
   const rockChance = y > 190 ? .036 : .018;
   if (rand(x+9,y-3) < rockChance && y >= DANGER.rockMinRow) return {type:'rock', hp: 999};
   if (y >= DANGER.hazardMinRow && rand(x+51,y-91) < Math.min(.026, .007 + y / 13000)) {
