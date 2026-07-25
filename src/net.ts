@@ -112,6 +112,9 @@ export function createNet(options: NetOptions = {}): NetClient {
         break;
       case 'peer-left':
         paired = false;
+        // The relay moves the remaining guest into its host slot before a
+        // future connection is paired, so mirror that role transition locally.
+        if (role === 'guest') role = 'host';
         cb.onPeerLeft?.();
         break;
       case 'room-full':

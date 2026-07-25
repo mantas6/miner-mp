@@ -142,7 +142,7 @@ export interface GameState {
   player: Player;
   stats: GameStats;
   extractionPhase: import('./extraction-phase').ExtractionPhase;
-  /** Last paired multiplayer role; retained after disconnect until the player chooses another mode. */
+  /** Current multiplayer role; `null` when no relay session is connected. */
   role: 'host' | 'guest' | null;
   /** Whether the relay socket is currently connected. */
   connected: boolean;

@@ -356,6 +356,11 @@ export function enemySnapshotFrom(enemies: Enemy[]): EnemySnapshotMsg {
   return { type: 'enemySnapshot', enemies: enemies.map(enemyEntryFrom) };
 }
 
+/** Return an unused positive enemy id after adopting a replicated enemy list. */
+export function nextEnemyId(enemies: Pick<EnemySnapshotEntry, 'id'>[]): number {
+  return enemies.reduce((next, enemy) => Math.max(next, enemy.id + 1), 1);
+}
+
 // --- Tile diff (dirty-tile set) --------------------------------------------
 
 /** Accumulated tile mutations keyed by coordinate. */

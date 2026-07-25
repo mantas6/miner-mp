@@ -18,7 +18,7 @@ import { formatDepthMilestone } from './depth-milestone';
 import { beginExtraction, cancelExtraction, completeExtractionAtDepot } from './extraction-phase';
 import { formatExtractionPresentation } from './extraction-presentation';
 import { createNet, type NetClient } from './net';
-import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, playerStateFrom, remotePlayerFrom, worldSyncFrom, type EnemySnapshotEntry, type TileDiff } from './net-protocol';
+import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, mergeWorldSync, nextEnemyId, playerStateFrom, remotePlayerFrom, worldSyncFrom, type EnemySnapshotEntry, type TileDiff } from './net-protocol';
 import type { Enemy } from './types';
 
 const state = createInitialState();
@@ -88,7 +88,8 @@ function set(x,y,t, broadcast=true){
   const row = state.world[y];
   if (!row || x < 0 || x >= row.length) return;
   row[x] = t;
-  if (state.role === 'host') tileDiff = applyTileDiff(tileDiff, {x, y, tile: t});
+  // Guests retain received/local mutations too: they may become the next host.
+  if (state.role) tileDiff = applyTileDiff(tileDiff, {x, y, tile: t});
   if (broadcast && state.connected && net?.paired) net.send({type:'tile', x, y, tile:t});
 }
 function cargoUsed(){ return state.player.cargo.length; }
@@ -130,6 +131,12 @@ function startOnline(url: string){
       },
       onPeerLeft(){
         state.remotePlayers = [];
+        if (state.role === 'guest') {
+          state.role = 'host';
+          enemyIdCounter = nextEnemyId(state.enemies);
+          setConnectionStatus('Host - waiting for player');
+          return;
+        }
         setConnectionStatus('Peer left');
       },
       onRoomFull(){
@@ -141,6 +148,7 @@ function startOnline(url: string){
         if (msg.type === 'tile') set(msg.x, msg.y, msg.tile, false);
         if (msg.type === 'worldSync' && isGuestEnemyReplica()) {
           applyWorldSyncToWorld(state.world, msg);
+          tileDiff = mergeWorldSync(tileDiff, [], msg).diff;
           mergeEnemyEntries(msg.enemies);
         }
         if (msg.type === 'enemySnapshot' && isGuestEnemyReplica()) mergeEnemyEntries(msg.enemies);
@@ -173,6 +181,7 @@ function startOnline(url: string){
       },
       onClose(){
         state.connected = false;
+        state.role = null;
         state.remotePlayers = [];
         setConnectionStatus(connectionIssue || 'Disconnected');
       }
@@ -361,8 +370,14 @@ function restartGame(){
   state.input.lastKeyboardMove = 0;
   state.input.lastTouchMove = 0;
   if (died) resetShipUpgradesAfterDeath();
-  generate();
+  // An online death/reset only replaces this miner's ship; the shared world
+  // and host-owned enemy list must remain intact for the other player.
+  if (state.connected) resetPlayer(false);
+  else generate();
   if (died) toast('Replacement ship deployed. Cash kept; cargo and upgrades lost.');
+  if (died && state.connected && net?.paired) {
+    net.send({type:'respawned', x:state.player.x, y:state.player.y});
+  }
 }
 function gameOver(msg='Game over. Tap anywhere or press R to restart.'){
   if (state.gameOver) return;
@@ -370,6 +385,7 @@ function gameOver(msg='Game over. Tap anywhere or press R to restart.'){
   state.extractionPhase = cancelExtraction();
   state.stats.deaths++;
   saveProgress();
+  if (state.connected && net?.paired) net.send({type:'died'});
   toast(msg);
   spawnExplosion(state.player.x, state.player.y);
   audio.alarm();
@@ -766,7 +782,7 @@ function hud(){
 }
 function loop(){
   input();
-  if (net?.paired && state.connected) net.sendPlayerState(playerStateFrom(state.player));
+  if (!state.gameOver && net?.paired && state.connected) net.sendPlayerState(playerStateFrom(state.player));
   if (state.introStarted) {
     drainHoverFuel();
     if (isGuestEnemyReplica()) {

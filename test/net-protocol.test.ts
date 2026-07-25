@@ -10,6 +10,7 @@ import {
   interpolateRemotePlayers,
   enemySnapshotFrom,
   enemyEntryFrom,
+  nextEnemyId,
   applyTileDiff,
   applyTileToWorld,
   applyWorldSyncToWorld,
@@ -215,6 +216,11 @@ describe('builders', () => {
     const enemy = { id: 9, x: 1, y: 2, drawX: 1, drawY: 2, hp: 4, maxHp: 4, alive: true, moveTick: 3, biteTick: 4, flash: 0.5 } as Enemy;
     expect(enemyEntryFrom(enemy)).toEqual({ id: 9, x: 1, y: 2, drawX: 1, drawY: 2, hp: 4, maxHp: 4, alive: true });
     expect(enemySnapshotFrom([enemy])).toEqual({ type: 'enemySnapshot', enemies: [enemyEntryFrom(enemy)] });
+  });
+
+  it('allocates a fresh enemy id after adopting a host snapshot', () => {
+    expect(nextEnemyId([])).toBe(1);
+    expect(nextEnemyId([{ id: 3 }, { id: 11 }, { id: 7 }])).toBe(12);
   });
 });
 
