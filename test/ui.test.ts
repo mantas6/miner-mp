@@ -92,7 +92,7 @@ describe('React GUI shell', () => {
   it('explains that sprinting only applies in open space', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
-    expect(markup).toContain('Sprint through open space at increased fuel cost; drilling stays normal');
+    expect(markup).toContain('Sprint through open space at increased fuel cost; open-space descent is free and drilling stays normal');
   });
 
   it('renders objective and terrain scanner readout hooks in the HUD and Info / Cargo overlay', () => {

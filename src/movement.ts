@@ -8,6 +8,7 @@ export function keyboardMovementRepeatMs(normalRepeatMs: number, sprintRequested
   return sprintRequested && destinationOpen ? normalRepeatMs * SPRINT.repeatMultiplier : normalRepeatMs;
 }
 
-export function movementFuelCost(normalCost: number, sprintRequested: boolean, destinationOpen: boolean): number {
+export function movementFuelCost(normalCost: number, sprintRequested: boolean, destinationOpen: boolean, movingDownward: boolean): number {
+  if (destinationOpen && movingDownward) return 0;
   return sprintRequested && destinationOpen ? normalCost * SPRINT.fuelMultiplier : normalCost;
 }

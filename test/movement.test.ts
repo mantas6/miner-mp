@@ -6,14 +6,14 @@ describe('sprint movement', () => {
     const destinationOpen = isOpenSpaceDestination(true, 'air', false);
 
     expect(keyboardMovementRepeatMs(100, true, destinationOpen)).toBeCloseTo(55);
-    expect(movementFuelCost(2, true, destinationOpen)).toBe(3.5);
+    expect(movementFuelCost(2, true, destinationOpen, false)).toBe(3.5);
   });
 
   it('keeps drill timing and fuel ordinary while Shift is held', () => {
     for (const tileType of ['dirt', 'ore', 'rock', 'hazard', 'artifact', 'enemy']) {
       const destinationOpen = isOpenSpaceDestination(true, tileType, false);
       expect(keyboardMovementRepeatMs(100, true, destinationOpen)).toBe(100);
-      expect(movementFuelCost(2, true, destinationOpen)).toBe(2);
+      expect(movementFuelCost(2, true, destinationOpen, false)).toBe(2);
     }
   });
 
@@ -22,9 +22,9 @@ describe('sprint movement', () => {
     const cleared = isOpenSpaceDestination(true, 'air', false);
 
     expect(keyboardMovementRepeatMs(100, true, drillable)).toBe(100);
-    expect(movementFuelCost(2, true, drillable)).toBe(2);
+    expect(movementFuelCost(2, true, drillable, false)).toBe(2);
     expect(keyboardMovementRepeatMs(100, true, cleared)).toBeCloseTo(55);
-    expect(movementFuelCost(2, true, cleared)).toBe(3.5);
+    expect(movementFuelCost(2, true, cleared, false)).toBe(3.5);
   });
 
   it('does not sprint into an active enemy or at a clamped world boundary', () => {
@@ -34,6 +34,32 @@ describe('sprint movement', () => {
 
   it('does not sprint without Shift even in open space', () => {
     expect(keyboardMovementRepeatMs(100, false, true)).toBe(100);
-    expect(movementFuelCost(2, false, true)).toBe(2);
+    expect(movementFuelCost(2, false, true, false)).toBe(2);
+  });
+
+  it('uses no fuel to move downward through open space, with or without Shift', () => {
+    const destinationOpen = isOpenSpaceDestination(true, 'air', false);
+
+    expect(movementFuelCost(2, false, destinationOpen, true)).toBe(0);
+    expect(movementFuelCost(2, true, destinationOpen, true)).toBe(0);
+    expect(keyboardMovementRepeatMs(100, true, destinationOpen)).toBeCloseTo(55);
+  });
+
+  it('retains ordinary drill fuel when moving downward into terrain, with or without Shift', () => {
+    const destinationOpen = isOpenSpaceDestination(true, 'dirt', false);
+
+    expect(movementFuelCost(2, false, destinationOpen, true)).toBe(2);
+    expect(movementFuelCost(2, true, destinationOpen, true)).toBe(2);
+    expect(keyboardMovementRepeatMs(100, true, destinationOpen)).toBe(100);
+  });
+
+  it('does not waive downward fuel for enemies or blocked boundaries', () => {
+    const activeEnemy = isOpenSpaceDestination(true, 'air', true);
+    const clampedBoundary = isOpenSpaceDestination(false, 'air', false);
+
+    expect(movementFuelCost(2, false, activeEnemy, true)).toBe(2);
+    expect(movementFuelCost(2, true, activeEnemy, true)).toBe(2);
+    expect(movementFuelCost(2, false, clampedBoundary, true)).toBe(2);
+    expect(movementFuelCost(2, true, clampedBoundary, true)).toBe(2);
   });
 });

@@ -410,7 +410,7 @@ function move(dx,dy,sprinting=false){
   let cost = FUEL.baseMove + Math.abs(dy)*FUEL.vertical;
   const flyCost = cost * FUEL.flyMult;             // flying uses 50% less fuel
   const dig = extra => (cost + extra) * FUEL.digMult; // digging uses 50% more fuel
-  const useFuel = amount => { p.fuel -= movementFuelCost(amount, sprinting, destinationOpen); };
+  const useFuel = amount => { p.fuel -= movementFuelCost(amount, sprinting, destinationOpen, dy > 0); };
   p.facing = dx ? Math.sign(dx) : p.facing;
   p.drillDx = dx;
   p.drillDy = dy;
