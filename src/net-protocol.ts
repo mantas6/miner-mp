@@ -27,6 +27,7 @@ export interface PlayerStateMsg {
 /** A single local tile mutation (last-writer-wins). */
 export interface TileMsg {
   type: 'tile';
+  revision: number;
   x: number;
   y: number;
   tile: Tile;
@@ -54,6 +55,7 @@ export interface EnemySnapshotEntry {
 /** Host -> guest: authoritative list of current enemies (~15 Hz). */
 export interface EnemySnapshotMsg {
   type: 'enemySnapshot';
+  revision: number;
   enemies: EnemySnapshotEntry[];
 }
 
@@ -119,6 +121,7 @@ export interface TeleportedMsg {
 /** Newly explored row-major tile ranges, shared as co-op cartography. */
 export interface ExploreMsg {
   type: 'explore';
+  revision: number;
   ranges: string;
 }
 
@@ -137,6 +140,30 @@ export interface WorldSyncMsg {
   explored: string;
 }
 
+/** Server -> client: complete authoritative terrain/entity/view state. */
+export interface WorldStateMsg {
+  type: 'worldState';
+  version: 1;
+  revision: number;
+  initialized: boolean;
+  tiles: TileDiffEntry[];
+  enemies: EnemySnapshotEntry[];
+  explored: string;
+}
+
+/** Client -> server: deterministic generated non-air tiles for a new revision. */
+export interface WorldInitMsg {
+  type: 'worldInit';
+  revision: number;
+  tiles: TileDiffEntry[];
+}
+
+/** Client request or server broadcast for an authoritative terrain reset. */
+export interface WorldResetMsg {
+  type: 'worldReset';
+  revision: number;
+}
+
 export type NetMessage =
   | PlayerStateMsg
   | TileMsg
@@ -151,7 +178,10 @@ export type NetMessage =
   | RespawnedMsg
   | TeleportedMsg
   | ExploreMsg
-  | WorldSyncMsg;
+  | WorldSyncMsg
+  | WorldStateMsg
+  | WorldInitMsg
+  | WorldResetMsg;
 
 export type NetMessageType = NetMessage['type'];
 
@@ -173,6 +203,9 @@ function isStr(v: unknown): v is string {
   return typeof v === 'string';
 }
 
+const MAX_WORLD_TILES = 90 * 1004;
+const MAX_ENEMIES = 2048;
+
 const TILE_TYPES = new Set(['air', 'dirt', 'rock', 'ore', 'hazard', 'artifact', 'motherlode', 'enemy']);
 
 function isOre(v: unknown): v is Ore {
@@ -182,6 +215,7 @@ function isOre(v: unknown): v is Ore {
     isStr(v.color) &&
     isNum(v.value) &&
     isNum(v.min) &&
+    isNum(v.max) &&
     isNum(v.chance)
   );
 }
@@ -234,7 +268,23 @@ function isEnemyEntry(v: unknown): v is EnemySnapshotEntry {
 }
 
 function isTileDiffEntry(v: unknown): v is TileDiffEntry {
-  return isObj(v) && isNum(v.x) && isNum(v.y) && isTile(v.tile);
+  return isObj(v) && isInt(v.x) && v.x >= 0 && v.x < 90 && isInt(v.y) && v.y >= 0 && v.y < 1004 && isTile(v.tile);
+}
+
+function isRevision(v: unknown): v is number {
+  return isInt(v) && v >= 1;
+}
+
+function isExploration(v: unknown): v is string {
+  if (!isStr(v) || v.length > MAX_WORLD_TILES * 8) return false;
+  if (!v) return true;
+  return v.split(',').every(range => {
+    const match = /^(\d+)(?:-(\d+))?$/.exec(range);
+    if (!match) return false;
+    const start = Number(match[1]);
+    const end = Number(match[2] ?? match[1]);
+    return start >= 270 && end >= start && end < MAX_WORLD_TILES;
+  });
 }
 
 // --- Message validation ----------------------------------------------------
@@ -259,11 +309,11 @@ export function validateMessage(v: unknown): NetMessage | null {
         ? (v as unknown as PlayerStateMsg)
         : null;
     case 'tile':
-      return isNum(v.x) && isNum(v.y) && isTile(v.tile) ? (v as unknown as TileMsg) : null;
+      return isRevision(v.revision) && isTileDiffEntry(v) ? (v as unknown as TileMsg) : null;
     case 'wakeNear':
       return isNum(v.x) && isNum(v.y) ? (v as unknown as WakeNearMsg) : null;
     case 'enemySnapshot':
-      return Array.isArray(v.enemies) && v.enemies.every(isEnemyEntry)
+      return isRevision(v.revision) && Array.isArray(v.enemies) && v.enemies.length <= MAX_ENEMIES && v.enemies.every(isEnemyEntry)
         ? (v as unknown as EnemySnapshotMsg)
         : null;
     case 'enemySpawn':
@@ -291,7 +341,7 @@ export function validateMessage(v: unknown): NetMessage | null {
     case 'teleported':
       return isNum(v.x) && isNum(v.y) ? (v as unknown as TeleportedMsg) : null;
     case 'explore':
-      return isStr(v.ranges) ? (v as unknown as ExploreMsg) : null;
+      return isRevision(v.revision) && isExploration(v.ranges) ? (v as unknown as ExploreMsg) : null;
     case 'worldSync':
       return Array.isArray(v.tiles) &&
         v.tiles.every(isTileDiffEntry) &&
@@ -300,6 +350,20 @@ export function validateMessage(v: unknown): NetMessage | null {
         isStr(v.explored)
         ? (v as unknown as WorldSyncMsg)
         : null;
+    case 'worldState':
+      return v.version === 1 && isRevision(v.revision) && isBool(v.initialized) &&
+        Array.isArray(v.tiles) && v.tiles.length <= MAX_WORLD_TILES && v.tiles.every(isTileDiffEntry) &&
+        Array.isArray(v.enemies) && v.enemies.length <= MAX_ENEMIES && v.enemies.every(isEnemyEntry) &&
+        isExploration(v.explored)
+        ? (v as unknown as WorldStateMsg)
+        : null;
+    case 'worldInit':
+      return isRevision(v.revision) && Array.isArray(v.tiles) && v.tiles.length <= MAX_WORLD_TILES &&
+        v.tiles.every(entry => isTileDiffEntry(entry) && entry.tile.type !== 'air')
+        ? (v as unknown as WorldInitMsg)
+        : null;
+    case 'worldReset':
+      return isRevision(v.revision) ? (v as unknown as WorldResetMsg) : null;
     default:
       return null;
   }
@@ -400,8 +464,8 @@ export function enemyEntryFrom(e: Enemy): EnemySnapshotEntry {
 }
 
 /** Build an enemySnapshot message from the host's enemy list. */
-export function enemySnapshotFrom(enemies: Enemy[]): EnemySnapshotMsg {
-  return { type: 'enemySnapshot', enemies: enemies.map(enemyEntryFrom) };
+export function enemySnapshotFrom(enemies: Enemy[], revision = 1): EnemySnapshotMsg {
+  return { type: 'enemySnapshot', revision, enemies: enemies.map(enemyEntryFrom) };
 }
 
 /** Return an unused positive enemy id after adopting a replicated enemy list. */

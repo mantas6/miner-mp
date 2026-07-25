@@ -91,7 +91,8 @@ export const ui = {
   infoScreen: requireElement<HTMLElement>('info-screen'),
   infoCard: requireElement<HTMLElement>('info-card'),
   infoCloseBtn: requireElement<HTMLButtonElement>('infoCloseBtn'),
-  resetPlayerDataBtn: requireElement<HTMLButtonElement>('resetPlayerDataBtn')
+  resetPlayerDataBtn: requireElement<HTMLButtonElement>('resetPlayerDataBtn'),
+  resetWorldStateBtn: requireElement<HTMLButtonElement>('resetWorldStateBtn')
 };
 
 export type GameUi = typeof ui;

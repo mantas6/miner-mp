@@ -1,97 +1,106 @@
-// Moleload relay server.
-//
-// A deliberately dumb WebSocket relay: it does pairing and message forwarding
-// only, with zero game logic. See PLAN.md "Phase 1 - Relay server".
-//
-// Single auto-pairing room:
-//   - 1st connection -> { t: 'paired', role: 'host' }
-//   - 2nd connection -> { t: 'paired', role: 'guest' } and the host is told
-//     { t: 'peer-joined' }
-//   - 3rd connection -> { t: 'room-full' } then closed.
-// Any { t: 'relay', payload } is forwarded verbatim to the other peer.
-// On disconnect the remaining peer gets { t: 'peer-left' } and the freed slot
-// becomes the host slot so a new joiner pairs in as guest.
-
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { createWorldStore } from './world-state.js';
 
-const PORT = Number(process.env.PORT) || 8081;
+const DEFAULT_STATE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data', 'world-state.json');
 
-const wss = new WebSocketServer({ port: PORT });
+export function createRelayServer({ port = 0, statePath = process.env.WORLD_STATE_PATH || DEFAULT_STATE_PATH } = {}) {
+  const store = createWorldStore(statePath);
+  const wss = new WebSocketServer({ port, maxPayload: 16 * 1024 * 1024 });
+  const slots = [null, null];
 
-// The room has two slots. Index 0 is host, index 1 is guest.
-const slots = [null, null];
-
-function send(ws, obj) {
-  if (ws && ws.readyState === ws.OPEN) {
-    ws.send(JSON.stringify(obj));
+  function send(ws, obj) {
+    if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj));
   }
-}
-
-function otherOf(ws) {
-  if (slots[0] === ws) return slots[1];
-  if (slots[1] === ws) return slots[0];
-  return null;
-}
-
-wss.on('connection', (ws) => {
-  // Reject a 3rd (or later) connection.
-  if (slots[0] && slots[1]) {
-    send(ws, { t: 'room-full' });
-    ws.close();
-    return;
+  function payload(ws, message) {
+    send(ws, { t: 'relay', payload: message });
+  }
+  function otherOf(ws) {
+    if (slots[0] === ws) return slots[1];
+    if (slots[1] === ws) return slots[0];
+    return null;
+  }
+  function broadcast(message) {
+    for (const ws of slots) payload(ws, message);
   }
 
-  let role;
-  if (!slots[0]) {
-    slots[0] = ws;
-    role = 'host';
-  } else {
-    slots[1] = ws;
-    role = 'guest';
-  }
-
-  send(ws, { t: 'paired', role });
-
-  // Notify the host that a guest has joined.
-  if (role === 'guest') {
-    send(slots[0], { t: 'peer-joined' });
-  }
-
-  ws.on('message', (data) => {
-    let msg;
-    try {
-      msg = JSON.parse(data.toString());
-    } catch {
-      return; // Ignore non-JSON frames.
+  wss.on('connection', ws => {
+    if (slots[0] && slots[1]) {
+      send(ws, { t: 'room-full' });
+      ws.close();
+      return;
     }
-    if (msg && msg.t === 'relay') {
-      const peer = otherOf(ws);
-      send(peer, msg);
-    }
-  });
+    const role = slots[0] ? 'guest' : 'host';
+    slots[role === 'host' ? 0 : 1] = ws;
 
-  ws.on('close', () => {
-    const peer = otherOf(ws);
+    // Ordered WebSocket delivery guarantees hydration is handled before pairing/gameplay.
+    payload(ws, { type: 'worldState', ...store.snapshot() });
+    send(ws, { t: 'paired', role });
+    if (role === 'guest') send(slots[0], { t: 'peer-joined' });
 
-    // Free this slot.
-    if (slots[0] === ws) slots[0] = null;
-    else if (slots[1] === ws) slots[1] = null;
+    ws.on('message', data => {
+      if (data.length > 16 * 1024 * 1024) return;
+      let envelope;
+      try { envelope = JSON.parse(data.toString()); } catch { return; }
+      if (!envelope || envelope.t !== 'relay' || !envelope.payload || typeof envelope.payload !== 'object') return;
+      const message = envelope.payload;
 
-    // Notify the remaining peer and promote it into the host slot so the next
-    // joiner pairs in as guest. Actual client-side role promotion happens in a
-    // later phase; here we just keep the slot bookkeeping consistent.
-    if (peer && peer.readyState === peer.OPEN) {
-      send(peer, { t: 'peer-left' });
-      if (slots[0] === null) {
-        slots[0] = peer;
-        if (slots[1] === peer) slots[1] = null;
+      if (message.type === 'worldInit') {
+        if (store.initialize(message.revision, message.tiles)) broadcast({ type: 'worldState', ...store.snapshot() });
+        return;
       }
-    }
+      if (message.type === 'worldReset') {
+        if (store.reset(message.revision)) broadcast({ type: 'worldReset', revision: store.snapshot().revision });
+        return;
+      }
+      if (message.type === 'tile') {
+        if (store.setTile(message.revision, { x: message.x, y: message.y, tile: message.tile })) payload(otherOf(ws), message);
+        return;
+      }
+      if (message.type === 'enemySnapshot') {
+        if (slots[0] === ws && store.setEnemies(message.revision, message.enemies)) payload(otherOf(ws), message);
+        return;
+      }
+      if (message.type === 'explore') {
+        if (store.setExplored(message.revision, message.ranges)) payload(otherOf(ws), message);
+        return;
+      }
+      payload(otherOf(ws), message);
+    });
+
+    ws.on('close', () => {
+      const peer = otherOf(ws);
+      if (slots[0] === ws) slots[0] = null;
+      else if (slots[1] === ws) slots[1] = null;
+      if (peer && peer.readyState === peer.OPEN) {
+        send(peer, { t: 'peer-left' });
+        if (!slots[0]) {
+          slots[0] = peer;
+          if (slots[1] === peer) slots[1] = null;
+        }
+      }
+    });
+    ws.on('error', () => {});
   });
 
-  ws.on('error', () => {
-    // Errors are followed by a close event which handles cleanup.
-  });
-});
+  return {
+    wss,
+    store,
+    statePath,
+    close: () => new Promise(resolve => {
+      store.flush();
+      for (const client of wss.clients) client.terminate();
+      wss.close(resolve);
+    })
+  };
+}
 
-console.log(`Moleload relay listening on ws://0.0.0.0:${PORT}`);
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const port = Number(process.env.PORT) || 8081;
+  const server = createRelayServer({ port });
+  server.wss.on('listening', () => console.log(`Moleload relay listening on ws://0.0.0.0:${port}; world state: ${server.statePath}`));
+  const shutdown = async () => { await server.close(); process.exit(0); };
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
+}

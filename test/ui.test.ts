@@ -53,6 +53,7 @@ const GAME_DOM_IDS = [
   'info-card',
   'infoCloseBtn',
   'resetPlayerDataBtn',
+  'resetWorldStateBtn',
   'cargoList',
   'expeditionStats',
   'developerUpgrades',
@@ -277,5 +278,16 @@ describe('React GUI shell', () => {
     expect(infoCard).toContain('Reset All Player Data');
     expect(infoCard).toContain('shared mine terrain');
     expect(infoCard.indexOf('id="resetPlayerDataBtn"')).toBeGreaterThan(infoCard.indexOf('id="info-controls"'));
+  });
+
+  it('places a visually separate world reset after player reset with preservation copy', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+    const infoCard = markup.slice(markup.indexOf('<div id="info-card"'), markup.indexOf('<div id="fuel-warning"'));
+
+    expect(infoCard).toContain('class="world-state-reset"');
+    expect(infoCard).toContain('id="resetWorldStateBtn"');
+    expect(infoCard).toContain('Reset World State');
+    expect(infoCard).toContain('without changing any player&#x27;s cash, upgrades, inventory, stats, ship condition, or settings');
+    expect(infoCard.indexOf('id="resetWorldStateBtn"')).toBeGreaterThan(infoCard.indexOf('id="resetPlayerDataBtn"'));
   });
 });

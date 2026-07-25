@@ -18,7 +18,7 @@ import { formatDepthMilestone } from './depth-milestone';
 import { beginExtraction, cancelExtraction, completeExtractionAtDepot } from './extraction-phase';
 import { formatExtractionPresentation } from './extraction-presentation';
 import { createNet, type NetClient } from './net';
-import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, mergeWorldSync, nextEnemyId, playerStateFrom, remotePlayerFrom, worldSyncFrom, type EnemySnapshotEntry, type TileDiff } from './net-protocol';
+import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, mergeWorldSync, nextEnemyId, playerStateFrom, remotePlayerFrom, type EnemySnapshotEntry, type TileDiff } from './net-protocol';
 import { loadServerUrl, saveServerUrl } from './multiplayer-settings';
 import { activeSprintDirection, fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs } from './movement';
 import { getDynamiteBlastTargets } from './dynamite';
@@ -32,6 +32,7 @@ import { encodeExploration, isTileExplored, mergeExploration, revealFootprint } 
 import { consumeBulletForShot, gunKeyAction, resolveShot } from './weapon';
 import { confirmPlayerDataReset, resetPlayerData } from './player-data-reset';
 import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDeveloperCash, updateDeveloperServiceControls, type DeveloperServiceId } from './developer';
+import { confirmWorldStateReset, generatedNonAirTiles, resetWorldTerrain } from './world-state';
 
 const state = createInitialState();
 let audio;
@@ -44,6 +45,7 @@ let net: NetClient | null = null;
 let connectionIssue: string | null = null;
 let resettingPlayerData = false;
 let tileDiff: TileDiff = {};
+let worldRevision = 1;
 const reachableAir = new Set<string>();
 
 state.stats = {...DEFAULT_STATS};
@@ -54,7 +56,7 @@ function saveProgress() { save(state); }
 function revealAtPlayer(broadcast=true) {
   const added = revealFootprint(state.exploredTiles, state.player.x, state.player.y, state.player.visibility);
   if (!added.length) return;
-  if (broadcast && state.connected && net?.paired) net.send({type:'explore', ranges:encodeExploration(added)});
+  if (broadcast && state.connected && net?.paired) net.send({type:'explore', revision:worldRevision, ranges:encodeExploration(state.exploredTiles)});
   clearTimeout(explorationSaveTimer);
   explorationSaveTimer = window.setTimeout(saveProgress, 500);
 }
@@ -89,6 +91,33 @@ function generate(){
   resetPlayer(false);
   resetEnemyExposure();
 }
+function clearWorldRuntime(){
+  resetWorldTerrain(state, makeTile);
+  tileDiff = {};
+  reachableAir.clear();
+  enemyIdCounter = 1;
+  keys.clear();
+  renderer?.invalidateTerrain();
+}
+function initializeServerWorld(){
+  net?.send({type:'worldInit', revision:worldRevision, tiles:generatedNonAirTiles(state.world)});
+}
+function applyAuthoritativeWorld(msg: Extract<import('./net-protocol').NetMessage, {type:'worldState'}>){
+  worldRevision = msg.revision;
+  state.world = Array.from({length: WORLD_H}, (_,y)=>Array.from({length: WORLD_W},(_,x)=>makeTile(x,y)));
+  tileDiff = {};
+  for (const entry of msg.tiles) {
+    state.world[entry.y][entry.x] = entry.tile;
+  }
+  applyEnemyEntries(msg.enemies);
+  enemyIdCounter = nextEnemyId(state.enemies);
+  state.exploredTiles.clear();
+  mergeExploration(state.exploredTiles, msg.explored);
+  reachableAir.clear();
+  renderer?.invalidateTerrain();
+  saveProgress();
+  if (!msg.initialized) initializeServerWorld();
+}
 function resetPlayer(full=true){
   state.extractionPhase = cancelExtraction();
   state.teleportEffect = null;
@@ -110,7 +139,7 @@ function set(x,y,t, broadcast=true){
   if (previousType !== t.type) renderer?.invalidateTerrain(x, y);
   // Guests retain received/local mutations too: they may become the next host.
   if (state.role) tileDiff = applyTileDiff(tileDiff, {x, y, tile: t});
-  if (broadcast && state.connected && net?.paired) net.send({type:'tile', x, y, tile:t});
+  if (broadcast && state.connected && net?.paired) net.send({type:'tile', revision:worldRevision, x, y, tile:t});
 }
 function cargoUsed(){ return state.player.cargo.length; }
 function currentCargoValue(){ return cargoValue(state.player.cargo); }
@@ -136,7 +165,6 @@ function startOnline(url: string){
       },
       onPaired(role){
         state.role = role;
-        if (role === 'guest' && state.exploredTiles.size) net?.send({type:'explore', ranges:encodeExploration(state.exploredTiles)});
         resetEnemyExposure();
         if (role === 'host') {
           setConnectionStatus('Host - waiting for player');
@@ -148,7 +176,6 @@ function startOnline(url: string){
       onPeerJoined(){
         if (state.role !== 'host') return;
         setConnectionStatus('Host - paired');
-        net?.send(worldSyncFrom(tileDiff, state.enemies, encodeExploration(state.exploredTiles)));
         startOnlineGame();
       },
       onPeerLeft(){
@@ -167,13 +194,26 @@ function startOnline(url: string){
         setConnectionStatus(connectionIssue);
       },
       onMessage(msg){
+        if (msg.type === 'worldState') {
+          applyAuthoritativeWorld(msg);
+          return;
+        }
+        if (msg.type === 'worldReset') {
+          if (msg.revision <= worldRevision) return;
+          worldRevision = msg.revision;
+          clearWorldRuntime();
+          saveProgress();
+          initializeServerWorld();
+          toast('Shared world reset. Player progress preserved.');
+          return;
+        }
         if (msg.type === 'playerState') state.remotePlayers = applyRemotePlayerState(state.remotePlayers, msg);
         if (msg.type === 'tile') set(msg.x, msg.y, msg.tile, false);
         if (msg.type === 'explore') {
           const added = mergeExploration(state.exploredTiles, msg.ranges);
           if (added.length) {
             saveProgress();
-            if (isPairedHost()) net?.send({type:'explore', ranges:encodeExploration(added)});
+            if (isPairedHost()) net?.send({type:'explore', revision:worldRevision, ranges:encodeExploration(state.exploredTiles)});
           }
         }
         if (msg.type === 'worldSync' && isGuestEnemyReplica()) {
@@ -758,6 +798,18 @@ function bindButtons(){
     closeInfoScreen();
     toast('Player data reset. Shared mine terrain preserved.');
   };
+  ui.resetWorldStateBtn.onclick = e => {
+    e.stopPropagation();
+    if (!confirmWorldStateReset(message => window.confirm(message))) return;
+    if (state.connected && net) {
+      net.send({type:'worldReset', revision:worldRevision});
+    } else {
+      clearWorldRuntime();
+      saveProgress();
+      toast('World state reset locally. Player progress preserved.');
+    }
+    closeInfoScreen();
+  };
   ui.shopBtn.onclick = e => { e.stopPropagation(); openShopScreen(); };
   ui.shopCloseBtn.onclick = e => { e.stopPropagation(); closeShopScreen(); };
   ui.shopScreen.addEventListener('pointerdown', e => { if (e.target === ui.shopScreen) closeShopScreen(); });
@@ -1073,7 +1125,7 @@ function loop(){
       updateEnemyBites();
     } else {
       updateEnemies();
-      if (isPairedHost()) net?.sendEnemySnapshot(enemySnapshotFrom(state.enemies));
+      if (isPairedHost()) net?.sendEnemySnapshot(enemySnapshotFrom(state.enemies, worldRevision));
     }
   }
   draw(); hud(); requestAnimationFrame(loop);

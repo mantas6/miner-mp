@@ -3,9 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Dumb WebSocket relay for Moleload 2-player co-op (pairing + forwarding, no game logic).",
+  "description": "Authoritative WebSocket world relay for Moleload 2-player co-op.",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --test",
+    "typecheck": "node --check index.js && node --check world-state.js"
   },
   "dependencies": {
     "ws": "^8.18.0"

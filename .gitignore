@@ -8,6 +8,7 @@ dist/
 .vite/
 .vite-dev.log
 .vite-dev.pid
+server/data/
 
 # Local editor/OS files
 .DS_Store

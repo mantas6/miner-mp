@@ -44,13 +44,14 @@ const messages: NetMessage[] = [
     drillDy: 1,
     bob: 0.33
   },
-  { type: 'tile', x: 3, y: 7, tile: { type: 'air' } },
-  { type: 'tile', x: 3, y: 8, tile: { type: 'dirt', hp: 2, maxHp: 3 } },
-  { type: 'tile', x: 4, y: 9, tile: { type: 'rock', hp: 999 } },
-  { type: 'tile', x: 4, y: 10, tile: { type: 'ore', ore: ORE, hp: 4, maxHp: 4 } },
+  { type: 'tile', revision: 1, x: 3, y: 7, tile: { type: 'air' } },
+  { type: 'tile', revision: 1, x: 3, y: 8, tile: { type: 'dirt', hp: 2, maxHp: 3 } },
+  { type: 'tile', revision: 1, x: 4, y: 9, tile: { type: 'rock', hp: 999 } },
+  { type: 'tile', revision: 1, x: 4, y: 10, tile: { type: 'ore', ore: ORE, hp: 4, maxHp: 4 } },
   { type: 'wakeNear', x: 10, y: 40 },
   {
     type: 'enemySnapshot',
+    revision: 1,
     enemies: [
       { id: 1, x: 3, y: 4, drawX: 3, drawY: 4, hp: 5, maxHp: 6, alive: true },
       { id: 2, x: 9, y: 2, drawX: 8.5, drawY: 2.1, hp: 1, maxHp: 6, alive: true }
@@ -64,7 +65,7 @@ const messages: NetMessage[] = [
   { type: 'died' },
   { type: 'respawned', x: 45, y: 2 },
   { type: 'teleported', x: 45, y: 2 },
-  { type: 'explore', ranges: '270-278,360' },
+  { type: 'explore', revision: 1, ranges: '270-278,360' },
   {
     type: 'worldSync',
     tiles: [
@@ -73,7 +74,10 @@ const messages: NetMessage[] = [
     ],
     enemies: [{ id: 3, x: 0, y: 0, drawX: 0, drawY: 0, hp: 4, maxHp: 4, alive: true }],
     explored: '270-278'
-  }
+  },
+  { type: 'worldState', version: 1, revision: 4, initialized: true, tiles: [{x:3,y:7,tile:{type:'air'}}], enemies: [], explored: '270-278' },
+  { type: 'worldInit', revision: 4, tiles: [{x:3,y:7,tile:{type:'dirt',hp:2,maxHp:2}}] },
+  { type: 'worldReset', revision: 4 }
 ];
 
 describe('encode/decode round-trips', () => {
@@ -161,7 +165,7 @@ describe('isTile', () => {
 
   it('preserves artifact metadata and its removal in late-join terrain sync', () => {
     const artifact: Tile = {type:'artifact', artifact:{name:'Alien Reliquary', color:'#ff78e1', value:900, min:702, max:992, chance:.00025}, hp:7, maxHp:7};
-    expect(decodeMessage(encodeMessage({type:'tile', x:8, y:740, tile:artifact}))).toEqual({type:'tile', x:8, y:740, tile:artifact});
+    expect(decodeMessage(encodeMessage({type:'tile', revision:1, x:8, y:740, tile:artifact}))).toEqual({type:'tile', revision:1, x:8, y:740, tile:artifact});
 
     const diff = applyTileDiff(applyTileDiff({}, {x:8, y:740, tile:artifact}), {x:8, y:740, tile:{type:'air'}});
     expect(worldSyncFrom(diff).tiles).toEqual([{x:8, y:740, tile:{type:'air'}}]);
@@ -233,7 +237,7 @@ describe('builders', () => {
   it('snapshots an enemy list', () => {
     const enemy = { id: 9, x: 1, y: 2, drawX: 1, drawY: 2, hp: 4, maxHp: 4, alive: true, moveTick: 3, biteTick: 4, flash: 0.5 } as Enemy;
     expect(enemyEntryFrom(enemy)).toEqual({ id: 9, x: 1, y: 2, drawX: 1, drawY: 2, hp: 4, maxHp: 4, alive: true });
-    expect(enemySnapshotFrom([enemy])).toEqual({ type: 'enemySnapshot', enemies: [enemyEntryFrom(enemy)] });
+    expect(enemySnapshotFrom([enemy])).toEqual({ type: 'enemySnapshot', revision: 1, enemies: [enemyEntryFrom(enemy)] });
   });
 
   it('allocates a fresh enemy id after adopting a host snapshot', () => {

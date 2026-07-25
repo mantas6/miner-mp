@@ -264,6 +264,11 @@ export function MinerApp() {
               <p>Start this player over without regenerating or repairing the shared mine terrain. Your saved relay URL is also preserved.</p>
               <button id="resetPlayerDataBtn" type="button">Reset All Player Data</button>
             </section>
+            <section className="world-state-reset" aria-labelledby="world-state-reset-title">
+              <h3 id="world-state-reset-title">Shared World State</h3>
+              <p>Regenerate terrain and world enemies for this mine without changing any player's cash, upgrades, inventory, stats, ship condition, or settings. Explored fog is cleared so regenerated terrain is not revealed.</p>
+              <button id="resetWorldStateBtn" type="button">Reset World State</button>
+            </section>
           </div>
         </div>
 

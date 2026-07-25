@@ -85,7 +85,7 @@ npm run preview
 
 ## Multiplayer (co-op)
 
-Co-op play uses a small WebSocket relay server that lives in `server/`. It is a
+Co-op play uses an authoritative WebSocket world server in `server/`. It is a
 Node process built on the [`ws`](https://github.com/websockets/ws) library.
 
 Start the relay server:
@@ -100,6 +100,28 @@ defaults to `8081`:
 ```bash
 PORT=9000 node server/index.js
 ```
+
+The server persists the shared mine to `server/data/world-state.json` by
+default. Set `WORLD_STATE_PATH` to a writable file on a durable mounted volume
+for relay/container deployments whose application filesystem is ephemeral:
+
+```bash
+WORLD_STATE_PATH=/var/lib/moleload/world-state.json PORT=9000 node server/index.js
+```
+
+The ignored runtime file is versioned JSON (`version: 1`) containing the world
+revision, generated non-air tile values, explicit air/dug overrides, active
+world enemies, and shared exploration ranges. Input is schema-, coordinate-,
+count-, and size-validated; updates are written through a same-directory
+temporary file and atomic rename. Clients receive this authoritative snapshot
+before their pairing event, and every mutation carries a world revision so
+traffic from before a reset cannot repopulate the new mine.
+
+`Reset World State` is at the bottom of Info / Cargo, separately from player
+data reset. After confirmation it regenerates terrain, enemies, caches, and fog
+for all connected clients while preserving each player's cash, upgrades,
+inventory/cargo, stats, ship condition, and settings. In solo mode the same
+action resets the local world and fog only.
 
 The client connects to the relay via the `VITE_MP_SERVER_URL` environment
 variable, which defaults to `ws://localhost:8081` in development. Set it when
@@ -118,6 +140,7 @@ VITE_MP_SERVER_URL=ws://localhost:9000 npm run dev
 | Sell cargo | `Enter` or Sell button | Sell button |
 | Surface service | `Space` repairs first, then refuels | Repair / Refuel buttons |
 | Restart after game over | `R` or tap/click | Tap anywhere |
+| Reset shared world | Info / Cargo -> Reset World State | Same |
 | Toggle sound | Sound button | Sound button or first touch gesture may auto-enable |
 
 ## Gameplay notes
