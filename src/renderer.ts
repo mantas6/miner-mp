@@ -157,10 +157,29 @@ export function createRenderer({ state, get, rand }) {
   }
   function drawFog(camX, camY) {
     const range = getVisibleTileRange(camX, camY, W, H, WORLD_W, WORLD_H);
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = '#030608';
     for (let wy=range.startY; wy<=range.endY; wy++) for (let wx=range.startX; wx<=range.endX; wx++) {
       if (isExplored(wx, wy)) continue;
-      ctx.fillRect((wx-camX)*TILE-1, (wy-camY)*TILE-1, TILE+2, TILE+2);
+      const sx = (wx-camX)*TILE, sy = (wy-camY)*TILE;
+      ctx.fillRect(sx-1, sy-1, TILE+2, TILE+2);
+
+      const grainX = sx + TILE*(.14 + rand(wx+17, wy-11)*.72);
+      const grainY = sy + TILE*(.14 + rand(wx-13, wy+19)*.72);
+      ctx.fillStyle = `rgba(112,137,143,${.10 + rand(wx+5, wy+7)*.07})`;
+      ctx.fillRect(grainX, grainY, 2 + rand(wx, wy+31)*3, 2 + rand(wx+29, wy)*2);
+
+      const veinY = sy + TILE*(.27 + rand(wx-7, wy+3)*.46);
+      ctx.strokeStyle = `rgba(77,102,108,${.16 + rand(wx+23, wy-5)*.10})`;
+      ctx.lineWidth = 1 + rand(wx-17, wy+13)*1.5;
+      ctx.beginPath();
+      ctx.moveTo(sx+TILE*.08, veinY);
+      ctx.bezierCurveTo(
+        sx+TILE*.32, veinY+TILE*(rand(wx+3, wy)-.5)*.18,
+        sx+TILE*.68, veinY+TILE*(rand(wx, wy+3)-.5)*.18,
+        sx+TILE*.92, veinY+TILE*(rand(wx+11, wy+11)-.5)*.10
+      );
+      ctx.stroke();
+      ctx.fillStyle = '#030608';
     }
   }
   function drawTeleportEffect(camX, camY, foreground) {

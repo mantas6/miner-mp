@@ -209,7 +209,7 @@ describe('terrain cache lifecycle', () => {
     expect(mocks.mainContext.fillRect).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 4, 4);
   });
 
-  it('paints unexplored tiles black without leaking enemies, peers, or particles', () => {
+  it('paints textured unexplored tiles without leaking enemies, peers, or particles', () => {
     const state = {
       world: {}, camX: 10, camY: 20, tick: 0, gameOver: false,
       exploredTiles: new Set<number>(), teleportEffect: null,
@@ -223,6 +223,7 @@ describe('terrain cache lifecycle', () => {
     renderer.draw();
 
     expect(mocks.mainContext.fillRect).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 66, 66);
+    expect(mocks.mainContext.bezierCurveTo).toHaveBeenCalled();
     expect(mocks.mainContext.fillText).not.toHaveBeenCalledWith('PARTNER', expect.any(Number), expect.any(Number));
     expect(mocks.mainContext.createRadialGradient).not.toHaveBeenCalled();
   });
