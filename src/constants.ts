@@ -1,6 +1,6 @@
 import type { Ore } from './types';
 
-export const TILE = 96; // 25% zoomed-out tiles so more of the mine is visible
+export const TILE = 64; // Show 50% more world in each viewport dimension.
 export const WORLD_W = 90;
 export const WORLD_H = 320;
 export const SURFACE_HEIGHT = 3;
