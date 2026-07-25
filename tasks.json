@@ -34,5 +34,23 @@
       "Updated tests pass and desktop/mobile browser smokes show a clear playable HUD with no runtime exceptions. Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
     ],
     "passes": false
+  },
+  {
+    "category": "performance",
+    "description": "Profile and remove the underground gameplay lag so deep mining stays responsive without reducing core gameplay feedback.",
+    "steps": [
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh before development and preserve React-before-runtime startup ordering plus existing gameplay controls and save behavior.",
+      "Reproduce the issue in a served browser at a meaningful underground depth on desktop and a 390×844 phone viewport. Capture frame-time/FPS evidence and isolate the dominant hot paths before changing behavior, including the requestAnimationFrame loop, HUD DOM updates, particle work, active-enemy work, and canvas terrain rendering.",
+      "Inspect src/game.ts and src/renderer.ts, where every frame currently redraws a visible tile window with per-tile gradients, procedural blobs/strata, canvas save/restore calls, and repeated HUD formatting/DOM writes. Implement the smallest measured optimization(s), such as caching or simplifying static underground terrain art, culling/bounding particles or offscreen work, and throttling unchanged HUD writes, while retaining visual readability and game rules.",
+      "Add focused deterministic tests for extracted performance policy/helpers where practical and keep rendering changes isolated from world generation, collision, ore, hazard, enemy, fuel, and extraction logic.",
+      "Use ./init.sh for fresh desktop and 390×844 headless CDP performance smokes that start a game, descend/mine into underground terrain, keep moving/drilling through an extended sample, report frame timing/FPS or long-frame counts, exercise Info / Cargo open-close, and collect runtime exceptions."
+    ],
+    "acceptance": [
+      "Underground mining and movement are visibly smoother than the measured baseline on desktop and a 390×844 phone viewport, with no sustained severe frame stalls during normal play.",
+      "Optimizations are based on captured profiling evidence rather than a speculative broad rewrite, and their trade-offs are documented in progress.txt.",
+      "Terrain readability, particles/feedback within reasonable bounds, controls, HUD essentials, mining/economy, enemies, saves, and Info / Cargo behavior remain functional.",
+      "Updated tests pass and performance smokes report no runtime exceptions. Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
+    ],
+    "passes": false
   }
 ]
