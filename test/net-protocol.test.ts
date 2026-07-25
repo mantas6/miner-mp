@@ -270,6 +270,19 @@ describe('tile diff reducers', () => {
       [{ type: 'ore', ore: ORE, hp: 4, maxHp: 4 }, { type: 'dirt', hp: 1, maxHp: 2 }]
     ]);
   });
+
+  it('includes the host enemy list in a late-join world sync', () => {
+    const enemy = {
+      id: 12, x: 7, y: 31, drawX: 6.8, drawY: 31, hp: 3, maxHp: 6,
+      alive: true, moveTick: 14, biteTick: 8, flash: 0.4
+    } as Enemy;
+
+    expect(worldSyncFrom({}, [enemy])).toEqual({
+      type: 'worldSync',
+      tiles: [],
+      enemies: [{ id: 12, x: 7, y: 31, drawX: 6.8, drawY: 31, hp: 3, maxHp: 6, alive: true }]
+    });
+  });
 });
 
 describe('enemy list reducers', () => {

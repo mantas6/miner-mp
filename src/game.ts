@@ -18,7 +18,8 @@ import { formatDepthMilestone } from './depth-milestone';
 import { beginExtraction, cancelExtraction, completeExtractionAtDepot } from './extraction-phase';
 import { formatExtractionPresentation } from './extraction-presentation';
 import { createNet, type NetClient } from './net';
-import { applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, interpolateRemotePlayers, playerStateFrom, remotePlayerFrom, worldSyncFrom, type TileDiff } from './net-protocol';
+import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, playerStateFrom, remotePlayerFrom, worldSyncFrom, type EnemySnapshotEntry, type TileDiff } from './net-protocol';
+import type { Enemy } from './types';
 
 const state = createInitialState();
 let audio;
@@ -40,6 +41,23 @@ function addCash(amount) {
   state.cash += amount;
   if (amount > 0) state.stats.totalCashEarned += amount;
   saveProgress();
+}
+function isGuestEnemyReplica(){ return state.role === 'guest'; }
+function isPairedHost(){ return state.role === 'host' && state.connected && Boolean(net?.paired); }
+function enemyFromSnapshot(entry: EnemySnapshotEntry, previous?: Enemy): Enemy {
+  return {
+    ...entry,
+    moveTick: previous?.moveTick ?? 0,
+    biteTick: previous?.biteTick ?? 0,
+    flash: previous?.flash ?? 0
+  };
+}
+function applyEnemyEntries(entries: EnemySnapshotEntry[]){
+  const previous = new Map(state.enemies.map(enemy => [enemy.id, enemy]));
+  state.enemies = entries.map(entry => enemyFromSnapshot(entry, previous.get(entry.id)));
+}
+function mergeEnemyEntries(entries: EnemySnapshotEntry[]){
+  applyEnemyEntries(mergeEnemySnapshot(state.enemies.map(enemyEntryFrom), entries));
 }
 
 function generate(){
@@ -107,7 +125,7 @@ function startOnline(url: string){
       onPeerJoined(){
         if (state.role !== 'host') return;
         setConnectionStatus('Host - paired');
-        net?.send(worldSyncFrom(tileDiff));
+        net?.send(worldSyncFrom(tileDiff, state.enemies));
         startOnlineGame();
       },
       onPeerLeft(){
@@ -121,7 +139,26 @@ function startOnline(url: string){
       onMessage(msg){
         if (msg.type === 'playerState') state.remotePlayers = applyRemotePlayerState(state.remotePlayers, msg);
         if (msg.type === 'tile') set(msg.x, msg.y, msg.tile, false);
-        if (msg.type === 'worldSync') applyWorldSyncToWorld(state.world, msg);
+        if (msg.type === 'worldSync' && isGuestEnemyReplica()) {
+          applyWorldSyncToWorld(state.world, msg);
+          mergeEnemyEntries(msg.enemies);
+        }
+        if (msg.type === 'enemySnapshot' && isGuestEnemyReplica()) mergeEnemyEntries(msg.enemies);
+        if (msg.type === 'enemySpawn' && isGuestEnemyReplica()) {
+          applyEnemyEntries(applyEnemySpawn(state.enemies.map(enemyEntryFrom), msg));
+          spawnDust(msg.x, msg.y, '#8aff5a', 18);
+          audio.enemyWake();
+        }
+        if (msg.type === 'enemyDead' && isGuestEnemyReplica()) {
+          const enemy = state.enemies.find(e => e.id === msg.id);
+          applyEnemyEntries(applyEnemyDead(state.enemies.map(enemyEntryFrom), msg));
+          if (enemy) spawnExplosion(enemy.x, enemy.y);
+        }
+        if (msg.type === 'enemyDamage' && isPairedHost() && msg.by === 'guest' && msg.amount > 0) {
+          damageEnemy(state.enemies.find(e => e.id === msg.id), msg.amount, 'guest');
+        }
+        if (msg.type === 'wakeNear' && isPairedHost()) wakeEnemiesNear(msg.x, msg.y);
+        if (msg.type === 'bounty' && isGuestEnemyReplica()) creditEnemyBounty(msg.amount);
         if (msg.type === 'died') state.remotePlayers = [];
         if (msg.type === 'respawned') {
           state.remotePlayers = [remotePlayerFrom({
@@ -136,7 +173,6 @@ function startOnline(url: string){
       },
       onClose(){
         state.connected = false;
-        state.role = null;
         state.remotePlayers = [];
         setConnectionStatus(connectionIssue || 'Disconnected');
       }
@@ -175,24 +211,42 @@ function enemyAt(x,y){
   return state.enemies.find(e => e.alive && Math.round(e.x) === x && Math.round(e.y) === y);
 }
 function wakeEnemy(x,y){
+  if (isGuestEnemyReplica()) return false;
   const tile = get(x,y);
   if (tile.type !== 'enemy') return false;
   set(x,y,{type:'air'});
   const enemy = {id: enemyIdCounter++, x, y, drawX:x, drawY:y, hp:tile.hp || 4, maxHp:tile.maxHp || tile.hp || 4, alive:true, moveTick:0, biteTick:0, flash:0};
   state.enemies.push(enemy);
+  if (isPairedHost()) net?.send({type:'enemySpawn', id:enemy.id, x, y, hp:enemy.hp, maxHp:enemy.maxHp});
   spawnDust(x, y, '#8aff5a', 18);
   audio.enemyWake();
   toast('Tunnel fiend awakened! Drill it before it chews the hull.');
   return true;
 }
 function wakeEnemiesNear(x,y){
+  if (isGuestEnemyReplica()) {
+    if (net?.paired) net.send({type:'wakeNear', x, y});
+    return;
+  }
   for (let yy=y-1; yy<=y+1; yy++) for (let xx=x-1; xx<=x+1; xx++) {
     if (Math.abs(xx-x) + Math.abs(yy-y) <= 1) wakeEnemy(xx, yy);
   }
 }
 function enemyBounty(y){ return ENEMY.bounty.base + Math.floor(y / ENEMY.bounty.depthDivisor) * ENEMY.bounty.step; }
-function damageEnemy(enemy, amount=state.player.drill){
+function creditEnemyBounty(amount){
+  addCash(amount);
+  state.stats.enemiesDestroyed++;
+  saveProgress();
+  toast(`Enemy destroyed +$${amount} bounty.`);
+}
+function damageEnemy(enemy, amount=state.player.drill, killer: 'host' | 'guest' = 'host'){
   if (!enemy || !enemy.alive) return;
+  if (isGuestEnemyReplica()) {
+    if (net?.paired) net.send({type:'enemyDamage', id:enemy.id, amount, by:'guest'});
+    spawnDust(enemy.x, enemy.y, '#92ff55', 13);
+    audio.enemyHit();
+    return;
+  }
   enemy.hp -= amount;
   enemy.flash = 1;
   spawnDust(enemy.x, enemy.y, '#92ff55', 13);
@@ -201,10 +255,11 @@ function damageEnemy(enemy, amount=state.player.drill){
     enemy.alive = false;
     spawnExplosion(enemy.x, enemy.y);
     const bounty = enemyBounty(enemy.y);
-    addCash(bounty);
-    state.stats.enemiesDestroyed++;
-    saveProgress();
-    toast(`Enemy destroyed +$${bounty} bounty.`);
+    if (isPairedHost()) {
+      net?.send({type:'enemyDead', id:enemy.id, bounty, killerIsGuest:killer === 'guest'});
+      if (killer === 'guest') net?.send({type:'bounty', amount:bounty});
+    }
+    if (killer === 'host') creditEnemyBounty(bounty);
   } else {
     toast(`Enemy hit — ${Math.ceil(enemy.hp)} HP left.`);
   }
@@ -212,6 +267,12 @@ function damageEnemy(enemy, amount=state.player.drill){
 function damageEnemyTile(x,y){
   const tile = get(x,y);
   if (tile.type !== 'enemy') return false;
+  if (isGuestEnemyReplica()) {
+    if (net?.paired) net.send({type:'wakeNear', x, y});
+    spawnDust(x, y, '#92ff55', 12);
+    audio.enemyHit();
+    return true;
+  }
   tile.hp -= state.player.drill;
   spawnDust(x, y, '#92ff55', 12);
   audio.enemyHit();
@@ -231,6 +292,7 @@ function damageEnemyTile(x,y){
   return true;
 }
 function updateEnemies(){
+  if (isGuestEnemyReplica()) return;
   if (state.gameOver || !state.introStarted) return;
   const p = state.player;
   state.enemies = state.enemies.filter(e => e.alive);
@@ -262,6 +324,28 @@ function updateEnemies(){
       if (nx === p.x && ny === p.y) continue;
       if (get(nx,ny).type === 'air' && !enemyAt(nx,ny)) { e.x = nx; e.y = ny; break; }
     }
+  }
+}
+function updateEnemyPresentation(){
+  if (state.gameOver || !state.introStarted) return;
+  for (const e of state.enemies) {
+    e.drawX += (e.x - e.drawX) * 0.28;
+    e.drawY += (e.y - e.drawY) * 0.28;
+    e.flash *= 0.82;
+  }
+}
+function updateEnemyBites(){
+  if (state.gameOver || !state.introStarted) return;
+  if (isGuestEnemyReplica() && !net?.paired) return;
+  const p = state.player;
+  for (const e of state.enemies) {
+    if (!e.alive || Math.abs(e.x - p.x) + Math.abs(e.y - p.y) > 1) continue;
+    if (state.tick - e.biteTick <= 22) continue;
+    e.biteTick = state.tick;
+    const bite = HULL.enemyBite.base + Math.floor(e.y / HULL.enemyBite.perDepth) * HULL.enemyBite.step;
+    damage(bite);
+    spawnDust(p.x, p.y, '#ff5d45', 10);
+    toast(`Enemy chewing the hull! -${bite}`);
   }
 }
 function grounded(){
@@ -683,7 +767,16 @@ function hud(){
 function loop(){
   input();
   if (net?.paired && state.connected) net.sendPlayerState(playerStateFrom(state.player));
-  if (state.introStarted) { drainHoverFuel(); updateEnemies(); }
+  if (state.introStarted) {
+    drainHoverFuel();
+    if (isGuestEnemyReplica()) {
+      updateEnemyPresentation();
+      updateEnemyBites();
+    } else {
+      updateEnemies();
+      if (isPairedHost()) net?.sendEnemySnapshot(enemySnapshotFrom(state.enemies));
+    }
+  }
   draw(); hud(); requestAnimationFrame(loop);
 }
 function tryAutoAudio(event?: Event, allowLobby=false) {
