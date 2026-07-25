@@ -20,7 +20,7 @@ import { formatExtractionPresentation } from './extraction-presentation';
 import { createNet, type NetClient } from './net';
 import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, mergeWorldSync, nextEnemyId, playerStateFrom, remotePlayerFrom, worldSyncFrom, type EnemySnapshotEntry, type TileDiff } from './net-protocol';
 import { loadServerUrl, saveServerUrl } from './multiplayer-settings';
-import { isOpenSpaceDestination, keyboardMovementRepeatMs, movementFuelCost } from './movement';
+import { fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs } from './movement';
 import { getDynamiteBlastTargets } from './dynamite';
 import type { Enemy } from './types';
 
@@ -410,7 +410,7 @@ function move(dx,dy,sprinting=false){
   let cost = FUEL.baseMove + Math.abs(dy)*FUEL.vertical;
   const flyCost = cost * FUEL.flyMult;             // flying uses 50% less fuel
   const dig = extra => (cost + extra) * FUEL.digMult; // digging uses 50% more fuel
-  const useFuel = amount => { p.fuel -= movementFuelCost(amount, sprinting, destinationOpen, dy > 0); };
+  const useFuel = amount => { p.fuel = fuelAfterMovement(p.fuel, amount, sprinting, destinationOpen, dy > 0); };
   p.facing = dx ? Math.sign(dx) : p.facing;
   p.drillDx = dx;
   p.drillDy = dy;
@@ -443,7 +443,6 @@ function move(dx,dy,sprinting=false){
   state.stats.maxDepth = Math.max(state.stats.maxDepth, Math.max(0, p.y - START_Y) * 10);
   wakeEnemiesNear(p.x, p.y);
   if (atSurface()) {
-    p.fuel = Math.min(p.fuelMax, p.fuel + FUEL.surfaceRefuel);
     const extraction = completeExtractionAtDepot(state.extractionPhase, true);
     state.extractionPhase = extraction.phase;
     if (extraction.changed) {

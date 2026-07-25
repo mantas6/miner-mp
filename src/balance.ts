@@ -31,7 +31,6 @@ export const FUEL = Object.freeze({
     artifact: 1.4,
     dig: 0.9
   }),
-  surfaceRefuel: 0.8,
   // Return forecast: a clear-shaft ascent with a deliberately generous detour allowance.
   returnReserveMultiplier: 2,
   returnReserveCautionMultiplier: 1.5,

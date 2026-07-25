@@ -12,3 +12,7 @@ export function movementFuelCost(normalCost: number, sprintRequested: boolean, d
   if (destinationOpen && movingDownward) return 0;
   return sprintRequested && destinationOpen ? normalCost * SPRINT.fuelMultiplier : normalCost;
 }
+
+export function fuelAfterMovement(currentFuel: number, normalCost: number, sprintRequested: boolean, destinationOpen: boolean, movingDownward: boolean): number {
+  return currentFuel - movementFuelCost(normalCost, sprintRequested, destinationOpen, movingDownward);
+}

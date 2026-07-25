@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { isOpenSpaceDestination, keyboardMovementRepeatMs, movementFuelCost } from '../src/movement';
+import { FUEL } from '../src/balance';
+import { partialFill } from '../src/economy';
+import { fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs, movementFuelCost } from '../src/movement';
+
+describe('surface fuel', () => {
+  it('charges lateral open-space flight without passively refueling', () => {
+    const flyCost = FUEL.baseMove * FUEL.flyMult;
+    const fuel = fuelAfterMovement(50, flyCost, false, true, false);
+
+    expect(fuel).toBeCloseTo(49.875);
+    expect(fuel).toBeLessThan(50);
+  });
+
+  it('still allows explicit paid refueling at the depot', () => {
+    expect(partialFill(50, 100, 20, 20)).toEqual({ value: 100, pay: 20, ratio: 1 });
+  });
+});
 
 describe('sprint movement', () => {
   it('repeats open-space movement faster and consumes sprint fuel', () => {
