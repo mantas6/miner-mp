@@ -37,6 +37,11 @@ export const FUEL = Object.freeze({
   lowFuelWarnMs: 1400
 });
 
+export const SPRINT = Object.freeze({
+  repeatMultiplier: 0.55,
+  fuelMultiplier: 1.75
+});
+
 export const HULL = Object.freeze({
   lowHullFraction: 0.30,
   rockBump: 4,

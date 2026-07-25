@@ -20,6 +20,7 @@ import { formatExtractionPresentation } from './extraction-presentation';
 import { createNet, type NetClient } from './net';
 import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, mergeWorldSync, nextEnemyId, playerStateFrom, remotePlayerFrom, worldSyncFrom, type EnemySnapshotEntry, type TileDiff } from './net-protocol';
 import { loadServerUrl, saveServerUrl } from './multiplayer-settings';
+import { keyboardMovementRepeatMs, movementFuelCost } from './movement';
 import type { Enemy } from './types';
 
 const state = createInitialState();
@@ -386,7 +387,7 @@ function gameOver(msg='Game over. Tap anywhere or press R to restart.'){
   audio.alarm();
   audio.bump();
 }
-function move(dx,dy){
+function move(dx,dy,sprinting=false){
   if (state.gameOver) return;
   const p = state.player;
   if (p.fuel <= 0) { gameOver('Out of fuel — ship exploded. Tap anywhere to restart.'); return; }
@@ -401,20 +402,21 @@ function move(dx,dy){
   let cost = FUEL.baseMove + Math.abs(dy)*FUEL.vertical;
   const flyCost = cost * FUEL.flyMult;             // flying uses 50% less fuel
   const dig = extra => (cost + extra) * FUEL.digMult; // digging uses 50% more fuel
+  const useFuel = amount => { p.fuel -= movementFuelCost(amount, sprinting); };
   p.facing = dx ? Math.sign(dx) : p.facing;
   p.drillDx = dx;
   p.drillDy = dy;
-  if (activeEnemy) { p.drillAnim = 1.65; p.fuel -= dig(FUEL.dig.enemy); damageEnemy(activeEnemy); return; }
+  if (activeEnemy) { p.drillAnim = 1.65; useFuel(dig(FUEL.dig.enemy)); damageEnemy(activeEnemy); return; }
   if (tile.type !== 'air' && dy < 0) { p.drillDx = 0; p.drillDy = -1; p.drillAnim = 0.75; audio.bump(); toast('The drill cannot dig upward. Use tunnels to fly up.'); return; }
   if (tile.type !== 'air' && dx !== 0 && dy === 0 && !grounded()) { p.drillDx = dx; p.drillDy = 0; p.drillAnim = 0.55; audio.bump(); toast('Side drilling needs solid ground underneath.'); return; }
-  if (tile.type === 'rock') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.2; damage(HULL.rockBump); p.fuel -= dig(0); spawnDust(nx, ny, '#444857', 8); audio.bump(); toast('Solid rock blocks the drill.'); return; }
-  if (tile.type === 'enemy') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; p.fuel -= dig(FUEL.dig.enemy); damageEnemyTile(nx, ny); return; }
-  if (tile.type === 'hazard') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; tile.hp -= p.drill; p.fuel -= dig(FUEL.dig.hazard); damage(HULL.hazardBase + Math.floor(ny/HULL.hazardDepthDivisor)); spawnDust(nx, ny, '#ff5f24', 18); audio.alarm(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); spawnExplosion(nx,ny); wakeEnemiesNear(nx,ny); toast('Magma pocket vented — hull scorched!'); } else { set(nx,ny,tile); toast(`Venting magma... ${Math.ceil(tile.hp)} hits left`); } return; }
-  if (tile.type === 'artifact') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; p.fuel -= dig(FUEL.dig.artifact); spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); const extraction = beginExtraction(state.extractionPhase); state.extractionPhase = extraction.phase; if (extraction.changed) { addCash(ECONOMY.artifactReward); state.stats.motherlodeClaims++; saveProgress(); } spawnExplosion(nx,ny); toast('Motherlode core secured +$5000! Return it to the depot alive.'); } else { set(nx,ny,tile); toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); } return; }
+  if (tile.type === 'rock') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.2; damage(HULL.rockBump); useFuel(dig(0)); spawnDust(nx, ny, '#444857', 8); audio.bump(); toast('Solid rock blocks the drill.'); return; }
+  if (tile.type === 'enemy') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; useFuel(dig(FUEL.dig.enemy)); damageEnemyTile(nx, ny); return; }
+  if (tile.type === 'hazard') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65; tile.hp -= p.drill; useFuel(dig(FUEL.dig.hazard)); damage(HULL.hazardBase + Math.floor(ny/HULL.hazardDepthDivisor)); spawnDust(nx, ny, '#ff5f24', 18); audio.alarm(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); spawnExplosion(nx,ny); wakeEnemiesNear(nx,ny); toast('Magma pocket vented — hull scorched!'); } else { set(nx,ny,tile); toast(`Venting magma... ${Math.ceil(tile.hp)} hits left`); } return; }
+  if (tile.type === 'artifact') { p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.9; tile.hp -= p.drill; useFuel(dig(FUEL.dig.artifact)); spawnDust(nx, ny, '#ffb347', 24); audio.mine(); if (tile.hp <= 0) { set(nx,ny,{type:'air'}); const extraction = beginExtraction(state.extractionPhase); state.extractionPhase = extraction.phase; if (extraction.changed) { addCash(ECONOMY.artifactReward); state.stats.motherlodeClaims++; saveProgress(); } spawnExplosion(nx,ny); toast('Motherlode core secured +$5000! Return it to the depot alive.'); } else { set(nx,ny,tile); toast(`Cracking Motherlode core... ${Math.ceil(tile.hp)} hits left`); } return; }
   if (tile.type !== 'air') {
     p.drillDx = dx; p.drillDy = dy; p.drillAnim = 1.65;
     tile.hp -= p.drill;
-    p.fuel -= dig(FUEL.dig.dig);
+    useFuel(dig(FUEL.dig.dig));
     spawnDust(nx, ny, tile.type === 'ore' ? tile.ore.color : '#9d6a42', tile.type === 'ore' ? 14 : 9);
     audio.mine();
     if (tile.hp <= 0) {
@@ -426,7 +428,7 @@ function move(dx,dy){
       wakeEnemiesNear(nx, ny);
     } else { set(nx,ny,tile); toast(`Drilling... ${Math.max(1, tile.hp)} hits left`); return; }
   } else {
-    p.fuel -= flyCost;
+    useFuel(flyCost);
     if (performance.now() - audio.lastMove > 120) { audio.blip(150 + Math.abs(dy)*35, 0.035, 'triangle', 0.02); audio.lastMove = performance.now(); }
   }
   p.x = nx; p.y = ny; p.bob = 1;
@@ -601,17 +603,18 @@ function input(){
   state.tick++;
   if (!state.introStarted) return;
   const now = performance.now();
+  const sprinting = keys.has('shift');
   const impulse = state.input.keyImpulse;
   if (impulse) {
     state.input.keyImpulse = null;
     state.input.lastKeyboardMove = now;
-    move(impulse[0], impulse[1]);
+    move(impulse[0], impulse[1], sprinting);
     return;
   }
   const held = heldKeyDirection();
-  if (held && now - state.input.lastKeyboardMove >= state.input.keyboardRepeatMs) {
+  if (held && now - state.input.lastKeyboardMove >= keyboardMovementRepeatMs(state.input.keyboardRepeatMs, sprinting)) {
     state.input.lastKeyboardMove = now;
-    move(held[0], held[1]);
+    move(held[0], held[1], sprinting);
     return;
   }
   const touch = state.input.touchHoldDir;
@@ -824,7 +827,12 @@ function handleKeyDown(e){
     if (key === 'enter' || key === ' ') { startIntro(); e.preventDefault(); }
     return;
   }
+  if (key === 'shift') {
+    keys.add(key);
+    return;
+  }
   if (dir) {
+    if (e.shiftKey) keys.add('shift');
     if (!keys.has(key) && !e.repeat) state.input.keyImpulse = dir;
     keys.add(key);
     e.preventDefault();
