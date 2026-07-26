@@ -5,16 +5,14 @@ import { shouldAttemptAutoAudio } from './audio-permission';
 import { createInitialState, respawnPlayer } from './state';
 import { createRenderer } from './renderer';
 import { STARTING, FUEL, HULL, ENEMY, ECONOMY, LIMITS } from './balance';
-import { refuelCost, repairCost, cargoCost, tankCost, hullCost, drillCost, visibilityCost, partialFill, cargoValue, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
+import { refuelCost, repairCost, cargoCost, tankCost, hullCost, drillCost, visibilityCost, partialFill, cargoValue } from './economy';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from './hud-alerts';
 import { formatExpeditionObjective } from './objective';
 import { load, save, DEFAULT_STATS } from './persistence';
 import { formatExpeditionStats } from './stats';
 import { ensureWorldRow, rand, makeTile } from './world';
 import { getInfoNavigationSection, resolveActiveInfoSection } from './info-navigation';
-import { formatTerrainScanner } from './scanner';
-import { formatFuelReserveForecast } from './fuel-reserve';
-import { formatDepthMilestone } from './depth-milestone';
+
 import { beginExtraction, cancelExtraction, completeExtractionAtDepot } from './extraction-phase';
 import { formatExtractionPresentation } from './extraction-presentation';
 import { createNet, type NetClient } from './net';
@@ -1081,7 +1079,6 @@ function hud(){
     atSurface: atSurface(),
     extractionPhase: state.extractionPhase
   });
-  ui.objectiveStatus.textContent = objectiveCopy;
   ui.objectiveInfoStatus.textContent = objectiveCopy;
   const extractionPresentation = formatExtractionPresentation({
     phase: state.extractionPhase,
@@ -1091,30 +1088,7 @@ function hud(){
   ui.extractionStatus.textContent = extractionPresentation.hud || '';
   ui.extractionStatus.classList.toggle('hidden', !extractionPresentation.hud);
   ui.extractionInfoStatus.textContent = extractionPresentation.info;
-  const scannerDirection: [number, number] = p.drillDx || p.drillDy ? [p.drillDx, p.drillDy] : [p.facing || 1, 0];
-  const scannerX = p.x + scannerDirection[0];
-  const scannerY = p.y + scannerDirection[1];
-  ui.terrainScanner.textContent = formatTerrainScanner({
-    tile: get(scannerX, scannerY),
-    direction: scannerDirection,
-    activeEnemy: enemyAt(scannerX, scannerY)?.kind,
-    explored: isTileExplored(state.exploredTiles, scannerX, scannerY)
-  });
-  ui.fuelReserve.textContent = formatFuelReserveForecast({
-    fuel: p.fuel,
-    playerY: p.y,
-    startY: START_Y,
-    atSurface: atSurface(),
-    gameOver: state.gameOver
-  });
-  ui.depthMilestone.textContent = formatDepthMilestone(p.y);
-  ui.cargoFeedback.textContent = formatCargoUpgradeFeedback(p, state.cash, displayedCargoValue);
-  ui.serviceStatus.textContent = formatSurfaceServiceGuidance({
-    player: p,
-    cash: state.cash,
-    currentCargoValue: displayedCargoValue,
-    atSurface: atSurface()
-  });
+
   const lowFuel = shouldFuelBarFlash(state);
   const lowHull = shouldHullBarFlash(state);
   const fullCargo = shouldCargoBarFlash(state);

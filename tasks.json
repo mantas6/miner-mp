@@ -15,7 +15,7 @@
       "Any retained explanatory guidance is optional/on-demand instead of occupying the gameplay view, and keyboard/touch controls plus Info / Cargo behavior do not regress.",
       "Updated tests pass and desktop/mobile browser smokes show a clear playable HUD with no runtime exceptions. Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "performance",

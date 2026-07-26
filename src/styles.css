@@ -17,9 +17,9 @@ canvas:focus, #game-panel:focus { outline: none; }
 canvas { width: 100%; height: 100%; border: 2px solid #344260; border-radius: 22px; background: #111; box-shadow: 0 28px 80px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.05); touch-action: none; }
 #hud { position: absolute; inset: 14px; pointer-events: none; display: grid; grid-template-rows: auto 1fr auto; gap: 10px; }
 #hud > * { pointer-events: auto; }
-.hud-top, .shop, .bar-row, .stats-grid, .service-status { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); background: linear-gradient(135deg, rgba(8,12,20,.74), rgba(19,28,45,.52)); border: 1px solid rgba(255,255,255,.13); box-shadow: 0 16px 45px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08); }
+.hud-top, .shop, .bar-row, .stats-grid { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); background: linear-gradient(135deg, rgba(8,12,20,.74), rgba(19,28,45,.52)); border: 1px solid rgba(255,255,255,.13); box-shadow: 0 16px 45px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08); }
 .hud-top { justify-self: start; display: flex; align-items: center; padding: 7px; border-radius: 14px; gap: 8px; max-width: min(360px, 46%); }
-.sound-status { color: #ffe39a; font-size: 12px; font-weight: 850; letter-spacing: .04em; line-height: 1.18; text-shadow: 0 1px 0 rgba(0,0,0,.5); }
+
 .connection-status { display: inline-flex; align-items: center; width: fit-content; padding: 6px 9px; border: 1px solid rgba(92,200,255,.42); border-radius: 999px; background: rgba(92,200,255,.12); color: #d9f3ff; font-size: 11px; font-weight: 900; letter-spacing: .05em; line-height: 1.15; text-transform: uppercase; }
 .connection-status.hidden { display: none; }
 h1 { margin: 0; letter-spacing: .04em; font-size: clamp(25px, 3vw, 40px); line-height: .9; color: var(--gold); text-shadow: 0 2px 0 #5b3610, 0 0 22px rgba(255,200,87,.25); }
@@ -31,14 +31,9 @@ h1 { margin: 0; letter-spacing: .04em; font-size: clamp(25px, 3vw, 40px); line-h
 .bar-row { position: absolute; left: 0; bottom: 0; width: min(560px, 54%); border-radius: 18px; padding: 12px; display: grid; gap: 8px; }
 .bar { display: grid; grid-template-columns: 58px 1fr 72px; gap: 10px; align-items: center; border-radius: 12px; padding: 2px 4px; margin: -2px -4px; }
 .bar-value { color: #dbe8ff; text-align: right; font-variant-numeric: tabular-nums; }
-.objective-status, .terrain-scanner, .fuel-reserve, .depth-milestone, .extraction-status, .cargo-feedback { display: none; margin-top: 2px; padding: 8px 10px; border-radius: 12px; font-size: 12px; font-weight: 850; letter-spacing: .03em; text-align: center; font-variant-numeric: tabular-nums; line-height: 1.25; }
-.objective-status { background: rgba(92,200,255,.12); border: 1px solid rgba(92,200,255,.28); color: #d9f3ff; }
+.extraction-status { display: none; margin-top: 2px; padding: 8px 10px; border-radius: 12px; font-size: 12px; font-weight: 850; letter-spacing: .03em; text-align: center; font-variant-numeric: tabular-nums; line-height: 1.25; }
 .extraction-status { background: rgba(255,200,87,.16); border: 1px solid rgba(255,216,108,.46); color: #fff0bb; }
 .extraction-status.hidden { display: none; }
-.terrain-scanner { background: rgba(105,219,124,.11); border: 1px solid rgba(105,219,124,.25); color: #ddffe2; }
-.fuel-reserve { background: rgba(255,151,78,.12); border: 1px solid rgba(255,151,78,.28); color: #ffe1ca; }
-.depth-milestone { background: rgba(173,124,255,.12); border: 1px solid rgba(173,124,255,.30); color: #eee2ff; }
-.cargo-feedback { background: rgba(255,200,87,.10); border: 1px solid rgba(255,200,87,.24); color: #ffe39a; }
 meter { width: 100%; height: 18px; }
 .bar.bar-alert { animation: hudBarFlash .7s ease-in-out infinite alternate; }
 .bar.bar-alert label, .bar.bar-alert .bar-value { color: #fff1a3; text-shadow: 0 0 10px rgba(255,205,76,.72); }
@@ -50,7 +45,7 @@ meter { width: 100%; height: 18px; }
 .shop { position: absolute; right: 0; bottom: 0; width: min(380px, 42%); border-radius: 18px; padding: 10px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .shop button[hidden] { display: none; }
 .shop-open-btn { background: linear-gradient(#786036, #4b3919); color: #fff2bd; }
-.service-status { position: absolute; right: 0; bottom: 286px; width: min(380px, 42%); border-radius: 14px; padding: 9px 11px; color: #ffe39a; font-size: 12px; font-weight: 850; letter-spacing: .03em; line-height: 1.28; text-align: center; pointer-events: none; }
+
 button { margin: 0; padding: 11px 10px; border: 0; border-radius: 12px; background: linear-gradient(#38506f, #22324a); color: var(--ink); font-size: 14px; font-weight: 850; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 8px 18px rgba(0,0,0,.2); text-shadow: 0 1px 0 rgba(0,0,0,.45); touch-action: manipulation; }
 button.sound { min-width: 0; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; font-size: 22px; line-height: 1; background: linear-gradient(#4f4a26, #322d18); color: #ffe6a3; }
 button:hover:not(:disabled) { filter: brightness(1.13); transform: translateY(-1px); }
@@ -203,7 +198,7 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
   canvas { width: 100vw; height: 100vh; height: 100dvh; border-radius: 0; border: 0; }
   #hud { inset: max(6px, env(safe-area-inset-top)) 6px max(6px, env(safe-area-inset-bottom)) 6px; }
   .hud-top { max-width: calc(100% - 126px); padding: 8px 9px; gap: 7px; border-radius: 14px; }
-  .sound-status { max-width: 158px; font-size: 10px; letter-spacing: .02em; }
+
   .connection-status { padding: 5px 7px; font-size: 9px; }
   #connectionStatus { flex-basis: 100%; }
   h1 { font-size: 22px; }
@@ -215,10 +210,10 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
   .bar-row { width: calc(50% - 5px); padding: 8px; gap: 6px; border-radius: 14px; bottom: 4px; left: 0; z-index: 3; }
   .bar { grid-template-columns: 42px minmax(0, 1fr) 48px; gap: 6px; }
   .bar-value { font-size: 10px; }
-  .objective-status, .terrain-scanner, .fuel-reserve, .depth-milestone, .extraction-status, .cargo-feedback { padding: 6px 7px; font-size: 9px; line-height: 1.25; }
+  .extraction-status { padding: 6px 7px; font-size: 9px; line-height: 1.25; }
   meter { height: 15px; }
   .shop { width: calc(50% - 5px); grid-template-columns: 1fr; gap: 4px; padding: 6px; border-radius: 14px; bottom: 4px; right: 0; z-index: 2; }
-  .service-status { width: calc(50% - 5px); right: 0; bottom: 336px; padding: 6px 7px; font-size: 9px; line-height: 1.25; z-index: 2; }
+
   button { padding: 7px 6px; font-size: 11px; border-radius: 9px; }
   button.sound { width: 38px; height: 38px; font-size: 19px; }
    #toast { bottom: 134px; width: max-content; max-width: 88vw; font-size: 13px; padding: 9px 12px; text-align: center; }
@@ -264,5 +259,5 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
   .stats-grid { max-width: 110px; }
   .bar-row { width: calc(51% - 5px); }
   .shop { width: calc(49% - 5px); }
-  .service-status { width: calc(49% - 5px); }
+
 }

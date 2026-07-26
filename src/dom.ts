@@ -45,23 +45,16 @@ export const ui = {
   fuelLabel: requireElement<HTMLElement>('fuelLabel'),
   hullLabel: requireElement<HTMLElement>('hullLabel'),
   cargoLabel: requireElement<HTMLElement>('cargoLabel'),
-  objectiveStatus: requireElement<HTMLElement>('objectiveStatus'),
-  terrainScanner: requireElement<HTMLElement>('terrainScanner'),
-  fuelReserve: requireElement<HTMLElement>('fuelReserve'),
-  depthMilestone: requireElement<HTMLElement>('depthMilestone'),
   extractionStatus: requireElement<HTMLElement>('extractionStatus'),
   objectiveInfoStatus: requireElement<HTMLElement>('objectiveInfoStatus'),
   extractionInfoStatus: requireElement<HTMLElement>('extractionInfoStatus'),
-  cargoFeedback: requireElement<HTMLElement>('cargoFeedback'),
   cargoList: requireElement<HTMLElement>('cargoList'),
   expeditionStats: requireElement<HTMLElement>('expeditionStats'),
   developerUpgrades: requireElement<HTMLElement>('developerUpgrades'),
   toast: requireElement<HTMLElement>('toast'),
   fuelWarning: requireElement<HTMLElement>('fuel-warning'),
   soundBtn: requireElement<HTMLButtonElement>('soundBtn'),
-  soundStatus: requireElement<HTMLElement>('soundStatus'),
   connectionStatus: requireElement<HTMLElement>('connectionStatus'),
-  serviceStatus: requireElement<HTMLElement>('serviceStatus'),
   lobby: requireElement<HTMLElement>('lobby-screen'),
   lobbyConnectionStatus: requireElement<HTMLElement>('lobbyConnectionStatus'),
   serverUrl: requireElement<HTMLInputElement>('serverUrl'),
@@ -101,16 +94,15 @@ export function setSoundIcon(on: boolean): void {
   ui.soundBtn.textContent = on ? '🔊' : '🔇';
   ui.soundBtn.setAttribute('aria-label', on ? 'Disable sound' : 'Enable optional sound');
   ui.soundBtn.title = on ? 'Disable sound' : 'Enable optional sound';
-  ui.soundStatus.textContent = on ? 'Sound on' : 'Sound off — press Sound to enable';
 }
 
 export function setSoundUnavailableStatus(message = 'Sound unavailable in this browser'): void {
   ui.soundBtn.setAttribute('aria-label', message);
   ui.soundBtn.title = message;
-  ui.soundStatus.textContent = message;
 }
 
 export function setSoundBlockedStatus(): void {
   setSoundIcon(false);
-  ui.soundStatus.textContent = 'Sound blocked — press Sound after a tap/click';
+  ui.soundBtn.setAttribute('aria-label', 'Sound blocked — press Sound after a tap/click');
+  ui.soundBtn.title = 'Sound blocked — press Sound after a tap/click';
 }

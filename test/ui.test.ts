@@ -10,9 +10,7 @@ const GAME_DOM_IDS = [
   'game',
   'hud',
   'soundBtn',
-  'soundStatus',
   'connectionStatus',
-  'serviceStatus',
   'cash',
   'depth',
   'fuel',
@@ -21,14 +19,10 @@ const GAME_DOM_IDS = [
   'hullLabel',
   'cargo',
   'cargoLabel',
-  'objectiveStatus',
-  'terrainScanner',
-  'fuelReserve',
-  'depthMilestone',
   'extractionStatus',
   'objectiveInfoStatus',
   'extractionInfoStatus',
-  'cargoFeedback',
+
   'sell',
   'shopBtn',
   'shop-screen',
@@ -82,9 +76,7 @@ describe('React GUI shell', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
     expect(markup).toContain('0/10');
-    expect(markup).toContain('Cargo +5 $120');
     expect(markup).toContain('Objective: mine the starter Coal/Copper seam below the depot, then return to sell.');
-    expect(markup).toContain('Cargo value $0');
   });
 
   it('offers hull reinforcement alongside the other ship upgrades', () => {
@@ -135,19 +127,15 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Sprint through open space at increased fuel cost; open-space descent is free and drilling stays normal');
   });
 
-  it('renders objective and terrain scanner readout hooks in the HUD and Info / Cargo overlay', () => {
+  it('keeps objective and extraction context on demand while leaving the HUD to live instruments', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
-    expect(markup).toContain('id="objectiveStatus"');
-    expect(markup).toContain('class="objective-status"');
-    expect(markup).toContain('id="terrainScanner"');
-    expect(markup).toContain('class="terrain-scanner"');
-    expect(markup).toContain('id="fuelReserve"');
-    expect(markup).toContain('class="fuel-reserve"');
-    expect(markup).toContain('Fuel reserve: SAFE — at depot');
-    expect(markup).toContain('id="depthMilestone"');
-    expect(markup).toContain('class="depth-milestone"');
-    expect(markup).toContain('Depth target: starter Coal/Copper seam — 50 m deeper.');
+    expect(markup).not.toContain('id="objectiveStatus"');
+    expect(markup).not.toContain('id="terrainScanner"');
+    expect(markup).not.toContain('id="fuelReserve"');
+    expect(markup).not.toContain('id="depthMilestone"');
+    expect(markup).not.toContain('id="cargoFeedback"');
+    expect(markup).not.toContain('id="serviceStatus"');
     expect(markup).toContain('id="objectiveInfoStatus"');
     expect(markup).toContain('class="objective-info-status"');
     expect(markup).toContain('id="extractionStatus"');
@@ -156,18 +144,11 @@ describe('React GUI shell', () => {
     expect(markup).toContain('return alive to the surface depot to complete extraction');
   });
 
-  it('renders an always-visible surface service status hook and startup copy', () => {
-    const markup = renderToStaticMarkup(React.createElement(MinerApp));
-
-    expect(markup).toContain('id="serviceStatus"');
-    expect(markup).toContain('At depot: cargo empty, fuel full, hull repaired');
-  });
-
-  it('explains that sound is optional and permission-gated', () => {
+  it('keeps sound optional and permission-gated without a persistent status label', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
     expect(markup).toContain('Enable optional sound');
-    expect(markup).toContain('Sound off — press Sound to enable');
+    expect(markup).not.toContain('id="soundStatus"');
     expect(markup).toContain('optional soundtrack starts only after the Sound button or a trusted tap/click');
   });
 

@@ -28,7 +28,6 @@ export function MinerApp() {
         <div id="hud" aria-label="Game status and actions">
           <div className="hud-top">
             <button id="soundBtn" className="sound" aria-label="Enable optional sound" title="Enable optional sound">🔇</button>
-            <span id="soundStatus" className="sound-status" aria-live="polite">Sound off — press Sound to enable</span>
             <span id="connectionStatus" className="connection-status hidden" aria-live="polite"></span>
           </div>
 
@@ -41,12 +40,7 @@ export function MinerApp() {
             <div className="bar"><label>Fuel</label><meter id="fuel" min="0" max="100" value="100"></meter><span id="fuelLabel" className="bar-value">100/100</span></div>
             <div className="bar"><label>Hull</label><meter id="hull" min="0" max="100" value="100"></meter><span id="hullLabel" className="bar-value">100/100</span></div>
             <div className="bar"><label>Cargo</label><meter id="cargo" min="0" max={STARTING.cargoMax} value="0"></meter><span id="cargoLabel" className="bar-value">0/{STARTING.cargoMax}</span></div>
-            <div id="objectiveStatus" className="objective-status" aria-live="polite">Objective: mine the starter Coal/Copper seam below the depot, then return to sell.</div>
-            <div id="terrainScanner" className="terrain-scanner" aria-live="polite">Scanner ↓: drillable starter terrain ahead.</div>
-            <div id="fuelReserve" className="fuel-reserve" aria-live="polite">Fuel reserve: SAFE — at depot; refuel before the next descent.</div>
-            <div id="depthMilestone" className="depth-milestone" aria-live="polite">Depth target: starter Coal/Copper seam — 50 m deeper.</div>
             <div id="extractionStatus" className="extraction-status hidden" aria-live="polite"></div>
-            <div id="cargoFeedback" className="cargo-feedback" aria-live="polite">Cargo value $0 · Next Cargo +{ECONOMY.cargo.step} ${ECONOMY.cargo.base} (need ${ECONOMY.cargo.base} more)</div>
           </div>
 
           <div className="shop">
@@ -56,9 +50,6 @@ export function MinerApp() {
             <button id="teleporterBtn" hidden>Teleport (T) · x0</button>
             <button id="gunBtn" hidden>Arm Gun (G) · x0</button>
             <button id="infoBtn">Info / Cargo</button>
-          </div>
-          <div id="serviceStatus" className="service-status" aria-live="polite">
-            At depot: cargo empty, fuel full, hull repaired — upgrades are available when you have enough cash.
           </div>
         </div>
 
