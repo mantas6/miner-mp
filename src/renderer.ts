@@ -4,9 +4,9 @@ import { getPartnerIndicator } from './partner-indicator';
 import { getVisibleTileRange, type VisibleTileRange } from './visible-tile-range';
 import { isTileExplored } from './exploration';
 import { getEnemyType } from './enemy-types';
+import { TERRAIN_CHUNK_TILES, terrainChunkCoordinate, terrainChunkKeyForTile } from './terrain-cache-policy';
 import type { EnemyKind } from './types';
 
-const TERRAIN_CHUNK_TILES = 1;
 const TERRAIN_CHUNK_PADDING = 52;
 const MAX_EXTRA_TERRAIN_CHUNKS = 32;
 
@@ -31,10 +31,7 @@ export function createRenderer({ state, get, rand }) {
       terrainChunks.clear();
       return;
     }
-    terrainChunks.delete(terrainChunkKey(
-      Math.floor(x / TERRAIN_CHUNK_TILES),
-      Math.floor(y / TERRAIN_CHUNK_TILES)
-    ));
+    terrainChunks.delete(terrainChunkKeyForTile(x, y));
   }
 
   function createTerrainChunk(chunkX: number, chunkY: number, scale: number): TerrainChunk {
@@ -78,10 +75,10 @@ export function createRenderer({ state, get, rand }) {
       cachedTerrainWorld = state.world;
     }
 
-    const startChunkX = Math.floor(range.startX / TERRAIN_CHUNK_TILES);
-    const endChunkX = Math.floor(range.endX / TERRAIN_CHUNK_TILES);
-    const startChunkY = Math.floor(range.startY / TERRAIN_CHUNK_TILES);
-    const endChunkY = Math.floor(range.endY / TERRAIN_CHUNK_TILES);
+    const startChunkX = terrainChunkCoordinate(range.startX);
+    const endChunkX = terrainChunkCoordinate(range.endX);
+    const startChunkY = terrainChunkCoordinate(range.startY);
+    const endChunkY = terrainChunkCoordinate(range.endY);
     let visibleChunkCount = 0;
     for(let chunkY=startChunkY;chunkY<=endChunkY;chunkY++) for(let chunkX=startChunkX;chunkX<=endChunkX;chunkX++) {
       const key = terrainChunkKey(chunkX, chunkY);

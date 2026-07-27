@@ -15,7 +15,7 @@
       "Terrain readability, particles/feedback within reasonable bounds, controls, HUD essentials, mining/economy, enemies, saves, and Info / Cargo behavior remain functional.",
       "Updated tests pass and performance smokes report no runtime exceptions. Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "gameplay-ux",

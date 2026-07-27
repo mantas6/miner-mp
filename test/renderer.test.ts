@@ -97,21 +97,22 @@ describe('terrain cache lifecycle', () => {
     renderer.draw();
     const initialTileDraws = mocks.terrainContext.fillRect.mock.calls.length;
     expect(initialTileDraws).toBeGreaterThan(0);
-    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.width))).toBe(168);
-    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.height))).toBe(168);
+    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.width))).toBe(360);
+    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.height))).toBe(360);
 
     renderer.draw();
     expect(mocks.terrainContext.fillRect).toHaveBeenCalledTimes(initialTileDraws);
 
-    state.camX = 11.2;
+    // Four-by-four blocks keep the cache stable during short camera interpolation.
+    state.camX = 14.2;
     renderer.draw();
     expect(mocks.terrainContext.fillRect.mock.calls.length).toBeGreaterThan(initialTileDraws);
 
-    state.camX = 12.2;
+    state.camX = 18.2;
     renderer.draw();
     const exposedTileDraws = mocks.terrainContext.fillRect.mock.calls.length - initialTileDraws;
     expect(exposedTileDraws).toBeGreaterThan(0);
-    expect(exposedTileDraws).toBeLessThan(initialTileDraws / 4);
+    expect(exposedTileDraws).toBeLessThan(initialTileDraws / 2);
   });
 
   it('invalidates one changed tile chunk without rebuilding the viewport', () => {
@@ -147,7 +148,7 @@ describe('terrain cache lifecycle', () => {
 
     renderer.invalidateTerrain(12, 22);
     renderer.draw();
-    expect(mocks.terrainContext.fillRect).toHaveBeenCalledTimes(initialTileDraws + 1);
+    expect(mocks.terrainContext.fillRect).toHaveBeenCalledTimes(initialTileDraws + 16);
 
     renderer.invalidateTerrain();
     renderer.draw();
