@@ -1,23 +1,5 @@
 [
   {
-    "category": "gameplay-ux",
-    "description": "Declutter the gameplay HUD by removing nonessential persistent hint text so the mine and player remain visible, especially on phone screens.",
-    "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh before development, preserve the React-before-runtime startup order, and retain required DOM IDs/classes consumed by src/dom.ts and src/game.ts unless the corresponding runtime path is deliberately removed or relocated.",
-      "Audit the always-visible HUD copy in src/ui.tsx, src/dom.ts, src/game.ts, and src/styles.css, including objective, terrain scanner, fuel reserve, depth milestone, cargo feedback, service status, and sound-status text. Identify which messages are redundant tutorial/hint text rather than essential real-time instruments, actions, or safety warnings.",
-      "Remove the nonessential always-visible hint widgets from gameplay rather than merely shrinking them. Keep core meters, cash/depth, actionable depot controls, temporary toast feedback, and urgent low-fuel/game-state warnings usable; move any retained optional explanation into the on-demand Info / Cargo screen where appropriate.",
-      "Reflow desktop and 390×844 phone HUD layouts so no remaining panel obscures a large portion of the canvas or covers the player’s normal play area. Preserve touch/keyboard controls, button reachability, status updates, and modal layering.",
-      "Update DOM/runtime and React-shell tests for the intentional reduced HUD surface, then use ./init.sh for desktop and phone headless CDP visual/layout smokes that start play, move and mine, exercise depot controls, trigger a low-fuel warning if practical, open/close Info / Cargo, and collect runtime exceptions."
-    ],
-    "acceptance": [
-      "During normal play, redundant persistent hint text no longer covers the mine; the gameplay canvas is substantially clearer on desktop and a 390×844 phone viewport.",
-      "Essential live information and actions remain available: cash/depth, fuel/hull/cargo meters, depot/shop controls, temporary action feedback, and urgent low-fuel or game-state warnings.",
-      "Any retained explanatory guidance is optional/on-demand instead of occupying the gameplay view, and keyboard/touch controls plus Info / Cargo behavior do not regress.",
-      "Updated tests pass and desktop/mobile browser smokes show a clear playable HUD with no runtime exceptions. Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
-    ],
-    "passes": true
-  },
-  {
     "category": "performance",
     "description": "Profile and remove the underground gameplay lag so deep mining stays responsive without reducing core gameplay feedback.",
     "steps": [
