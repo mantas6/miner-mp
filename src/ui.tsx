@@ -136,20 +136,20 @@ export function MinerApp() {
               <h2 id="info-title">Cargo &amp; Controls</h2>
               <button id="infoCloseBtn" className="close-btn" aria-label="Close info screen">×</button>
             </div>
-            <nav className="info-navigation" aria-label="Info sections">
-              {INFO_NAVIGATION_SECTIONS.map(section => (
-                <button key={section.id} type="button" data-info-section={section.id} aria-controls={section.id}>
+            <nav className="info-navigation" aria-label="Info sections" role="tablist" aria-orientation="horizontal">
+              {INFO_NAVIGATION_SECTIONS.map((section, index) => (
+                <button key={section.id} id={section.tabId} type="button" role="tab" data-info-section={section.id} aria-controls={section.id} aria-selected={index === 0} tabIndex={index === 0 ? 0 : -1}>
                   {section.label}
                 </button>
               ))}
             </nav>
-            <section id="info-objective" tabIndex={-1} aria-labelledby="cargo-bay-title">
+            <section id="info-objective" role="tabpanel" aria-labelledby="info-tab-objective" tabIndex={-1}>
               <h3 id="cargo-bay-title">Cargo Bay</h3>
               <p id="objectiveInfoStatus" className="objective-info-status">Objective: mine the starter Coal/Copper seam below the depot, then return to sell.</p>
               <p id="extractionInfoStatus" className="extraction-info-status">Crack the Motherlode core at 10,000 m, then return alive to the surface depot to complete extraction.</p>
               <ul id="cargoList" className="cargo-detail-list"><li className="empty-cargo">Empty</li></ul>
             </section>
-            <section id="info-stats" tabIndex={-1} aria-labelledby="expedition-stats-title">
+            <section id="info-stats" role="tabpanel" aria-labelledby="info-tab-stats" tabIndex={-1} hidden>
               <h3 id="expedition-stats-title">Expedition Stats</h3>
               <ul id="expeditionStats" className="expedition-stats" aria-label="Saved career progress">
                 <li>
@@ -164,7 +164,7 @@ export function MinerApp() {
                 </li>
               </ul>
             </section>
-            <section id="info-developer" className="developer-section" tabIndex={-1} aria-labelledby="developer-title">
+            <section id="info-developer" className="developer-section" role="tabpanel" aria-labelledby="info-tab-developer" tabIndex={-1} hidden>
               <h3 id="developer-title">Debug / Developer</h3>
               <p className="developer-warning"><strong>Developer actions:</strong> grant local-player cash, restore fuel or hull, or permanently grant normal player upgrades for exactly $0. These controls work above or below the surface and do not change shop prices.</p>
               <div id="developerUpgrades" className="developer-upgrades" aria-label="Free developer upgrade controls">
@@ -197,8 +197,18 @@ export function MinerApp() {
                   );
                 })}
               </div>
+              <div className="player-data-reset" aria-labelledby="player-data-reset-title">
+                <h3 id="player-data-reset-title">Player Data</h3>
+                <p>Start this player over without regenerating or repairing the shared mine terrain. Your saved relay URL is also preserved.</p>
+                <button id="resetPlayerDataBtn" type="button">Reset All Player Data</button>
+              </div>
+              <div className="world-state-reset" aria-labelledby="world-state-reset-title">
+                <h3 id="world-state-reset-title">Shared World State</h3>
+                <p>Regenerate terrain and world enemies for this mine without changing any player's cash, upgrades, inventory, stats, ship condition, or settings. Explored fog is cleared so regenerated terrain is not revealed.</p>
+                <button id="resetWorldStateBtn" type="button">Reset World State</button>
+              </div>
             </section>
-            <section id="info-prospecting" tabIndex={-1} aria-labelledby="prospecting-title">
+            <section id="info-prospecting" role="tabpanel" aria-labelledby="info-tab-prospecting" tabIndex={-1} hidden>
               <h3 id="prospecting-title">Prospecting Guide</h3>
               <p className="prospecting-tip">{PROSPECTING_TIP}</p>
               <p className="prospecting-tip"><strong>Rare artifacts:</strong> drill them for immediate cash. They never use cargo, need no surface sale, and dynamite destroys them without payout.</p>
@@ -223,7 +233,7 @@ export function MinerApp() {
                 ))}
               </ul>
             </section>
-            <section id="info-hazards" tabIndex={-1} aria-labelledby="danger-guide-title">
+            <section id="info-hazards" role="tabpanel" aria-labelledby="info-tab-hazards" tabIndex={-1} hidden>
               <h3 id="danger-guide-title">Hazard / Fiend Survival</h3>
               <p className="danger-guide-tip">Plan a return route before the mine gets hostile: deep rewards bring rock, magma, and tunnel fiends.</p>
               <ul id="dangerGuide" className="danger-guide" aria-label="Hazard and tunnel fiend survival guide">
@@ -235,7 +245,7 @@ export function MinerApp() {
                 ))}
               </ul>
             </section>
-            <section id="info-controls" tabIndex={-1} aria-labelledby="controls-title">
+            <section id="info-controls" role="tabpanel" aria-labelledby="info-tab-controls" tabIndex={-1} hidden>
               <h3 id="controls-title">Controls</h3>
               <ul className="control-list">
                 <li><kbd>WASD</kbd> / <kbd>Arrows</kbd><span>Move, fly, and dig</span></li>
@@ -249,16 +259,6 @@ export function MinerApp() {
                 <li><kbd>G</kbd> then direction / <kbd>Arm Gun</kbd> then tap<span>Fire one bullet up to {ECONOMY.gun.range} tiles; press G or Escape to cancel aiming. Shots destroy the first eligible block or enemy, but valuables give no cargo or artifact cash.</span></li>
                 <li><kbd>R</kbd> then <kbd>R</kbd><span>Confirm reset while alive</span></li>
               </ul>
-            </section>
-            <section className="player-data-reset" aria-labelledby="player-data-reset-title">
-              <h3 id="player-data-reset-title">Player Data</h3>
-              <p>Start this player over without regenerating or repairing the shared mine terrain. Your saved relay URL is also preserved.</p>
-              <button id="resetPlayerDataBtn" type="button">Reset All Player Data</button>
-            </section>
-            <section className="world-state-reset" aria-labelledby="world-state-reset-title">
-              <h3 id="world-state-reset-title">Shared World State</h3>
-              <p>Regenerate terrain and world enemies for this mine without changing any player's cash, upgrades, inventory, stats, ship condition, or settings. Explored fog is cleared so regenerated terrain is not revealed.</p>
-              <button id="resetWorldStateBtn" type="button">Reset World State</button>
             </section>
           </div>
         </div>

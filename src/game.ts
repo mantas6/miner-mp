@@ -11,7 +11,7 @@ import { formatExpeditionObjective } from './objective';
 import { load, save, DEFAULT_STATS } from './persistence';
 import { formatExpeditionStats } from './stats';
 import { ensureWorldRow, rand, makeTile } from './world';
-import { getInfoNavigationSection, resolveActiveInfoSection } from './info-navigation';
+import { getInfoNavigationSection, getInfoTabFocusTarget } from './info-navigation';
 
 import { beginExtraction, cancelExtraction, completeExtractionAtDepot } from './extraction-phase';
 import { formatExtractionPresentation } from './extraction-presentation';
@@ -756,18 +756,19 @@ function surfaceService(){
   toast('Cargo empty, hull and fuel are full.');
 }
 function atSurface(){ return state.player.y < SURFACE_HEIGHT; }
-function updateActiveInfoNavigation(){
-  if (ui.infoScreen.classList.contains('hidden')) return;
-  const sections = [...ui.infoCard.querySelectorAll<HTMLElement>('section[id]')].map(section => ({
-    id: section.id,
-    top: section.offsetTop,
-    bottom: section.offsetTop + section.offsetHeight
-  }));
-  const activeId = resolveActiveInfoSection(sections, ui.infoCard.scrollTop, ui.infoCard.clientHeight, ui.infoCard.scrollHeight);
-  if (!activeId) return;
-  for (const navButton of ui.infoScreen.querySelectorAll<HTMLButtonElement>('[data-info-section]')) {
-    navButton.toggleAttribute('aria-current', navButton.dataset.infoSection === activeId);
+function selectInfoTab(id: string, focusTab=false){
+  const selected = getInfoNavigationSection(id);
+  if (!selected) return;
+  for (const section of ui.infoScreen.querySelectorAll<HTMLElement>('[role="tabpanel"]')) {
+    section.hidden = section.id !== selected.id;
   }
+  for (const tab of ui.infoScreen.querySelectorAll<HTMLButtonElement>('[role="tab"]')) {
+    const active = tab.dataset.infoSection === selected.id;
+    tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
+    if (active && focusTab) tab.focus({preventScroll:true});
+  }
+  ui.infoCard.scrollTop = 0;
 }
 function bindButtons(){
   ui.sell.onclick = sell;
@@ -822,7 +823,6 @@ function bindButtons(){
   ui.shopCloseBtn.onclick = e => { e.stopPropagation(); closeShopScreen(); };
   ui.shopScreen.addEventListener('pointerdown', e => { if (e.target === ui.shopScreen) closeShopScreen(); });
   ui.infoScreen.addEventListener('pointerdown', e => { if (e.target === ui.infoScreen) closeInfoScreen(); });
-  ui.infoCard.addEventListener('scroll', updateActiveInfoNavigation, {passive:true});
   ui.infoScreen.addEventListener('click', e => {
     const cashButton = (e.target as Element).closest<HTMLButtonElement>('[data-developer-cash]');
     if (cashButton) {
@@ -839,17 +839,24 @@ function bindButtons(){
       grantDeveloperUpgrade(developerButton.dataset.developerUpgrade as PlayerUpgradeId);
       return;
     }
-    const button = (e.target as Element).closest<HTMLButtonElement>('[data-info-section]');
+    const button = (e.target as Element).closest<HTMLButtonElement>('[role="tab"]');
     if (!button) return;
-    const section = getInfoNavigationSection(button.dataset.infoSection || '');
-    const target = section && document.getElementById(section.id);
-    if (!target) return;
-    target.focus({preventScroll:true});
-    target.scrollIntoView({block:'start'});
-    for (const navButton of ui.infoScreen.querySelectorAll<HTMLButtonElement>('[data-info-section]')) {
-      navButton.toggleAttribute('aria-current', navButton === button);
+    selectInfoTab(button.dataset.infoSection || '', true);
+  });
+  ui.infoScreen.addEventListener('keydown', e => {
+    const tab = (e.target as Element).closest<HTMLButtonElement>('[role="tab"]');
+    if (!tab) return;
+    const key = e.key.toLowerCase();
+    if (key === 'enter' || key === ' ') {
+      selectInfoTab(tab.dataset.infoSection || '', true);
+      e.preventDefault();
+      return;
     }
-    requestAnimationFrame(updateActiveInfoNavigation);
+    const target = getInfoTabFocusTarget(tab.dataset.infoSection || '', key);
+    if (!target) return;
+    const targetTab = document.getElementById(target.tabId) as HTMLButtonElement | null;
+    targetTab?.focus({preventScroll:true});
+    e.preventDefault();
   });
 }
 function openShopScreen(){
@@ -870,7 +877,7 @@ function openInfoScreen(){
   renderExpeditionStats();
   updateDeveloperServiceControls(ui.developerUpgrades, state.player);
   updateDeveloperUpgradeControls(ui.developerUpgrades, state.player);
-  updateActiveInfoNavigation();
+  selectInfoTab('info-objective');
   ui.infoCloseBtn.focus({preventScroll:true});
 }
 function closeInfoScreen(){

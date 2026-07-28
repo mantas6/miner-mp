@@ -239,37 +239,33 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Motherlode core');
   });
 
-  it('renders keyboard-operable navigation for every long Info / Cargo section', () => {
+  it('renders actual accessible tabs and paired one-at-a-time panels for every Info / Cargo section', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
-    expect(markup).toContain('aria-label="Info sections"');
+    expect(markup).toContain('role="tablist"');
+    expect(markup).toContain('aria-orientation="horizontal"');
     for (const section of INFO_NAVIGATION_SECTIONS) {
       expect(getInfoNavigationSection(section.id)).toEqual(section);
+      expect(markup).toContain(`id="${section.tabId}"`);
       expect(markup).toContain(`data-info-section="${section.id}"`);
       expect(markup).toContain(`aria-controls="${section.id}"`);
-      expect(markup).toContain(`id="${section.id}"`);
+      expect(markup).toMatch(new RegExp(`id="${section.id}"[^>]*role="tabpanel"[^>]*aria-labelledby="${section.tabId}"`));
     }
+    expect(markup).toContain('aria-selected="true"');
+    expect(markup).toContain('aria-selected="false"');
     expect(getInfoNavigationSection('not-a-section')).toBeUndefined();
   });
 
-  it('places the confirmed player-data reset at the bottom of the info modal', () => {
+  it('keeps confirmed reset actions inside the Developer tab so they remain reachable without extending other panels', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
-    const infoCard = markup.slice(markup.indexOf('<div id="info-card"'), markup.indexOf('<div id="fuel-warning"'));
+    const developerPanel = markup.slice(markup.indexOf('<section id="info-developer"'), markup.indexOf('<section id="info-prospecting"'));
 
-    expect(infoCard).toContain('id="resetPlayerDataBtn"');
-    expect(infoCard).toContain('Reset All Player Data');
-    expect(infoCard).toContain('shared mine terrain');
-    expect(infoCard.indexOf('id="resetPlayerDataBtn"')).toBeGreaterThan(infoCard.indexOf('id="info-controls"'));
-  });
-
-  it('places a visually separate world reset after player reset with preservation copy', () => {
-    const markup = renderToStaticMarkup(React.createElement(MinerApp));
-    const infoCard = markup.slice(markup.indexOf('<div id="info-card"'), markup.indexOf('<div id="fuel-warning"'));
-
-    expect(infoCard).toContain('class="world-state-reset"');
-    expect(infoCard).toContain('id="resetWorldStateBtn"');
-    expect(infoCard).toContain('Reset World State');
-    expect(infoCard).toContain('without changing any player&#x27;s cash, upgrades, inventory, stats, ship condition, or settings');
-    expect(infoCard.indexOf('id="resetWorldStateBtn"')).toBeGreaterThan(infoCard.indexOf('id="resetPlayerDataBtn"'));
+    expect(developerPanel).toContain('id="resetPlayerDataBtn"');
+    expect(developerPanel).toContain('Reset All Player Data');
+    expect(developerPanel).toContain('shared mine terrain');
+    expect(developerPanel).toContain('class="world-state-reset"');
+    expect(developerPanel).toContain('id="resetWorldStateBtn"');
+    expect(developerPanel).toContain('without changing any player&#x27;s cash, upgrades, inventory, stats, ship condition, or settings');
+    expect(developerPanel.indexOf('id="resetWorldStateBtn"')).toBeGreaterThan(developerPanel.indexOf('id="resetPlayerDataBtn"'));
   });
 });

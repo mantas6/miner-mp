@@ -15,7 +15,7 @@
       "All existing Cargo, Stats, Prospecting, Hazards, and Controls content remains reachable and live game values update correctly; close/Escape/backdrop behavior, focus restoration, touch controls, and gameplay do not regress.",
       "Updated tests pass and desktop/390×844 browser smokes report no runtime exceptions. Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "gameplay-ux",
