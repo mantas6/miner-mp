@@ -1,24 +1,6 @@
 [
   {
     "category": "gameplay-ux",
-    "description": "Replace the Info / Cargo modal's scroll-navigation buttons with actual accessible tabs so players switch directly between one focused panel at a time.",
-    "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh before development, preserve React-before-runtime startup ordering, and retain existing content/runtime hooks such as cargo, objective, stats, prospecting, hazards, and controls.",
-      "Replace the current navigation-to-scroll behavior in src/ui.tsx, src/game.ts, and src/info-navigation.ts with a WAI-ARIA tab pattern: a tablist containing role=tab buttons with stable IDs, aria-selected, aria-controls, roving tabindex, and matching role=tabpanel content. Selecting a tab must show only its panel rather than merely scrolling a long card.",
-      "Implement pointer, keyboard arrow-key, Home/End, Enter/Space, focus, open/close, Escape, backdrop, and focus-restoration behavior. Default to the Objective & Cargo tab when opening; ensure runtime updates still refresh cargo/objective/stats whether or not their panel is active.",
-      "Remove or adapt the old sticky scroll navigator and active-section resolver only where they are no longer applicable, keeping the modal compact and usable on desktop and a 390×844 phone viewport. Do not reintroduce HUD obstruction or make active panel content inaccessible.",
-      "Add DOM-free tab-selection helper coverage plus React shell/runtime regressions for ARIA relationships, panel visibility, keyboard navigation, and modal lifecycle. Use ./init.sh for desktop and phone CDP smokes that switch every tab, observe the correct panel/cargo update, close the modal, resume movement, and collect runtime exceptions."
-    ],
-    "acceptance": [
-      "Info / Cargo presents clear, actual tabs; activating one displays only its corresponding content panel rather than scrolling through a combined guide.",
-      "Tabs conform to the expected accessible semantics and keyboard behavior: tablist/tab/tabpanel roles, aria-selected, aria-controls, roving focus, arrow navigation, Home/End, and Enter/Space activation.",
-      "All existing Cargo, Stats, Prospecting, Hazards, and Controls content remains reachable and live game values update correctly; close/Escape/backdrop behavior, focus restoration, touch controls, and gameplay do not regress.",
-      "Updated tests pass and desktop/390×844 browser smokes report no runtime exceptions. Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
-    ],
-    "passes": true
-  },
-  {
-    "category": "gameplay-ux",
     "description": "Zoom the gameplay camera out by 25% so players can see more of the mine and nearby hazards while moving underground.",
     "steps": [
       "Use and consult miner-daily-task-runner before implementing; run ./init.sh before development and preserve the fixed 960×640 world-to-canvas coordinate model, controls, collision, HUD, and touch targeting.",
