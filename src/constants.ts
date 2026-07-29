@@ -1,6 +1,11 @@
 import type { Artifact, Ore } from './types';
 
-export const TILE = 64; // Show 50% more world in each viewport dimension.
+// Keep the mine's zoom in one shared world-to-screen scale.  The previous
+// 64px tile baseline is reduced by 25%, so rendering, camera coverage, and
+// pointer-to-ship geometry all use the same 48px tile size.
+export const BASE_CAMERA_TILE = 64;
+export const CAMERA_ZOOM_OUT = 0.25;
+export const TILE = BASE_CAMERA_TILE * (1 - CAMERA_ZOOM_OUT);
 export const WORLD_W = 90;
 export const SURFACE_HEIGHT = 3;
 export const START_Y = SURFACE_HEIGHT - 1;

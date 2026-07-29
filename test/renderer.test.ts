@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TILE } from '../src/constants';
 
 const mocks = vi.hoisted(() => {
   const gradient = {addColorStop: vi.fn()};
@@ -97,8 +98,8 @@ describe('terrain cache lifecycle', () => {
     renderer.draw();
     const initialTileDraws = mocks.terrainContext.fillRect.mock.calls.length;
     expect(initialTileDraws).toBeGreaterThan(0);
-    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.width))).toBe(360);
-    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.height))).toBe(360);
+    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.width))).toBe(296);
+    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.height))).toBe(296);
 
     renderer.draw();
     expect(mocks.terrainContext.fillRect).toHaveBeenCalledTimes(initialTileDraws);
@@ -240,7 +241,7 @@ describe('terrain cache lifecycle', () => {
 
     renderer.draw();
 
-    expect(mocks.mainContext.fillRect).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 66, 66);
+    expect(mocks.mainContext.fillRect).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), TILE + 2, TILE + 2);
     expect(mocks.mainContext.bezierCurveTo).toHaveBeenCalled();
     expect(mocks.mainContext.fillText).not.toHaveBeenCalledWith('PARTNER', expect.any(Number), expect.any(Number));
     expect(mocks.mainContext.createRadialGradient).not.toHaveBeenCalled();
@@ -277,7 +278,7 @@ describe('terrain cache lifecycle', () => {
     };
     const renderer = createRenderer({state, get: () => ({type:'air'}), rand: () => 0});
     const flameTips = () => mocks.mainContext.lineTo.mock.calls
-      .filter(([, y]) => Math.abs(y) === 64*.17)
+      .filter(([, y]) => Math.abs(y) === TILE*.17)
       .map(([x, y]) => [x, y]);
 
     renderer.draw();

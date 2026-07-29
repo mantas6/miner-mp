@@ -15,6 +15,6 @@
       "The expanded view improves visibility without introducing canvas blur, clipping, empty-border artifacts, or renewed HUD obstruction.",
       "Updated tests pass and desktop/mobile browser smokes report no runtime exceptions. Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
     ],
-    "passes": false
+    "passes": true
   }
 ]
