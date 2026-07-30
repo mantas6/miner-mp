@@ -117,6 +117,8 @@ export interface InputState {
   lastKeyboardMove: number;
   keyboardRepeatMs: number;
   gunArmed: boolean;
+  /** Deadline (performance clock) until which a second R press confirms a reset. */
+  resetConfirmUntil: number;
 }
 
 export interface GameState {
@@ -129,6 +131,8 @@ export interface GameState {
   camY: number;
   particles: Particle[];
   enemies: Enemy[];
+  /** Next id handed to an awakened enemy; re-seeded when adopting a peer's list. */
+  enemyIdCounter: number;
   input: InputState;
   player: Player;
   stats: GameStats;

@@ -1,0 +1,300 @@
+// Player-initiated actions: selling, depot services, shop purchases, dynamite,
+// the gun, and the teleporter.
+//
+// Each one is a small transaction — validate, charge, mutate, toast, play a
+// sound — so they are grouped here rather than scattered through the loop code.
+
+import { TILE, WORLD_W } from '../../shared/constants';
+import { ECONOMY, LIMITS } from '../core/balance';
+import { cargoValue, partialFill, refuelCost, repairCost } from '../core/economy';
+import { getDynamiteBlastTargets } from '../core/dynamite';
+import {
+  MIN_TELEPORT_DEPTH_METERS,
+  canTeleportToSurface,
+  createTeleportEffect,
+  teleportPlayerToReturn,
+  teleportPlayerToSurface
+} from '../core/teleporter';
+import type { AudioController, Direction, GameState } from '../core/types';
+import { applyPlayerUpgrade, getPlayerUpgradeProgress, type PlayerUpgradeId } from '../core/upgrades';
+import { consumeBulletForShot, resolveShot } from '../core/weapon';
+import { H, W } from './dom';
+import type { EnemySim } from './enemies';
+import type { GameSession } from './session';
+import type { WorldGrid } from './world-grid';
+
+/** A partial top-up bought at the depot: fuel or hull, same money math. */
+interface ServicePurchase {
+  /** Current amount of the resource. */
+  amount: number;
+  max: number;
+  /** Cost of topping the resource all the way up. */
+  cost: number;
+  alreadyFullMessage: string;
+  noCashMessage: string;
+  filledMessage: string;
+  partialMessage(spent: number): string;
+  apply(value: number): void;
+}
+
+export interface GameActions {
+  sell(): void;
+  refuel(): void;
+  repair(): void;
+  /** Enter/Space at the depot: sell, else refuel, else repair. */
+  surfaceService(): void;
+  buyUpgrade(id: PlayerUpgradeId, cost: number, message: string): void;
+  buyDynamite(): void;
+  detonateDynamite(): void;
+  buyTeleporter(): void;
+  buyGun(): void;
+  buyBullets(): void;
+  setGunArmed(armed: boolean): void;
+  fireGun(direction: Direction): boolean;
+  useTeleporter(): void;
+}
+
+export interface GameActionsDeps {
+  state: GameState;
+  session: GameSession;
+  enemies: EnemySim;
+  grid: WorldGrid;
+  audio: AudioController;
+  toast(message: string): void;
+  saveProgress(): void;
+  addCash(amount: number): void;
+  /** Reveal the visibility footprint around the ship (after a sensor upgrade). */
+  revealAtPlayer(): void;
+  atSurface(): boolean;
+  spawnDust(x: number, y: number, color?: string, amount?: number): void;
+  spawnExplosion(x: number, y: number): void;
+  spawnShotTrail(path: {x: number; y: number}[]): void;
+  /** Release held keys so a modal action does not resume movement. */
+  clearKeys(): void;
+}
+
+export function createActions(deps: GameActionsDeps): GameActions {
+  const {state, session, enemies, grid, audio, toast, saveProgress, addCash, atSurface} = deps;
+
+  function currentCargoValue(): number {
+    return cargoValue(state.player.cargo);
+  }
+
+  function sell(): void {
+    const value = currentCargoValue();
+    if (!atSurface()) return toast('Depot is on the surface.');
+    if (!value) return toast('Cargo is empty.');
+    addCash(value);
+    state.player.cargo = [];
+    saveProgress();
+    toast(`Sold cargo for $${value}.`);
+    audio.cash(value);
+  }
+
+  /** Charge a fixed price for an upgrade or consumable bought at the depot. */
+  function spend(amount: number, apply: () => void, message: string): void {
+    if (!atSurface()) return toast('Upgrades are at the surface.');
+    if (state.cash < amount) { audio.alarm(); return toast(`Need $${amount}.`); }
+    state.cash -= amount;
+    apply();
+    saveProgress();
+    toast(message);
+    audio.cash(amount);
+  }
+
+  function buyUpgrade(id: PlayerUpgradeId, cost: number, message: string): void {
+    if (getPlayerUpgradeProgress(state.player, id).atMax) return toast('Upgrade already at maximum level.');
+    spend(cost, () => {
+      applyPlayerUpgrade(state.player, id);
+      if (id === 'visibility') deps.revealAtPlayer();
+    }, message);
+  }
+
+  /**
+   * Buy as much of a top-up as the wallet allows: all the cash on hand fills the
+   * resource proportionally rather than being refused outright.
+   */
+  function purchaseService(service: ServicePurchase): void {
+    if (!atSurface()) return toast('Service depot is on the surface.');
+    if (service.amount >= service.max) return toast(service.alreadyFullMessage);
+    if (state.cash <= 0) { audio.alarm(); return toast(service.noCashMessage); }
+    const {value, pay} = partialFill(service.amount, service.max, state.cash, service.cost);
+    service.apply(value);
+    state.cash -= pay;
+    saveProgress();
+    toast(value >= service.max ? service.filledMessage : service.partialMessage(pay));
+    audio.cash(pay);
+  }
+
+  function refuel(): void {
+    const p = state.player;
+    purchaseService({
+      amount: p.fuel,
+      max: p.fuelMax,
+      cost: refuelCost(p),
+      alreadyFullMessage: 'Fuel tank already full.',
+      noCashMessage: 'No cash to buy fuel.',
+      filledMessage: 'Fuel tank full.',
+      partialMessage: spent => `Partial refuel — spent $${Math.round(spent)} (all your cash).`,
+      apply: value => { p.fuel = value; }
+    });
+  }
+
+  function repair(): void {
+    const p = state.player;
+    purchaseService({
+      amount: p.hull,
+      max: p.hullMax,
+      cost: repairCost(p),
+      alreadyFullMessage: 'Hull already at full strength.',
+      noCashMessage: 'No cash for repairs.',
+      filledMessage: 'Hull repaired.',
+      partialMessage: spent => `Partial repair — spent $${Math.round(spent)} (all your cash).`,
+      apply: value => { p.hull = value; }
+    });
+  }
+
+  function surfaceService(): void {
+    const p = state.player;
+    if (!atSurface()) return toast('Service depot is on the surface.');
+    if (currentCargoValue() > 0) return sell();
+    if (p.fuel < p.fuelMax) return refuel();
+    if (p.hull < p.hullMax) return repair();
+    toast('Cargo empty, hull and fuel are full.');
+  }
+
+  function buyDynamite(): void {
+    spend(ECONOMY.dynamite.price, () => state.player.dynamite++, 'Dynamite loaded. Press E or Detonate underground.');
+  }
+
+  function detonateDynamite(): void {
+    const p = state.player;
+    if (state.gameOver) return;
+    if (atSurface()) return toast('Dynamite can only be detonated underground.');
+    if (p.dynamite <= 0) { audio.alarm(); return toast('No dynamite. Buy a charge at the surface depot.'); }
+    grid.ensureRow(p.y + ECONOMY.dynamite.radius);
+    const targets = getDynamiteBlastTargets(grid.world, p.x, p.y, ECONOMY.dynamite.radius);
+    p.dynamite--;
+    for (const {x, y} of targets) grid.set(x, y, {type: 'air'});
+    enemies.wakeEnemiesNear(p.x, p.y);
+    deps.spawnExplosion(p.x, p.y);
+    audio.noise(.32, .12, 520);
+    saveProgress();
+    toast(targets.length
+      ? `Dynamite cleared ${targets.length} blocks. Ore and artifacts were destroyed; no rewards granted.`
+      : 'Dynamite detonated, but no destructible blocks were in range.');
+  }
+
+  function buyTeleporter(): void {
+    spend(ECONOMY.teleporter.price, () => state.player.teleporters++, `Teleporter loaded. Press T or Teleport at ${MIN_TELEPORT_DEPTH_METERS} m or deeper.`);
+  }
+
+  function buyGun(): void {
+    if (state.player.gunOwned) return toast('Linebreaker Gun is already installed.');
+    spend(ECONOMY.gun.price, () => { state.player.gunOwned = true; }, 'Linebreaker Gun installed permanently. Buy ammunition before descending.');
+  }
+
+  function buyBullets(): void {
+    const p = state.player;
+    if (!p.gunOwned) return toast('Buy the Linebreaker Gun before buying ammunition.');
+    if (p.bullets + ECONOMY.gun.ammoBundle > LIMITS.bullets.max) return toast('Ammunition storage is full.');
+    spend(ECONOMY.gun.ammoPrice, () => { p.bullets += ECONOMY.gun.ammoBundle; }, `${ECONOMY.gun.ammoBundle} bullets loaded.`);
+  }
+
+  function setGunArmed(armed: boolean): void {
+    const p = state.player;
+    if (armed) {
+      if (state.gameOver) return;
+      if (atSurface()) return toast('The gun can only be fired underground.');
+      if (!p.gunOwned) { audio.alarm(); return toast('Buy the permanent Linebreaker Gun at the surface shop.'); }
+      if (p.bullets <= 0) { audio.alarm(); return toast('No ammunition. Buy bullet bundles at the surface shop.'); }
+      deps.clearKeys();
+      state.input.keyImpulse = null;
+      state.input.gunArmed = true;
+      toast('GUN ARMED — press a direction key. G or Escape cancels.');
+      return;
+    }
+    if (state.input.gunArmed) toast('Gun aim cancelled. No bullet used.');
+    state.input.gunArmed = false;
+  }
+
+  function fireGun(direction: Direction): boolean {
+    const p = state.player;
+    if (!state.input.gunArmed || state.gameOver || atSurface() || !p.gunOwned || p.bullets <= 0) return false;
+    if (direction[1] > 0) grid.ensureRow(p.y + ECONOMY.gun.range);
+    const shot = resolveShot(grid.world, p.x, p.y, direction, ECONOMY.gun.range, state.enemies.filter(enemy => enemy.alive));
+    if (!shot) return false;
+    if (!consumeBulletForShot(p, state.input.gunArmed, direction)) return false;
+    state.input.gunArmed = false;
+    p.drillDx = direction[0]; p.drillDy = direction[1];
+    if (direction[0]) p.facing = direction[0];
+    deps.spawnShotTrail(shot.path);
+    audio.blip(520, .08, 'square', .055, -180);
+    const target = shot.target;
+    if (target?.kind === 'enemy') {
+      enemies.damageEnemy(state.enemies.find(enemy => enemy.id === target.enemy.id), ECONOMY.gun.damage);
+      toast(`Direct enemy hit. ${p.bullets} bullets remain.`);
+    } else if (target?.kind === 'tile') {
+      if (target.tile.type === 'enemy') {
+        if (session.isGuestEnemyReplica()) session.send({type: 'enemyTileShot', x: target.x, y: target.y, by: 'guest'});
+        else enemies.destroyDormantEnemy(target.x, target.y, 'host');
+      } else {
+        grid.set(target.x, target.y, {type: 'air'});
+        enemies.wakeEnemiesNear(target.x, target.y);
+        deps.spawnDust(target.x, target.y, '#ffe58a', state.reducedMotion ? 3 : 12);
+      }
+      toast(`Shot destroyed ${target.tile.type}. No mining rewards. ${p.bullets} bullets remain.`);
+    } else if (shot.outcome === 'blocked') toast(`Shot blocked by protected terrain. ${p.bullets} bullets remain.`);
+    else toast(`Shot missed within ${ECONOMY.gun.range}-tile range. ${p.bullets} bullets remain.`);
+    saveProgress();
+    return true;
+  }
+
+  function useTeleporter(): void {
+    const p = state.player;
+    if (state.gameOver) return;
+    const surf = atSurface();
+    if (surf && !state.teleportReturnPosition) return toast('No underground teleport return point.');
+    if (!surf && p.teleporters <= 0) { audio.alarm(); return toast('No teleporter. Buy one at the surface depot.'); }
+    if (!surf && !canTeleportToSurface(p.y)) { audio.alarm(); return toast(`Teleport requires a depth of at least ${MIN_TELEPORT_DEPTH_METERS} m.`); }
+    const camX = Math.max(0, Math.min(WORLD_W - W, state.camX));
+    const camY = Math.max(0, state.camY);
+    const originScreenX = (p.drawX - camX + .5) * TILE;
+    const originScreenY = (p.drawY - camY + .5) * TILE;
+    if (surf) {
+      if (!teleportPlayerToReturn(p, state.teleportReturnPosition)) return;
+      state.teleportReturnPosition = null;
+    } else {
+      const returnPosition = teleportPlayerToSurface(p);
+      if (!returnPosition) return;
+      state.teleportReturnPosition = returnPosition;
+    }
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    state.teleportEffect = createTeleportEffect(originScreenX, originScreenY, p.x, p.y, reducedMotion);
+    state.input.keyImpulse = null;
+    state.input.gunArmed = false;
+    state.camX = Math.max(0, p.x - Math.floor(W / 2));
+    state.camY = surf ? Math.max(0, p.y - Math.floor(H / 2)) : 0;
+    saveProgress();
+    if (state.connected && session.paired) session.send({type: 'teleported', x: p.x, y: p.y});
+    toast(surf
+      ? 'Returned to the underground teleport point.'
+      : 'Teleported safely to the depot. Press T to return underground.');
+  }
+
+  return {
+    sell,
+    refuel,
+    repair,
+    surfaceService,
+    buyUpgrade,
+    buyDynamite,
+    detonateDynamite,
+    buyTeleporter,
+    buyGun,
+    buyBullets,
+    setGunArmed,
+    fireGun,
+    useTeleporter
+  };
+}

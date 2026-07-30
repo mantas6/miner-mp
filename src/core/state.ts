@@ -51,6 +51,7 @@ export function createInitialState(): GameState {
     camY: 0,
     particles: [],
     enemies: [],
+    enemyIdCounter: 1,
     stats: createDefaultStats(),
     extractionPhase: 'none',
     role: null,
@@ -65,7 +66,8 @@ export function createInitialState(): GameState {
       sprintDirection: null,
       lastKeyboardMove: 0,
       keyboardRepeatMs: 105,
-      gunArmed: false
+      gunArmed: false,
+      resetConfirmUntil: 0
     },
     player: {
       x: SURFACE_SPAWN_X,

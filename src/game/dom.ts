@@ -38,8 +38,6 @@ function resizeCanvas(): void {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-export const keys = new Set();
-
 export const ui = {
   cash: requireElement<HTMLElement>('cash'),
   depth: requireElement<HTMLElement>('depth'),
@@ -93,6 +91,17 @@ export const ui = {
 };
 
 export type GameUi = typeof ui;
+
+const TOAST_VISIBLE_MS = 1800;
+let toastTimer = 0;
+
+/** Show a transient status line; a later toast replaces the current one. */
+export function showToast(message: string): void {
+  ui.toast.textContent = message;
+  ui.toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => ui.toast.classList.remove('show'), TOAST_VISIBLE_MS);
+}
 
 export function setSoundIcon(on: boolean): void {
   ui.soundBtn.textContent = on ? '🔊' : '🔇';
