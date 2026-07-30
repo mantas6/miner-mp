@@ -5,6 +5,6 @@ export default defineConfig({
   // GitHub Pages project subpath (/miner-mp/).
   base: './',
   test: {
-    include: ['test/**/*.test.{ts,tsx}']
+    include: ['src/**/*.test.{ts,tsx}', 'shared/**/*.test.{ts,tsx}']
   }
 });

@@ -1,5 +1,5 @@
-import { ECONOMY, LIMITS, STARTING } from './balance';
-import { encodeExploration, mergeExploration } from './exploration';
+import { ECONOMY, LIMITS, STARTING } from './core/balance';
+import { encodeExploration, mergeExploration } from '../shared/exploration-codec';
 
 export const SAVE_KEY = 'moleload-progress-v1';
 export const SAVE_VERSION = 3;
@@ -22,7 +22,7 @@ export function numeric(value, fallback, min=0, max=Number.MAX_SAFE_INTEGER) {
   return Math.max(min, Math.min(max, n));
 }
 
-/** @param {import('./state').GameState} state */
+/** @param {import('./core/state').GameState} state */
 export function load(state) {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
@@ -51,7 +51,7 @@ export function load(state) {
   }
 }
 
-/** @param {import('./state').GameState} state */
+/** @param {import('./core/state').GameState} state */
 export function save(state) {
   try {
     const p = state.player;

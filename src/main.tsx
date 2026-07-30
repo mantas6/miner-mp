@@ -1,8 +1,8 @@
-import './styles.css';
+import './styles/styles.css';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { isDeveloperToolsEnabled } from './developer';
-import { MinerApp } from './ui';
+import { isDeveloperToolsEnabled } from './core/developer';
+import { MinerApp } from './ui/ui';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Missing #root element for React GUI shell.');
@@ -17,5 +17,5 @@ flushSync(() => {
   root.render(<MinerApp developerToolsEnabled={developerToolsEnabled} />);
 });
 
-const { initGame } = await import('./game');
+const { initGame } = await import('./game/game');
 initGame({ developerToolsEnabled });

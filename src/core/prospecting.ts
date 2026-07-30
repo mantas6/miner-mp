@@ -1,0 +1,32 @@
+import { MAX_WORLD_ROW, ORES, START_Y } from '../../shared/constants';
+import { ECONOMY } from './balance';
+import type { Ore } from './types';
+
+export interface ProspectingGuideRow {
+  name: string;
+  color: string;
+  valueLabel: string;
+  depthLabel: string;
+}
+
+export function oreMinimumDepthMeters(oreMinRow: number, startY = START_Y): number {
+  return Math.max(0, (oreMinRow - startY) * 10);
+}
+
+export function formatOreDepthLabel(oreMinRow: number, oreMaxRow: number, startY = START_Y): string {
+  const minMeters = oreMinimumDepthMeters(oreMinRow, startY);
+  if (oreMaxRow === MAX_WORLD_ROW) return `≈${minMeters} m and deeper`;
+  const maxMeters = oreMinimumDepthMeters(oreMaxRow, startY);
+  return minMeters === 0 ? `starter–≈${maxMeters} m` : `≈${minMeters}–${maxMeters} m`;
+}
+
+export function buildProspectingGuideRows(ores: Ore[] = ORES, startY = START_Y): ProspectingGuideRow[] {
+  return ores.map(ore => ({
+    name: ore.name,
+    color: ore.color,
+    valueLabel: `$${ore.value}`,
+    depthLabel: formatOreDepthLabel(ore.min, ore.max, startY)
+  }));
+}
+
+export const PROSPECTING_TIP = `Early goal: follow the starting shaft into the first Coal/Copper seam, sell it, then save toward Cargo +${ECONOMY.cargo.step}.`;

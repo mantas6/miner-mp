@@ -8,43 +8,57 @@ Underground fog of war is persistent. Movement initially reveals a 3x3 square; e
 
 ## Project structure
 
+Unit tests live next to the code they cover as `*.test.ts` siblings.
+
 ```text
 miner/
 ├── README.md
 ├── index.html
 ├── package.json
-├── vite.config.js
+├── tsconfig.json
+├── vite.config.ts
+├── shared/
+│   ├── constants.ts
+│   └── exploration-codec.ts
 ├── src/
-│   ├── main.js
-│   ├── styles.css
-│   ├── constants.js
-│   ├── dom.js
-│   ├── state.js
-│   ├── audio.js
-│   ├── renderer.js
-│   └── game.js
+│   ├── main.tsx
+│   ├── persistence.ts
+│   ├── core/
+│   ├── world/
+│   ├── game/
+│   ├── net/
+│   ├── render/
+│   ├── audio/
+│   ├── ui/
+│   └── styles/
 ├── soundtrack_source.py
 ├── public/
 │   └── assets/
 │       ├── soviet-soundtrack.mp3
 │       └── soviet-soundtrack.ogg
 └── server/
-    └── index.js
+    ├── index.js
+    └── world-state.js
 ```
 
 | Path | Purpose |
 |---|---|
-| `index.html` | Main game page, canvas, HUD, intro/help overlay, shop buttons; loaded by Vite. |
-| `src/main.js` | Vite entry point that imports styles and starts the game. |
-| `src/styles.css` | Visual styling, responsive/mobile HUD layout, intro art. |
-| `src/constants.js` | Shared game constants and ore definitions. |
-| `src/dom.js` | DOM/canvas element lookups and input key set. |
-| `src/state.js` | Initial game state factory. |
-| `src/audio.js` | Sound effects, music file playback, and synth fallback. |
-| `src/renderer.js` | Canvas drawing code for terrain, enemies, ship, surface, and overlays. |
-| `src/game.js` | Gameplay orchestration: world generation, mining, enemies, shop, input, HUD, and loop. |
-| `vite.config.js` | Vite config. |
+| `index.html` | Main game page and root mount node; loaded by Vite. |
+| `shared/constants.ts` | World constants, camera scale, ore and artifact tables. Intended to be consumable by both client and relay server. |
+| `shared/exploration-codec.ts` | Fog-of-war index math and the run-length encoding shared with persistence and the relay. |
+| `src/main.tsx` | Vite entry point: imports styles, renders the React shell, then starts the game runtime. |
+| `src/persistence.ts` | Local save/load of player progress and explored tiles. |
+| `src/core/` | Pure gameplay rules and types: balance, economy, upgrades, movement, weapon, dynamite, teleporter, enemies, objectives, extraction, stats, danger, developer tools. |
+| `src/world/` | World generation, shared world-state reset, and visible tile range. |
+| `src/game/` | Gameplay orchestration (`game.ts`), DOM/canvas lookups (`dom.ts`), and shop controls. |
+| `src/net/` | Relay client, wire protocol codec, and multiplayer settings. |
+| `src/render/` | Canvas drawing, terrain cache policy, and partner indicator. |
+| `src/audio/` | Sound effects, music playback, synth fallback, and autoplay permission. |
+| `src/ui/` | React GUI shell and info-panel navigation. |
+| `src/styles/styles.css` | Visual styling, HUD layout, intro art. |
+| `vite.config.ts` | Vite build config and Vitest test config. |
 | `server/index.js` | Co-op multiplayer relay server (Node + `ws`). |
+| `server/world-state.js` | Authoritative shared-mine state and its on-disk persistence. |
 | `soundtrack_source.py` | Editable source generator for the soundtrack. |
 | `public/assets/soviet-soundtrack.mp3` | Browser music asset used when MP3 is supported. |
 | `public/assets/soviet-soundtrack.ogg` | Browser music fallback asset. |
@@ -174,7 +188,7 @@ public/assets/soviet-soundtrack.mp3
 public/assets/soviet-soundtrack.ogg
 ```
 
-`game.js` chooses MP3 when the browser supports it, otherwise it falls back to OGG:
+`src/audio/audio.ts` chooses MP3 when the browser supports it, otherwise it falls back to OGG:
 
 ```js
 this.musicEl.src = canMp3 ? 'assets/soviet-soundtrack.mp3' : 'assets/soviet-soundtrack.ogg';
@@ -251,8 +265,8 @@ python3 soundtrack_source.py --duration 175 --out-prefix public/assets/soviet-so
 - Browsers usually require a user gesture before music can play.
 - The game exposes a `Sound: off/on` button for explicit activation.
 - Pointer/touch input can also trigger audio startup.
-- If the MP3/OGG assets are missing, `game.js` falls back to procedural WebAudio notes.
-- If you change the audio file names, update the `musicEl.src` line in `game.js`.
+- If the MP3/OGG assets are missing, `src/audio/audio.ts` falls back to procedural WebAudio notes.
+- If you change the audio file names, update the `musicEl.src` line in `src/audio/audio.ts`.
 
 ## Development checklist
 
