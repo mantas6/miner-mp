@@ -1,20 +1,19 @@
 [
   {
     "category": "gameplay-ux",
-    "description": "Zoom the gameplay camera out by 25% so players can see more of the mine and nearby hazards while moving underground.",
+    "description": "Remove unrestricted developer cheats from the player-facing Info / Cargo overlay while preserving an explicit, opt-in development-only path for local debugging.",
     "steps": [
-      "Use and consult miner-daily-task-runner before implementing; run ./init.sh before development and preserve the fixed 960×640 world-to-canvas coordinate model, controls, collision, HUD, and touch targeting.",
-      "Audit the effective camera scale across src/constants.ts, src/dom.ts, src/renderer.ts, and touch-coordinate helpers. Confirm the existing tile/camera values against a live baseline rather than relying on comments, then make the final visible mine view 25% more zoomed out than the pre-task baseline.",
-      "Adjust the camera/tile scale through shared constants and/or rendering math rather than CSS-only canvas stretching. Preserve correct world bounds, camera following, ship position, particle placement, enemy rendering, surface/depot art, and pointer/touch direction calculations.",
-      "Review HUD and modal overlays after the expanded field of view so they do not obscure the additional useful play area, especially on a 390×844 phone viewport.",
-      "Add focused math/regression coverage for viewport tile coverage or scale-derived coordinate behavior, then use ./init.sh for desktop and phone CDP smokes that start play, descend/mine, verify substantially more surrounding tiles are visible, exercise touch/keyboard movement and Info / Cargo open-close, and collect runtime exceptions."
+      "Use and consult miner-daily-task-runner before implementing; run ./init.sh before development and preserve gameplay startup, Info / Cargo tab keyboard behavior, save/load, shop, and multiplayer hooks.",
+      "Audit src/ui.tsx, src/info-navigation.ts, src/game.ts, src/dom.ts, src/developer.ts, and their tests to identify every player-facing Developer tab/control and its event binding. Establish an intentional development-only activation mechanism appropriate for Vite (for example an explicit dev flag) rather than relying on obscurity.",
+      "Ensure normal production and default local play omit the Developer tab and all cash, service, upgrade, player-reset, and shared-world-reset cheat controls from the Info / Cargo navigation and tab order. Keep the existing player guidance tabs reachable with correct ARIA selection, close/focus restoration, and no dangling DOM lookups.",
+      "If an opt-in development mode is retained, make it visibly marked as non-player tooling and test its enabled and disabled shell/runtime behavior without exposing it by default.",
+      "Add focused DOM-free and React/runtime regression tests for the normal-player absence of cheats, the remaining tablist relationships and keyboard navigation, and any explicit development-mode gate. Use ./init.sh for desktop and 390×844 CDP smokes that start a solo run, move/mines, open/close Info / Cargo, traverse normal tabs, confirm no Developer/cheat text is exposed, and collect runtime exceptions."
     ],
     "acceptance": [
-      "The live game camera is 25% more zoomed out than the verified pre-task baseline, showing a materially larger surrounding mine area on desktop and a 390×844 phone viewport.",
-      "Player movement, drilling, collisions, camera bounds/following, touch direction mapping, surface/depot rendering, particles, enemies, and HUD alignment remain correct at the new scale.",
-      "The expanded view improves visibility without introducing canvas blur, clipping, empty-border artifacts, or renewed HUD obstruction.",
+      "A normal player opening Info / Cargo never sees a Developer tab, money cheat, free service/upgrade controls, player-data reset, or shared-world reset action; the regular Objective & Cargo, Stats, Prospecting, Hazards, and Controls guidance remains usable.",
+      "The normal Info / Cargo tablist has correct ARIA relationships, keyboard navigation, modal close/focus restoration, and no runtime error from removed DOM hooks; an intentional opt-in development mode, if provided, is clearly isolated and covered by tests.",
       "Updated tests pass and desktop/mobile browser smokes report no runtime exceptions. Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
     ],
-    "passes": true
+    "passes": false
   }
 ]
