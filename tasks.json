@@ -14,6 +14,6 @@
       "The normal Info / Cargo tablist has correct ARIA relationships, keyboard navigation, modal close/focus restoration, and no runtime error from removed DOM hooks; an intentional opt-in development mode, if provided, is clearly isolated and covered by tests.",
       "Updated tests pass and desktop/mobile browser smokes report no runtime exceptions. Before marking complete, follow miner-daily-task-runner and run ./init.sh, ./test.sh, npm test, npm run typecheck, and npm run build as fresh final verification."
     ],
-    "passes": false
+    "passes": true
   }
 ]

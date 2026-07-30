@@ -9,6 +9,10 @@ function requireElement<T extends HTMLElement>(id: string): T {
   return element as T;
 }
 
+function optionalElement<T extends HTMLElement>(id: string): T | null {
+  return document.getElementById(id) as T | null;
+}
+
 export const canvas = requireElement<HTMLCanvasElement>('game');
 export const gamePanel = requireElement<HTMLElement>('game-panel');
 
@@ -50,7 +54,7 @@ export const ui = {
   extractionInfoStatus: requireElement<HTMLElement>('extractionInfoStatus'),
   cargoList: requireElement<HTMLElement>('cargoList'),
   expeditionStats: requireElement<HTMLElement>('expeditionStats'),
-  developerUpgrades: requireElement<HTMLElement>('developerUpgrades'),
+  developerUpgrades: optionalElement<HTMLElement>('developerUpgrades'),
   toast: requireElement<HTMLElement>('toast'),
   fuelWarning: requireElement<HTMLElement>('fuel-warning'),
   soundBtn: requireElement<HTMLButtonElement>('soundBtn'),
@@ -84,8 +88,8 @@ export const ui = {
   infoScreen: requireElement<HTMLElement>('info-screen'),
   infoCard: requireElement<HTMLElement>('info-card'),
   infoCloseBtn: requireElement<HTMLButtonElement>('infoCloseBtn'),
-  resetPlayerDataBtn: requireElement<HTMLButtonElement>('resetPlayerDataBtn'),
-  resetWorldStateBtn: requireElement<HTMLButtonElement>('resetWorldStateBtn')
+  resetPlayerDataBtn: optionalElement<HTMLButtonElement>('resetPlayerDataBtn'),
+  resetWorldStateBtn: optionalElement<HTMLButtonElement>('resetWorldStateBtn')
 };
 
 export type GameUi = typeof ui;

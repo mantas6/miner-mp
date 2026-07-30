@@ -3,7 +3,7 @@ import { ECONOMY, STARTING } from './balance';
 import { DEVELOPER_CASH_GRANT, DEVELOPER_SERVICES } from './developer';
 import { ARTIFACTS, START_Y } from './constants';
 import { buildDangerGuideRows } from './danger';
-import { INFO_NAVIGATION_SECTIONS } from './info-navigation';
+import { getInfoNavigationSections } from './info-navigation';
 import { DEFAULT_SERVER_URL } from './net';
 import { PROSPECTING_TIP, buildProspectingGuideRows } from './prospecting';
 import { PLAYER_UPGRADES } from './upgrades';
@@ -19,7 +19,8 @@ const shopUpgrades = {
   visibility: { icon: 'visibility', purpose: 'Reveal a larger persistent square around the ship. Even sizes extend one extra tile right and down.', unit: 'tiles wide', price: ECONOMY.visibility.base }
 } as const;
 
-export function MinerApp() {
+export function MinerApp({ developerToolsEnabled = false }: { developerToolsEnabled?: boolean } = {}) {
+  const infoNavigationSections = getInfoNavigationSections(developerToolsEnabled);
   return (
     <main id="shell">
       <section id="game-panel" tabIndex={0} autoFocus>
@@ -137,7 +138,7 @@ export function MinerApp() {
               <button id="infoCloseBtn" className="close-btn" aria-label="Close info screen">×</button>
             </div>
             <nav className="info-navigation" aria-label="Info sections" role="tablist" aria-orientation="horizontal">
-              {INFO_NAVIGATION_SECTIONS.map((section, index) => (
+              {infoNavigationSections.map((section, index) => (
                 <button key={section.id} id={section.tabId} type="button" role="tab" data-info-section={section.id} aria-controls={section.id} aria-selected={index === 0} tabIndex={index === 0 ? 0 : -1}>
                   {section.label}
                 </button>
@@ -164,9 +165,9 @@ export function MinerApp() {
                 </li>
               </ul>
             </section>
-            <section id="info-developer" className="developer-section" role="tabpanel" aria-labelledby="info-tab-developer" tabIndex={-1} hidden>
-              <h3 id="developer-title">Debug / Developer</h3>
-              <p className="developer-warning"><strong>Developer actions:</strong> grant local-player cash, restore fuel or hull, or permanently grant normal player upgrades for exactly $0. These controls work above or below the surface and do not change shop prices.</p>
+            {developerToolsEnabled && <section id="info-developer" className="developer-section" role="tabpanel" aria-labelledby="info-tab-developer" tabIndex={-1} hidden>
+              <h3 id="developer-title">Development-only tooling</h3>
+              <p className="developer-warning"><strong>Local non-player tools:</strong> grant local-player cash, restore fuel or hull, or permanently grant normal player upgrades for exactly $0. These controls work above or below the surface and do not change shop prices.</p>
               <div id="developerUpgrades" className="developer-upgrades" aria-label="Free developer upgrade controls">
                 <div className="developer-upgrade">
                   <div>
@@ -207,7 +208,7 @@ export function MinerApp() {
                 <p>Regenerate terrain and world enemies for this mine without changing any player's cash, upgrades, inventory, stats, ship condition, or settings. Explored fog is cleared so regenerated terrain is not revealed.</p>
                 <button id="resetWorldStateBtn" type="button">Reset World State</button>
               </div>
-            </section>
+            </section>}
             <section id="info-prospecting" role="tabpanel" aria-labelledby="info-tab-prospecting" tabIndex={-1} hidden>
               <h3 id="prospecting-title">Prospecting Guide</h3>
               <p className="prospecting-tip">{PROSPECTING_TIP}</p>

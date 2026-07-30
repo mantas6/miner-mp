@@ -117,11 +117,17 @@ temporary file and atomic rename. Clients receive this authoritative snapshot
 before their pairing event, and every mutation carries a world revision so
 traffic from before a reset cannot repopulate the new mine.
 
-`Reset World State` is at the bottom of Info / Cargo, separately from player
-data reset. After confirmation it regenerates terrain, enemies, caches, and fog
-for all connected clients while preserving each player's cash, upgrades,
-inventory/cargo, stats, ship condition, and settings. In solo mode the same
-action resets the local world and fog only.
+Player and shared-world reset controls are development-only tools. They are
+omitted from normal local play and production builds. To expose the visibly
+marked local developer tab while running Vite in development mode, opt in with:
+
+```bash
+VITE_ENABLE_DEVELOPER_TOOLS=true npm run dev
+```
+
+The shared-world reset regenerates terrain, enemies, caches, and fog while
+preserving each player's cash, upgrades, inventory/cargo, stats, ship condition,
+and settings. The flag is ignored by production builds.
 
 The client connects to the relay via the `VITE_MP_SERVER_URL` environment
 variable, which defaults to `ws://localhost:8081` in development. Set it when
@@ -140,7 +146,7 @@ VITE_MP_SERVER_URL=ws://localhost:9000 npm run dev
 | Sell cargo | `Enter` or Sell button | Sell button |
 | Surface service | `Space` repairs first, then refuels | Repair / Refuel buttons |
 | Restart after game over | `R` or tap/click | Tap anywhere |
-| Reset shared world | Info / Cargo -> Reset World State | Same |
+| Reset shared world (development opt-in only) | Info / Cargo -> Dev tools (local) -> Reset World State | Same |
 | Toggle sound | Sound button | Sound button or first touch gesture may auto-enable |
 
 ## Gameplay notes

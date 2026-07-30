@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MinerApp } from '../src/ui';
-import { INFO_NAVIGATION_SECTIONS, getInfoNavigationSection } from '../src/info-navigation';
+import { INFO_NAVIGATION_SECTIONS, getInfoNavigationSection, getInfoNavigationSections } from '../src/info-navigation';
 
 const GAME_DOM_IDS = [
   'shell',
@@ -46,11 +46,8 @@ const GAME_DOM_IDS = [
   'info-screen',
   'info-card',
   'infoCloseBtn',
-  'resetPlayerDataBtn',
-  'resetWorldStateBtn',
   'cargoList',
   'expeditionStats',
-  'developerUpgrades',
   'prospectingGuide',
   'dangerGuide',
   'fuel-warning',
@@ -175,26 +172,34 @@ describe('React GUI shell', () => {
     expect(markup).toContain('Start digging to set a record');
   });
 
-  it('keeps clearly labeled developer upgrade controls visible in the info modal', () => {
+  it('omits all developer tabs, cheats, and reset actions for normal players', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
+    expect(markup).not.toContain('id="info-developer"');
+    expect(markup).not.toContain('id="info-tab-developer"');
+    expect(markup).not.toContain('id="developerUpgrades"');
+    expect(markup).not.toContain('Money Cheat');
+    expect(markup).not.toContain('data-developer-cash');
+    expect(markup).not.toContain('data-developer-service');
+    expect(markup).not.toContain('data-developer-upgrade');
+    expect(markup).not.toContain('id="resetPlayerDataBtn"');
+    expect(markup).not.toContain('id="resetWorldStateBtn"');
+  });
+
+  it('renders clearly isolated developer tools only in explicit opt-in mode', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp, { developerToolsEnabled: true }));
+
     expect(markup).toContain('id="info-developer"');
-    expect(markup).toContain('Debug / Developer');
-    expect(markup).toContain('grant local-player cash, restore fuel or hull, or permanently grant normal player upgrades for exactly $0');
+    expect(markup).toContain('Dev tools (local)');
+    expect(markup).toContain('Development-only tooling');
+    expect(markup).toContain('Local non-player tools');
     expect(markup).toContain('Money Cheat');
-    expect(markup).toContain('Local player only');
     expect(markup).toContain('data-developer-cash="true"');
-    expect(markup).toContain('Developer: Grant +$1,000');
     expect(markup).toContain('data-developer-service="fuel"');
     expect(markup).toContain('data-developer-service="hull"');
-    expect(markup).toContain('Developer: Refuel (already full)');
-    expect(markup).toContain('Developer: Repair Hull (already full)');
     expect(markup).toContain('data-developer-upgrade="cargo"');
-    expect(markup).toContain('data-developer-upgrade="tank"');
-    expect(markup).toContain('data-developer-upgrade="hull"');
-    expect(markup).toContain('data-developer-upgrade="drill"');
-    expect(markup).toContain('data-developer-upgrade="visibility"');
-    expect(markup).toContain('Level 0/198');
+    expect(markup).toContain('id="resetPlayerDataBtn"');
+    expect(markup).toContain('id="resetWorldStateBtn"');
   });
 
   it('offers the paid sensor upgrade and explains persistent shared fog', () => {
@@ -256,8 +261,8 @@ describe('React GUI shell', () => {
     expect(getInfoNavigationSection('not-a-section')).toBeUndefined();
   });
 
-  it('keeps confirmed reset actions inside the Developer tab so they remain reachable without extending other panels', () => {
-    const markup = renderToStaticMarkup(React.createElement(MinerApp));
+  it('keeps opted-in reset actions inside the development-only panel', () => {
+    const markup = renderToStaticMarkup(React.createElement(MinerApp, { developerToolsEnabled: true }));
     const developerPanel = markup.slice(markup.indexOf('<section id="info-developer"'), markup.indexOf('<section id="info-prospecting"'));
 
     expect(developerPanel).toContain('id="resetPlayerDataBtn"');
@@ -267,5 +272,6 @@ describe('React GUI shell', () => {
     expect(developerPanel).toContain('id="resetWorldStateBtn"');
     expect(developerPanel).toContain('without changing any player&#x27;s cash, upgrades, inventory, stats, ship condition, or settings');
     expect(developerPanel.indexOf('id="resetWorldStateBtn"')).toBeGreaterThan(developerPanel.indexOf('id="resetPlayerDataBtn"'));
+    expect(getInfoNavigationSections(true).some(section => section.id === 'info-developer')).toBe(true);
   });
 });

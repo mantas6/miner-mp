@@ -44,6 +44,7 @@ let explorationSaveTimer = 0;
 let net: NetClient | null = null;
 let connectionIssue: string | null = null;
 let resettingPlayerData = false;
+let developerToolsEnabled = false;
 let tileDiff: TileDiff = {};
 let worldRevision = 1;
 const reachableAir = new Set<string>();
@@ -590,6 +591,7 @@ function buyPlayerUpgrade(id: PlayerUpgradeId, amount: number, msg: string){
   }, msg);
 }
 function grantDeveloperUpgrade(id: PlayerUpgradeId){
+  if (!developerToolsEnabled || !ui.developerUpgrades) return;
   if (!applyPlayerUpgrade(state.player, id)) return toast('Developer upgrade already at maximum level.');
   if (id === 'visibility') revealAtPlayer();
   saveProgress();
@@ -597,12 +599,14 @@ function grantDeveloperUpgrade(id: PlayerUpgradeId){
   toast('Developer action: upgrade granted for $0.');
 }
 function grantDeveloperMoney(){
+  if (!developerToolsEnabled) return;
   grantDeveloperCash(state);
   saveProgress();
   ui.cash.textContent = `$${Math.floor(state.cash)}`;
   toast(`Developer action: +$${DEVELOPER_CASH_GRANT.toLocaleString('en-US')} granted.`);
 }
 function runDeveloperService(id: DeveloperServiceId){
+  if (!developerToolsEnabled) return;
   const changed = id === 'fuel'
     ? developerRefuel(state.player)
     : developerRepairHull(state.player);
@@ -757,7 +761,7 @@ function surfaceService(){
 }
 function atSurface(){ return state.player.y < SURFACE_HEIGHT; }
 function selectInfoTab(id: string, focusTab=false){
-  const selected = getInfoNavigationSection(id);
+  const selected = getInfoNavigationSection(id, developerToolsEnabled);
   if (!selected) return;
   for (const section of ui.infoScreen.querySelectorAll<HTMLElement>('[role="tabpanel"]')) {
     section.hidden = section.id !== selected.id;
@@ -790,7 +794,7 @@ function bindButtons(){
   ui.soundBtn.onclick = e => { e.stopPropagation(); audio.toggle(); };
   ui.infoBtn.onclick = e => { e.stopPropagation(); openInfoScreen(); };
   ui.infoCloseBtn.onclick = e => { e.stopPropagation(); closeInfoScreen(); };
-  ui.resetPlayerDataBtn.onclick = e => {
+  if (developerToolsEnabled && ui.resetPlayerDataBtn) ui.resetPlayerDataBtn.onclick = e => {
     e.stopPropagation();
     if (!confirmPlayerDataReset(message => window.confirm(message))) return;
     clearTimeout(explorationSaveTimer);
@@ -807,7 +811,7 @@ function bindButtons(){
     closeInfoScreen();
     toast('Player data reset. Shared mine terrain preserved.');
   };
-  ui.resetWorldStateBtn.onclick = e => {
+  if (developerToolsEnabled && ui.resetWorldStateBtn) ui.resetWorldStateBtn.onclick = e => {
     e.stopPropagation();
     if (!confirmWorldStateReset(message => window.confirm(message))) return;
     if (state.connected && net) {
@@ -824,17 +828,17 @@ function bindButtons(){
   ui.shopScreen.addEventListener('pointerdown', e => { if (e.target === ui.shopScreen) closeShopScreen(); });
   ui.infoScreen.addEventListener('pointerdown', e => { if (e.target === ui.infoScreen) closeInfoScreen(); });
   ui.infoScreen.addEventListener('click', e => {
-    const cashButton = (e.target as Element).closest<HTMLButtonElement>('[data-developer-cash]');
+    const cashButton = developerToolsEnabled && (e.target as Element).closest<HTMLButtonElement>('[data-developer-cash]');
     if (cashButton) {
       grantDeveloperMoney();
       return;
     }
-    const serviceButton = (e.target as Element).closest<HTMLButtonElement>('[data-developer-service]');
+    const serviceButton = developerToolsEnabled && (e.target as Element).closest<HTMLButtonElement>('[data-developer-service]');
     if (serviceButton) {
       runDeveloperService(serviceButton.dataset.developerService as DeveloperServiceId);
       return;
     }
-    const developerButton = (e.target as Element).closest<HTMLButtonElement>('[data-developer-upgrade]');
+    const developerButton = developerToolsEnabled && (e.target as Element).closest<HTMLButtonElement>('[data-developer-upgrade]');
     if (developerButton) {
       grantDeveloperUpgrade(developerButton.dataset.developerUpgrade as PlayerUpgradeId);
       return;
@@ -852,7 +856,7 @@ function bindButtons(){
       e.preventDefault();
       return;
     }
-    const target = getInfoTabFocusTarget(tab.dataset.infoSection || '', key);
+    const target = getInfoTabFocusTarget(tab.dataset.infoSection || '', key, developerToolsEnabled);
     if (!target) return;
     const targetTab = document.getElementById(target.tabId) as HTMLButtonElement | null;
     targetTab?.focus({preventScroll:true});
@@ -875,8 +879,10 @@ function openInfoScreen(){
   ui.infoScreen.classList.remove('hidden');
   renderCargoDetails();
   renderExpeditionStats();
-  updateDeveloperServiceControls(ui.developerUpgrades, state.player);
-  updateDeveloperUpgradeControls(ui.developerUpgrades, state.player);
+  if (developerToolsEnabled && ui.developerUpgrades) {
+    updateDeveloperServiceControls(ui.developerUpgrades, state.player);
+    updateDeveloperUpgradeControls(ui.developerUpgrades, state.player);
+  }
   selectInfoTab('info-objective');
   ui.infoCloseBtn.focus({preventScroll:true});
 }
@@ -1104,7 +1110,14 @@ function hud(){
   ui.cargo.closest('.bar')?.classList.toggle('bar-alert', fullCargo);
   ui.fuelWarning.classList.toggle('show', lowFuel);
   if (lowFuel && !atSurface() && performance.now() - audio.lastLowFuel > FUEL.lowFuelWarnMs) { audio.lowFuel(); audio.lastLowFuel = performance.now(); }
-  if (!ui.infoScreen.classList.contains('hidden')) { renderCargoDetails(); renderExpeditionStats(); updateDeveloperServiceControls(ui.developerUpgrades, p); updateDeveloperUpgradeControls(ui.developerUpgrades, p); }
+  if (!ui.infoScreen.classList.contains('hidden')) {
+    renderCargoDetails();
+    renderExpeditionStats();
+    if (developerToolsEnabled && ui.developerUpgrades) {
+      updateDeveloperServiceControls(ui.developerUpgrades, p);
+      updateDeveloperUpgradeControls(ui.developerUpgrades, p);
+    }
+  }
   updateButtonStates();
 }
 function loop(){
@@ -1202,7 +1215,8 @@ function handleKeyUp(e){
   keys.delete(e.key.toLowerCase());
   if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); }
 }
-export function initGame(){
+export function initGame(options: { developerToolsEnabled?: boolean } = {}){
+  developerToolsEnabled = options.developerToolsEnabled === true;
   audio = createAudio(ui, toast);
   state.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   renderer = createRenderer({ state, get, rand });

@@ -1,11 +1,21 @@
 // @vitest-environment happy-dom
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDeveloperCash, updateDeveloperServiceControls } from '../src/developer';
+import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDeveloperCash, isDeveloperToolsEnabled, updateDeveloperServiceControls } from '../src/developer';
 import { load, save } from '../src/persistence';
 import { createInitialState, respawnPlayer } from '../src/state';
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe('developer tools activation gate', () => {
+  it('requires both Vite development mode and the exact explicit flag', () => {
+    expect(isDeveloperToolsEnabled(true, 'true')).toBe(true);
+    expect(isDeveloperToolsEnabled(true)).toBe(false);
+    expect(isDeveloperToolsEnabled(true, 'false')).toBe(false);
+    expect(isDeveloperToolsEnabled(true, '1')).toBe(false);
+    expect(isDeveloperToolsEnabled(false, 'true')).toBe(false);
+  });
+});
 
 describe('developer money cheat', () => {
   it('grants exactly $1,000 to local cash without changing earned-cash stats', () => {
