@@ -20,10 +20,10 @@ export function getPartnerIndicator(
     && targetY - targetRadius <= viewportHeight;
   if (targetVisible) return null;
 
-  const minX = Math.min(safeInset, viewportWidth / 2);
-  const maxX = Math.max(viewportWidth - safeInset, viewportWidth / 2);
-  const minY = Math.min(safeInset, viewportHeight / 2);
-  const maxY = Math.max(viewportHeight - safeInset, viewportHeight / 2);
+  const minX = safeInset;
+  const maxX = viewportWidth - safeInset;
+  const minY = safeInset;
+  const maxY = viewportHeight - safeInset;
   const startX = Math.max(minX, Math.min(maxX, originX));
   const startY = Math.max(minY, Math.min(maxY, originY));
   const dx = targetX - originX;

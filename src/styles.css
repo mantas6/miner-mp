@@ -257,10 +257,3 @@ kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; 
   .intro-rules { text-align: left; font-size: 13px; gap: 6px; }
   .intro-warning { font-size: 12px; margin-top: 10px; }
 }
-@media (max-width: 430px) and (orientation: portrait) {
-  .hud-top { max-width: 58vw; }
-  .stats-grid { max-width: 110px; }
-  .bar-row { width: calc(51% - 5px); }
-  .shop { width: calc(49% - 5px); }
-
-}

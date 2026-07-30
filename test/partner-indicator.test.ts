@@ -16,10 +16,10 @@ describe('partner off-screen indicator', () => {
     expect(indicator!.angle).toBeCloseTo(-Math.PI / 4);
   });
 
-  it('keeps the marker centered safely in very narrow viewports', () => {
-    const indicator = getPartnerIndicator(30, 50, -200, 50, 80, 100, 20, 64);
+  it('points toward the partner and stays inside mobile landscape safe bounds', () => {
+    const indicator = getPartnerIndicator(422, 195, -200, 195, 844, 390, 20, 64);
 
-    expect(indicator).toMatchObject({ x: 40, y: 50 });
+    expect(indicator).toMatchObject({ x: 64, y: 195 });
     expect(indicator!.angle).toBeCloseTo(Math.PI);
   });
 });
