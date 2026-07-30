@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createNet, RECONNECT, type NetClient } from './net';
+import { createNet, RATES, RECONNECT, type NetClient } from './net';
+import type { EnemySnapshotMsg, NetMessage, PlayerStateMsg } from './net-protocol';
 
 /**
  * Minimal WebSocket double. partysocket drives the underlying socket through
@@ -45,14 +46,32 @@ class FakeWebSocket extends EventTarget {
   }
 }
 
-function net(callbacks = {}): NetClient {
+function net(callbacks = {}, now?: () => number): NetClient {
   FakeWebSocket.instances = [];
   return createNet({
     url: 'ws://relay.test',
     WebSocketImpl: FakeWebSocket as unknown as typeof WebSocket,
-    callbacks
+    callbacks,
+    now
   });
 }
+
+/** What the relay would receive: the game message inside its envelope. */
+function envelope(msg: NetMessage): string {
+  return JSON.stringify({ t: 'relay', payload: msg });
+}
+
+const PLAYER_STATE: PlayerStateMsg = {
+  type: 'playerState',
+  x: 4, y: 9, drawX: 4.5, drawY: 9.25,
+  facing: -1, drillAnim: 0.5, drillDx: 0, drillDy: 1, bob: 0.25
+};
+
+const ENEMY_SNAPSHOT: EnemySnapshotMsg = {
+  type: 'enemySnapshot',
+  revision: 1,
+  enemies: [{ id: 1, kind: 'tunnelFiend', x: 3, y: 40, drawX: 3, drawY: 40, hp: 4, maxHp: 4, alive: true }]
+};
 
 /** partysocket connects asynchronously; wait for the next socket to appear. */
 async function openSocket(client: NetClient, index = 0): Promise<FakeWebSocket> {
@@ -161,6 +180,89 @@ describe('reconnect', () => {
     const second = FakeWebSocket.instances[1];
     second.open();
     expect(second.sent).toEqual([]);
+    client.disconnect();
+  });
+});
+
+describe('send paths', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('wraps a game message in the relay envelope once the socket is open', async () => {
+    vi.useFakeTimers();
+    const client = net();
+    const socket = await openSocket(client);
+
+    expect(client.send({ type: 'wakeNear', x: 3, y: 40 })).toBe(true);
+    expect(socket.sent).toEqual([envelope({ type: 'wakeNear', x: 3, y: 40 })]);
+    client.disconnect();
+  });
+
+  it('serializes nothing at all before the socket opens or after it closes', async () => {
+    vi.useFakeTimers();
+    let clock = 10_000;
+    const client = net({}, () => clock);
+    client.connect();
+    await vi.advanceTimersByTimeAsync(1);
+    const socket = FakeWebSocket.instances[0];
+
+    // Connecting is not connected: the transport is still handshaking.
+    expect(client.send({ type: 'died' })).toBe(false);
+    expect(client.sendPlayerState(PLAYER_STATE)).toBe(false);
+    expect(client.sendEnemySnapshot(ENEMY_SNAPSHOT)).toBe(false);
+    expect(socket.sent).toEqual([]);
+
+    // A refused send still spends its throttle budget, so let the gates reopen.
+    socket.open();
+    clock += 1000;
+    expect(client.sendPlayerState(PLAYER_STATE)).toBe(true);
+
+    socket.drop();
+    clock += 1000;
+    expect(client.sendPlayerState(PLAYER_STATE)).toBe(false);
+    expect(socket.sent).toEqual([envelope(PLAYER_STATE)]);
+    client.disconnect();
+  });
+
+  it('throttles the ship transform to its broadcast rate', async () => {
+    vi.useFakeTimers();
+    let clock = 10_000;
+    const client = net({}, () => clock);
+    const socket = await openSocket(client);
+    const interval = 1000 / RATES.playerState;
+
+    expect(client.sendPlayerState(PLAYER_STATE)).toBe(true);
+    clock += interval - 1;
+    expect(client.sendPlayerState(PLAYER_STATE)).toBe(false);
+    clock += 1;
+    expect(client.sendPlayerState({ ...PLAYER_STATE, x: 5 })).toBe(true);
+
+    expect(socket.sent).toEqual([
+      envelope(PLAYER_STATE),
+      envelope({ ...PLAYER_STATE, x: 5 })
+    ]);
+    client.disconnect();
+  });
+
+  it('gates enemy snapshots on their own slower budget', async () => {
+    vi.useFakeTimers();
+    let clock = 10_000;
+    const client = net({}, () => clock);
+    const socket = await openSocket(client);
+
+    expect(client.sendEnemySnapshot(ENEMY_SNAPSHOT)).toBe(true);
+    // A transform in the same instant still goes out: the two gates are separate.
+    expect(client.sendPlayerState(PLAYER_STATE)).toBe(true);
+    expect(client.sendEnemySnapshot(ENEMY_SNAPSHOT)).toBe(false);
+
+    clock += Math.ceil(1000 / RATES.enemySnapshot);
+    expect(client.sendEnemySnapshot(ENEMY_SNAPSHOT)).toBe(true);
+    expect(socket.sent).toEqual([
+      envelope(ENEMY_SNAPSHOT),
+      envelope(PLAYER_STATE),
+      envelope(ENEMY_SNAPSHOT)
+    ]);
     client.disconnect();
   });
 });

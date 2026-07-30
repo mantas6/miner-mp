@@ -49,7 +49,7 @@ export function createAudio(ui: GameUi, toast: ToastFn): AudioController {
         this.blip(720, 0.10, 'square', 0.11);
         toast('Soundtrack on');
         return true;
-      } catch (err) {
+      } catch {
         this.enabled = false;
         setSoundBlockedStatus();
         toast('Sound blocked by browser — press Sound after a tap/click.');
@@ -66,8 +66,8 @@ export function createAudio(ui: GameUi, toast: ToastFn): AudioController {
       if (this.enabled) { this.blip(180, 0.05, 'square', 0.08); this.disable(); }
       else await this.enable();
     },
-    blip(freq=440, dur=0.08, type='sine', gain=0.06, slide=0) {
-      if (!this.enabled || !this.ctx) return;
+    blip(freq=440, dur=0.08, type: OscillatorType = 'sine', gain=0.06, slide=0) {
+      if (!this.enabled || !this.ctx || !this.master) return;
       const now = this.ctx.currentTime;
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
@@ -81,7 +81,7 @@ export function createAudio(ui: GameUi, toast: ToastFn): AudioController {
       osc.start(now); osc.stop(now + dur + 0.02);
     },
     noise(dur=0.12, gain=0.05, filterFreq=700) {
-      if (!this.enabled || !this.ctx) return;
+      if (!this.enabled || !this.ctx || !this.master) return;
       const now = this.ctx.currentTime;
       const buffer = this.ctx.createBuffer(1, Math.max(1, this.ctx.sampleRate * dur), this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
@@ -97,7 +97,7 @@ export function createAudio(ui: GameUi, toast: ToastFn): AudioController {
     },
     mine() { this.noise(0.13, 0.16, 620); this.blip(92, 0.10, 'sawtooth', 0.10, -35); },
     ore(value=20) { this.blip(520, 0.10, 'triangle', 0.14, 220); setTimeout(()=>this.blip(760 + Math.min(500,value), 0.12, 'triangle', 0.12), 70); },
-    cash(value=10) { [0,60,120].forEach((d,i)=>setTimeout(()=>this.blip(740+i*120, 0.08, 'square', 0.11), d)); },
+    cash(_value=10) { [0,60,120].forEach((d,i)=>setTimeout(()=>this.blip(740+i*120, 0.08, 'square', 0.11), d)); },
     bump() { this.blip(70, 0.15, 'sawtooth', 0.13, -25); },
     enemyHit() { this.noise(0.10, 0.10, 360); this.blip(230, 0.08, 'sawtooth', 0.10, -80); },
     enemyWake() { this.blip(110, 0.10, 'square', 0.12); setTimeout(()=>this.blip(150, 0.12, 'square', 0.10), 85); },
@@ -110,7 +110,7 @@ export function createAudio(ui: GameUi, toast: ToastFn): AudioController {
         try {
           await this.musicEl.play();
           return true;
-        } catch (err) {
+        } catch {
           this.startSynthMusic();
           return false;
         }
@@ -133,7 +133,8 @@ export function createAudio(ui: GameUi, toast: ToastFn): AudioController {
         }
       }, 240);
     },
-    musicNote(freq, dur, type, gain, start) {
+    musicNote(freq: number, dur: number, type: OscillatorType, gain: number, start: number) {
+      if (!this.ctx || !this.musicGain) return;
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
       const filt = this.ctx.createBiquadFilter();

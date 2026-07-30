@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { STARTING, ECONOMY } from './balance';
-import { START_Y, WORLD_W } from '../../shared/constants';
+import { ORES, START_Y, WORLD_W } from '../../shared/constants';
 import { createInitialState, respawnPlayer } from './state';
 
 describe('initial game state', () => {
@@ -42,7 +42,7 @@ describe('player respawn', () => {
     player.teleporters = 1;
     player.gunOwned = true;
     player.bullets = 9;
-    player.cargo = [{ name: 'Coal' }];
+    player.cargo = [ORES[0]];
 
     respawnPlayer(player);
 

@@ -5,7 +5,7 @@
 // and their validation live in `shared/protocol.ts` so that the relay enforces
 // the same rules; this module re-exports them for stable client call sites.
 
-import type { Tile, Player, Enemy, RemotePlayer } from '../core/types';
+import type { Tile, Enemy, RemotePlayer, ShipTransform } from '../core/types';
 import type {
   EnemyDamageMsg,
   EnemyDeadMsg,
@@ -63,7 +63,7 @@ export function isTile(value: unknown): value is Tile {
 // --- Builders (plain-data constructors) ------------------------------------
 
 /** Build a playerState message from a player (transform fields only). */
-export function playerStateFrom(p: Player): PlayerStateMsg {
+export function playerStateFrom(p: ShipTransform): PlayerStateMsg {
   return {
     type: 'playerState',
     x: p.x,

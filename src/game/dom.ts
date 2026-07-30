@@ -1,7 +1,4 @@
-import { TILE } from '../../shared/constants';
-
-export let VIEW_WIDTH = 960;
-export let VIEW_HEIGHT = 640;
+import { setViewportSize, viewport } from './viewport';
 
 function requireElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -16,21 +13,23 @@ function optionalElement<T extends HTMLElement>(id: string): T | null {
 export const canvas = requireElement<HTMLCanvasElement>('game');
 export const gamePanel = requireElement<HTMLElement>('game-panel');
 
-export const ctx = canvas.getContext('2d');
-if (!ctx) throw new Error('2D canvas rendering context is unavailable.');
+function require2dContext(target: HTMLCanvasElement): CanvasRenderingContext2D {
+  const context = target.getContext('2d');
+  if (!context) throw new Error('2D canvas rendering context is unavailable.');
+  return context;
+}
 
-export let W = Math.floor(VIEW_WIDTH / TILE);
-export let H = Math.floor(VIEW_HEIGHT / TILE);
+export const ctx = require2dContext(canvas);
 
 function resizeCanvas(): void {
-  VIEW_WIDTH = Math.max(1, Math.round(gamePanel.clientWidth || window.innerWidth));
-  VIEW_HEIGHT = Math.max(1, Math.round(gamePanel.clientHeight || window.innerHeight));
-  W = Math.floor(VIEW_WIDTH / TILE);
-  H = Math.floor(VIEW_HEIGHT / TILE);
+  setViewportSize(
+    gamePanel.clientWidth || window.innerWidth,
+    gamePanel.clientHeight || window.innerHeight
+  );
 
   const deviceScale = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-  canvas.width = Math.round(VIEW_WIDTH * deviceScale);
-  canvas.height = Math.round(VIEW_HEIGHT * deviceScale);
+  canvas.width = Math.round(viewport.widthPx * deviceScale);
+  canvas.height = Math.round(viewport.heightPx * deviceScale);
   ctx.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
   ctx.imageSmoothingEnabled = true;
 }

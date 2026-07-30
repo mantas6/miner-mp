@@ -1,4 +1,3 @@
-import React from 'react';
 import { ECONOMY, STARTING } from '../core/balance';
 import { DEVELOPER_CASH_GRANT, DEVELOPER_SERVICES } from '../core/developer';
 import { ARTIFACTS, START_Y } from '../../shared/constants';
@@ -19,7 +18,7 @@ const shopUpgrades = {
   visibility: { icon: 'visibility', purpose: 'Reveal a larger persistent square around the ship. Even sizes extend one extra tile right and down.', unit: 'tiles wide', price: ECONOMY.visibility.base }
 } as const;
 
-export function MinerApp({ developerToolsEnabled = false }: { developerToolsEnabled?: boolean } = {}) {
+export function MinerApp({ developerToolsEnabled = false }: { developerToolsEnabled?: boolean }) {
   const infoNavigationSections = getInfoNavigationSections(developerToolsEnabled);
   return (
     <main id="shell">

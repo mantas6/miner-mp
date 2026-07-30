@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { ORES } from '../../shared/constants';
 import { STARTING } from './balance';
 import { createInitialState } from './state';
 import {
@@ -38,10 +39,10 @@ describe('HUD alert flashing thresholds', () => {
 
   it('flashes the cargo bar only when cargo is full', () => {
     const state = alertState({ cargoMax: 10 });
-    state.player.cargo = Array.from({ length: 9 }, (_, id) => ({ id }));
+    state.player.cargo = Array.from({ length: 9 }, () => ORES[0]);
     expect(shouldCargoBarFlash(state)).toBe(false);
 
-    state.player.cargo.push({ id: 9 });
+    state.player.cargo.push(ORES[1]);
     expect(shouldCargoBarFlash(state)).toBe(true);
 
     state.player.cargo.pop();
@@ -50,7 +51,7 @@ describe('HUD alert flashing thresholds', () => {
 
   it('keeps cargo flashing state tied to capacity, upgrades, game-over, and invalid max values', () => {
     const state = alertState({ cargoMax: 10 });
-    state.player.cargo = Array.from({ length: 10 }, (_, id) => ({ id }));
+    state.player.cargo = Array.from({ length: 10 }, () => ORES[0]);
     expect(shouldCargoBarFlash(state)).toBe(true);
 
     state.player.cargoMax = 20;

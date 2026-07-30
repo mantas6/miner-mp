@@ -1,17 +1,66 @@
 import { SURFACE_HEIGHT, TILE, WORLD_W } from '../../shared/constants';
-import { canvas, ctx, H, VIEW_HEIGHT, VIEW_WIDTH, W } from '../game/dom';
+import { canvas, ctx } from '../game/dom';
+import { viewport } from '../game/viewport';
 import { getPartnerIndicator } from './partner-indicator';
-import { getVisibleTileRange, type VisibleTileRange } from '../world/visible-tile-range';
+import { getVisibleTileRange } from '../world/visible-tile-range';
 import { isTileExplored } from '../../shared/exploration-codec';
 import { getEnemyType } from '../core/enemy-types';
 import { TERRAIN_CHUNK_TILES, terrainChunkCoordinate, terrainChunkKeyForTile } from './terrain-cache-policy';
-import type { EnemyKind } from '../core/types';
+import type {
+  Direction,
+  Enemy,
+  EnemyKind,
+  Particle,
+  RemotePlayer,
+  ShipTransform,
+  TeleportEffect,
+  Tile
+} from '../core/types';
 
 const TERRAIN_CHUNK_PADDING = 52;
 // Fog bleeds one pixel past a tile plus half a vein stroke, so it needs far less
 // room around a chunk than the terrain's blob and strata overdraw.
 const FOG_CHUNK_PADDING = 8;
 const MAX_EXTRA_CHUNKS = 32;
+
+/**
+ * The slice of the game state the renderer reads. Fields the renderer already
+ * treats as absent-tolerant stay optional so partial states remain drawable.
+ */
+export interface RendererState {
+  /** Read only as a cache identity; tiles themselves arrive through `get`. */
+  world: Tile[][];
+  camX: number;
+  camY: number;
+  tick: number;
+  gameOver: boolean;
+  particles: Particle[];
+  enemies: Enemy[];
+  remotePlayers: RemotePlayer[];
+  player: ShipTransform;
+  reducedMotion?: boolean;
+  /** Absent means "everything is visible": no fog is painted. */
+  exploredTiles?: Set<number>;
+  teleportEffect?: TeleportEffect | null;
+  input?: {sprintDirection?: Direction | null};
+}
+
+export interface RendererDeps {
+  state: RendererState;
+  /** Tile at a world coordinate, generating terrain on demand. */
+  get(x: number, y: number): Tile;
+  /** Deterministic per-coordinate noise in [0, 1). */
+  rand(x: number, y: number): number;
+}
+
+export interface Renderer {
+  /** Paint one frame of the current state. */
+  draw(): void;
+  /** Drop one tile's terrain chunk, or the whole terrain cache. */
+  invalidateTerrain(x?: number, y?: number): void;
+  /** Drop one tile's fog chunk, or the whole fog cache. */
+  invalidateFog(x?: number, y?: number): void;
+}
 
 interface CachedChunk {
   canvas: HTMLCanvasElement;
@@ -32,8 +81,8 @@ interface ChunkLayerOptions {
   isBlank?(startX: number, startY: number, endX: number, endY: number): boolean;
 }
 
-export function createRenderer({ state, get, rand }) {
-  let drawingContext = ctx;
+export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
+  let drawingContext: CanvasRenderingContext2D = ctx;
   const isExplored = (x: number, y: number) => !state.exploredTiles || isTileExplored(state.exploredTiles, x, y);
 
   // Terrain and fog both change rarely (mining / exploration) but were redrawn per
@@ -102,9 +151,9 @@ export function createRenderer({ state, get, rand }) {
         chunks.delete(terrainChunkKeyForTile(x, y));
       },
       draw(camX: number, camY: number){
-        const range = getVisibleTileRange(camX, camY, W, H, WORLD_W);
+        const range = getVisibleTileRange(camX, camY, viewport.tilesX, viewport.tilesY, WORLD_W);
         // Cache at CSS-pixel resolution so high-DPI screens do not multiply generation cost.
-        const scale = Math.min(1, canvas.width / VIEW_WIDTH);
+        const scale = Math.min(1, canvas.width / viewport.widthPx);
         const currentSource = source();
         if (cachedScale !== scale || cachedSource !== currentSource) {
           chunks.clear();
@@ -145,8 +194,8 @@ export function createRenderer({ state, get, rand }) {
     };
   }
 
-  function drawTerrainDamage(camX, camY){
-    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W);
+  function drawTerrainDamage(camX: number, camY: number){
+    const range = getVisibleTileRange(camX, camY, viewport.tilesX, viewport.tilesY, WORLD_W);
     for(let wy=range.startY;wy<=range.endY;wy++) for(let wx=range.startX;wx<=range.endX;wx++) {
       if (!isExplored(wx, wy)) continue;
       drawTileDamage(get(wx,wy), (wx-camX)*TILE, (wy-camY)*TILE);
@@ -155,11 +204,11 @@ export function createRenderer({ state, get, rand }) {
 
   function draw(){
     const p = state.player;
-    const camX = Math.max(0, Math.min(WORLD_W-W, state.camX));
+    const camX = Math.max(0, Math.min(WORLD_W-viewport.tilesX, state.camX));
     const camY = Math.max(0, state.camY);
-    const sky = ctx.createLinearGradient(0,0,0,VIEW_HEIGHT);
+    const sky = ctx.createLinearGradient(0,0,0,viewport.heightPx);
     sky.addColorStop(0,'#163762'); sky.addColorStop(.25,'#0e1d31'); sky.addColorStop(.26,'#2a1a11'); sky.addColorStop(1,'#050301');
-    ctx.fillStyle = sky; ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
+    ctx.fillStyle = sky; ctx.fillRect(0,0,viewport.widthPx,viewport.heightPx);
     terrainLayer.draw(camX, camY);
     drawTerrainDamage(camX, camY);
     drawTerrainBlendOverlay(camY);
@@ -187,11 +236,11 @@ export function createRenderer({ state, get, rand }) {
     drawTeleportEffect(camX, camY, true);
     drawPartnerIndicators(camX, camY, sx + TILE*.5, sy + TILE*.5);
     if(state.gameOver){
-      ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
+      ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,0,viewport.widthPx,viewport.heightPx);
       ctx.fillStyle='#fff'; ctx.textAlign='center';
-      ctx.font='bold 38px sans-serif'; ctx.fillText('GAME OVER', VIEW_WIDTH/2, 295);
-      ctx.font='bold 24px sans-serif'; ctx.fillText('Tap anywhere to restart', VIEW_WIDTH/2, 338);
-      ctx.font='18px sans-serif'; ctx.fillText('or press R', VIEW_WIDTH/2, 370);
+      ctx.font='bold 38px sans-serif'; ctx.fillText('GAME OVER', viewport.widthPx/2, 295);
+      ctx.font='bold 24px sans-serif'; ctx.fillText('Tap anywhere to restart', viewport.widthPx/2, 338);
+      ctx.font='18px sans-serif'; ctx.fillText('or press R', viewport.widthPx/2, 370);
       ctx.textAlign='left';
     }
   }
@@ -224,7 +273,7 @@ export function createRenderer({ state, get, rand }) {
       ctx.fillStyle = '#030608';
     }
   }
-  function drawTeleportEffect(camX, camY, foreground) {
+  function drawTeleportEffect(camX: number, camY: number, foreground: boolean) {
     const effect = state.teleportEffect;
     if (!effect) return;
     const progress = effect.frame / Math.max(1, effect.duration - 1);
@@ -274,11 +323,11 @@ export function createRenderer({ state, get, rand }) {
     }
     ctx.restore();
   }
-  function drawRemotePlayers(camX, camY) {
+  function drawRemotePlayers(camX: number, camY: number) {
     for (const remote of state.remotePlayers) {
       if (!isExplored(Math.round(remote.x), Math.round(remote.y))) continue;
       const sx = (remote.drawX - camX) * TILE, sy = (remote.drawY - camY) * TILE;
-      if (sx < -TILE || sy < -TILE || sx > VIEW_WIDTH + TILE || sy > VIEW_HEIGHT + TILE) continue;
+      if (sx < -TILE || sy < -TILE || sx > viewport.widthPx + TILE || sy > viewport.heightPx + TILE) continue;
       ctx.save();
       ctx.globalAlpha = 0.56;
       ctx.translate(sx + TILE*.5, sy + TILE*.5 + Math.sin(state.tick*.45)*remote.bob*TILE*.08);
@@ -294,14 +343,14 @@ export function createRenderer({ state, get, rand }) {
       ctx.restore();
     }
   }
-  function drawPartnerIndicators(camX, camY, playerX, playerY) {
+  function drawPartnerIndicators(camX: number, camY: number, playerX: number, playerY: number) {
     for (const remote of state.remotePlayers) {
       if (!isExplored(Math.round(remote.x), Math.round(remote.y))) continue;
       const targetX = (remote.drawX - camX + .5) * TILE;
       const targetY = (remote.drawY - camY + .5) * TILE;
       const indicator = getPartnerIndicator(
         playerX, playerY, targetX, targetY,
-        VIEW_WIDTH, VIEW_HEIGHT, TILE*.65, 64
+        viewport.widthPx, viewport.heightPx, TILE*.65, 64
       );
       if (!indicator) continue;
 
@@ -319,16 +368,16 @@ export function createRenderer({ state, get, rand }) {
       ctx.restore();
     }
   }
-  function drawEnemies(camX, camY) {
+  function drawEnemies(camX: number, camY: number) {
     for (const e of state.enemies) {
       if (!e.alive) continue;
       if (!isExplored(Math.round(e.x), Math.round(e.y))) continue;
       const sx = (e.drawX - camX) * TILE, sy = (e.drawY - camY) * TILE;
-      if (sx < -TILE || sy < -TILE || sx > VIEW_WIDTH + TILE || sy > VIEW_HEIGHT + TILE) continue;
+      if (sx < -TILE || sy < -TILE || sx > viewport.widthPx + TILE || sy > viewport.heightPx + TILE) continue;
       drawEnemyBody(sx, sy, e.kind, e.hp / e.maxHp, e.flash);
     }
   }
-  function drawEnemyBody(sx, sy, kind: EnemyKind, hpPct=1, flash=0) {
+  function drawEnemyBody(sx: number, sy: number, kind: EnemyKind, hpPct=1, flash=0) {
     const enemyType = getEnemyType(kind);
     ctx.save();
     ctx.translate(sx + TILE*.5, sy + TILE*.5 + Math.sin(state.tick*.34)*TILE*.05);
@@ -355,9 +404,10 @@ export function createRenderer({ state, get, rand }) {
     ctx.fillStyle = enemyType.glow; ctx.fillRect(-TILE*.28, -TILE*.43, TILE*.56*Math.max(0,hpPct), TILE*.055);
     ctx.restore();
   }
-  function drawTile(t, wx, wy, sx, sy) {
+  function drawTile(tile: Tile, wx: number, wy: number, sx: number, sy: number) {
     const ctx = drawingContext;
-    if (t.type === 'enemy') t = {type: 'dirt', hp: t.hp, maxHp: t.maxHp};
+    // A dormant enemy is camouflaged: it paints as ordinary dirt.
+    const t: Tile = tile.type === 'enemy' ? {type: 'dirt', hp: tile.hp, maxHp: tile.maxHp} : tile;
     const pad = 1.5; // overdraw slightly so adjacent cells have no visible seams
     if(t.type==='air') {
       if (wy >= SURFACE_HEIGHT){
@@ -467,57 +517,57 @@ export function createRenderer({ state, get, rand }) {
       ctx.fillStyle='rgba(210,220,240,.11)'; ctx.fillRect(sx+TILE*.12,sy+TILE*.22,TILE*.72,TILE*.10); ctx.fillRect(sx+TILE*.29,sy+TILE*.61,TILE*.56,TILE*.10);
     }
   }
-  function drawTileDamage(t, sx, sy) {
-    if (!t.maxHp || t.hp >= t.maxHp) return;
+  function drawTileDamage(t: Tile, sx: number, sy: number) {
+    // Air has no durability and rock is indestructible, so neither shows damage.
+    if (t.type === 'air' || t.type === 'rock') return;
+    if (t.hp >= t.maxHp) return;
     if (t.type === 'hazard' || t.type === 'artifact' || t.type === 'motherlode') {
       ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64, TILE*.055);
       ctx.fillStyle=t.type === 'hazard'?'#ff7145':t.type === 'artifact'?t.artifact.color:'#ffe66d'; ctx.fillRect(sx+TILE*.18, sy+TILE*.12, TILE*.64*Math.max(0,t.hp/t.maxHp), TILE*.055);
       return;
     }
-    if (t.type !== 'air') {
-      const damage = 1 - t.hp / t.maxHp;
-      ctx.strokeStyle = `rgba(255,238,178,${0.25 + damage*.55})`;
-      ctx.lineWidth = 2 + damage * 4;
-      ctx.beginPath();
-      ctx.moveTo(sx+TILE*.24, sy+TILE*.36);
-      ctx.lineTo(sx+TILE*.42, sy+TILE*.48);
-      ctx.lineTo(sx+TILE*.35, sy+TILE*.66);
-      ctx.moveTo(sx+TILE*.58, sy+TILE*.30);
-      ctx.lineTo(sx+TILE*.49, sy+TILE*.52);
-      ctx.lineTo(sx+TILE*.70, sy+TILE*.70);
-      ctx.stroke();
-    }
+    const damage = 1 - t.hp / t.maxHp;
+    ctx.strokeStyle = `rgba(255,238,178,${0.25 + damage*.55})`;
+    ctx.lineWidth = 2 + damage * 4;
+    ctx.beginPath();
+    ctx.moveTo(sx+TILE*.24, sy+TILE*.36);
+    ctx.lineTo(sx+TILE*.42, sy+TILE*.48);
+    ctx.lineTo(sx+TILE*.35, sy+TILE*.66);
+    ctx.moveTo(sx+TILE*.58, sy+TILE*.30);
+    ctx.lineTo(sx+TILE*.49, sy+TILE*.52);
+    ctx.lineTo(sx+TILE*.70, sy+TILE*.70);
+    ctx.stroke();
   }
-  function drawTerrainBlendOverlay(camY) {
+  function drawTerrainBlendOverlay(camY: number) {
     if (camY < SURFACE_HEIGHT + .2) {
       const gy = (SURFACE_HEIGHT - camY) * TILE;
-      const grad = ctx.createLinearGradient(0, gy, 0, VIEW_HEIGHT);
+      const grad = ctx.createLinearGradient(0, gy, 0, viewport.heightPx);
       grad.addColorStop(0, 'rgba(100,58,28,.10)');
       grad.addColorStop(.55, 'rgba(58,31,16,.09)');
       grad.addColorStop(1, 'rgba(22,10,5,.16)');
-      ctx.fillStyle = grad; ctx.fillRect(0, Math.max(0, gy), VIEW_WIDTH, VIEW_HEIGHT);
+      ctx.fillStyle = grad; ctx.fillRect(0, Math.max(0, gy), viewport.widthPx, viewport.heightPx);
     } else {
-      ctx.fillStyle = 'rgba(45,24,13,.075)'; ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
+      ctx.fillStyle = 'rgba(45,24,13,.075)'; ctx.fillRect(0,0,viewport.widthPx,viewport.heightPx);
     }
     ctx.save(); ctx.globalCompositeOperation = 'soft-light';
     for (let i=0;i<10;i++) {
       ctx.fillStyle = i%2 ? 'rgba(255,182,96,.035)' : 'rgba(0,0,0,.045)';
       ctx.beginPath();
-      ctx.ellipse((i*.137%1)*VIEW_WIDTH, (i*.293%1)*VIEW_HEIGHT, VIEW_WIDTH*(.10+.025*(i%3)), VIEW_HEIGHT*(.06+.015*(i%4)), (i*.7)%Math.PI, 0, Math.PI*2);
+      ctx.ellipse((i*.137%1)*viewport.widthPx, (i*.293%1)*viewport.heightPx, viewport.widthPx*(.10+.025*(i%3)), viewport.heightPx*(.06+.015*(i%4)), (i*.7)%Math.PI, 0, Math.PI*2);
       ctx.fill();
     }
     ctx.restore();
   }
-  function surfaceMetrics(camY) {
+  function surfaceMetrics(camY: number) {
     const groundY = (SURFACE_HEIGHT - camY) * TILE;
     return { groundY, skyTop: Math.max(0, -camY * TILE), block: TILE, top: groundY - TILE };
   }
-  function pole(px, poleTop) {
+  function pole(px: number, poleTop: number) {
     ctx.fillStyle = '#5a4632'; ctx.fillRect(px - TILE*.05, poleTop, TILE*.10, TILE*2);
     ctx.fillStyle = '#43321f'; ctx.fillRect(px - TILE*.30, poleTop + TILE*.10, TILE*.60, TILE*.07); ctx.fillRect(px - TILE*.22, poleTop + TILE*.27, TILE*.44, TILE*.06);
     ctx.fillStyle = '#cfe0f0'; ctx.fillRect(px - TILE*.27, poleTop + TILE*.05, TILE*.05, TILE*.06); ctx.fillRect(px + TILE*.22, poleTop + TILE*.05, TILE*.05, TILE*.06);
   }
-  function drawSurface(camX, camY) {
+  function drawSurface(camX: number, camY: number) {
     if (camY >= SURFACE_HEIGHT + 1.4) return;
     const { groundY, skyTop, block, top } = surfaceMetrics(camY);
     const bx = (WORLD_W/2 - 4.4 - camX) * TILE;
@@ -528,11 +578,11 @@ export function createRenderer({ state, get, rand }) {
     haze.addColorStop(.65, 'rgba(248,188,106,.10)');
     haze.addColorStop(1, 'rgba(48,92,66,.16)');
     ctx.fillStyle = haze;
-    ctx.fillRect(0, skyTop, VIEW_WIDTH, Math.max(0, groundY - skyTop));
+    ctx.fillRect(0, skyTop, viewport.widthPx, Math.max(0, groundY - skyTop));
 
     // Ground cap now sits below the 3-tile-tall surface space.
-    ctx.fillStyle = '#1b623f'; ctx.fillRect(0, groundY - TILE*.12, VIEW_WIDTH, TILE*.18);
-    ctx.fillStyle = '#74451e'; ctx.fillRect(0, groundY + TILE*.06, VIEW_WIDTH, TILE*.18);
+    ctx.fillStyle = '#1b623f'; ctx.fillRect(0, groundY - TILE*.12, viewport.widthPx, TILE*.18);
+    ctx.fillStyle = '#74451e'; ctx.fillRect(0, groundY + TILE*.06, viewport.widthPx, TILE*.18);
 
     // Electric poles: 2 blocks tall (taller than the buildings), strung with wires. Drawn behind the buildings.
     const poleTop = groundY - TILE*2;
@@ -547,11 +597,11 @@ export function createRenderer({ state, get, rand }) {
     for (const px of poleXs) pole(px, poleTop);
 
     // Buildings: each exactly one block tall, sitting on the ground.
-    const building = (x, w, body, roof) => {
+    const building = (x: number, w: number, body: string, roof: string) => {
       ctx.fillStyle = body; roundRect(ctx, x, top, w, block, 7); ctx.fill();
       ctx.fillStyle = roof; ctx.fillRect(x - TILE*.04, top - TILE*.07, w + TILE*.08, TILE*.11);
     };
-    const windows = (x, w, color) => {
+    const windows = (x: number, w: number, color: string) => {
       ctx.fillStyle = color;
       const cols = Math.max(2, Math.round(w / (TILE*.46))), gap = w / cols;
       for (let i=0;i<cols;i++) ctx.fillRect(x + gap*i + gap*.30, top + block*.34, gap*.40, block*.30);
@@ -577,31 +627,31 @@ export function createRenderer({ state, get, rand }) {
     drawParallaxTreeShapes(camX, groundY);
   }
 
-  function drawDistantTreeline(groundY) {
+  function drawDistantTreeline(groundY: number) {
     // Distant line is horizontally screen-stable, but vertically tied to the surface ground.
     const baseY = groundY - TILE * .28;
     ctx.fillStyle = 'rgba(34,80,57,.42)';
     ctx.beginPath();
     ctx.moveTo(0, baseY);
-    for (let x=0; x<=VIEW_WIDTH+40; x+=40) {
+    for (let x=0; x<=viewport.widthPx+40; x+=40) {
       const h = 18 + rand(x, 7) * 20;
       ctx.lineTo(x, baseY - h);
       ctx.lineTo(x + 20, baseY - h * .72);
     }
-    ctx.lineTo(VIEW_WIDTH, baseY + 24);
+    ctx.lineTo(viewport.widthPx, baseY + 24);
     ctx.lineTo(0, baseY + 24);
     ctx.closePath();
     ctx.fill();
   }
 
-  function drawParallaxTreeShapes(camX, groundY) {
+  function drawParallaxTreeShapes(camX: number, groundY: number) {
     // Nearer tree shapes are vertically anchored to the surface and drift horizontally slower than buildings.
     const treeBaseY = groundY - TILE * .18;
     const spacing = TILE * .72;
     const parallaxX = camX * TILE * .38;
     for (let i=-4;i<24;i++) {
       const worldX = i * spacing + 17;
-      const x = ((worldX - parallaxX) % (VIEW_WIDTH + spacing * 2)) - spacing;
+      const x = ((worldX - parallaxX) % (viewport.widthPx + spacing * 2)) - spacing;
       const trunkH = 18 + rand(i,4)*20;
       const trunkW = 5 + rand(i,8)*5;
       const crownR = 15 + rand(i,3)*20;
@@ -617,7 +667,7 @@ export function createRenderer({ state, get, rand }) {
       ctx.fill();
     }
   }
-  function drawShip(p, remote=false, sprintDirection: [number, number] | null = null) {
+  function drawShip(p: ShipTransform, remote=false, sprintDirection: Direction | null = null) {
     const dead = !remote && state.gameOver;
     const wobble = Math.sin(state.tick*.22) * p.bob * TILE*.025;
     ctx.translate(0, wobble);
@@ -666,19 +716,19 @@ export function createRenderer({ state, get, rand }) {
     }
     ctx.restore();
   }
-  function drawRedStar(cx, cy, r, color='#ffd95a') {
+  function drawRedStar(cx: number, cy: number, r: number, color='#ffd95a') {
     ctx.save(); ctx.fillStyle=color; ctx.beginPath();
     for (let i=0;i<10;i++) { const a=-Math.PI/2 + i*Math.PI/5; const rr=i%2===0?r:r*.42; const x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr; if(i) ctx.lineTo(x,y); else ctx.moveTo(x,y); }
     ctx.closePath(); ctx.fill(); ctx.restore();
   }
-  function drawHammerSickle(cx, cy, s) {
+  function drawHammerSickle(cx: number, cy: number, s: number) {
     ctx.save(); ctx.strokeStyle='#ffd95a'; ctx.fillStyle='#ffd95a'; ctx.lineWidth=Math.max(2,s*.16); ctx.lineCap='round';
     ctx.beginPath(); ctx.arc(cx, cy, s*.62, -Math.PI*.15, Math.PI*.92); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(cx-s*.52, cy+s*.46); ctx.lineTo(cx+s*.56, cy-s*.48); ctx.stroke();
     ctx.fillRect(cx-s*.18, cy-s*.55, s*.65, s*.13);
     ctx.restore();
   }
-  function drawDirectionalDrill(p) {
+  function drawDirectionalDrill(p: ShipTransform) {
     const active = p.drillAnim > 0.05;
     const jitter = active ? Math.sin(state.tick * 1.8) * TILE * .025 * p.drillAnim : 0;
     ctx.save();
@@ -702,7 +752,7 @@ export function createRenderer({ state, get, rand }) {
     }
     ctx.restore();
   }
-  function roundRect(ctx, x, y, w, h, r) {
+  function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
     ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
   }
 

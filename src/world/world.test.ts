@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { artifactForDepthRoll, ensureWorldRow, rand, naturalAirPocket, makeTile, oreForDepthRoll, oreSpawnChanceAtDepth, starterOreForCoordinate } from './world';
 import { ARTIFACTS, MAX_WORLD_ROW, MOTHERLODE_ROW, ORES, START_Y, SURFACE_HEIGHT, WORLD_CHUNK_ROWS, WORLD_W } from '../../shared/constants';
+import type { Tile } from '../core/types';
 
 describe('rand', () => {
   it('is deterministic for the same coordinate', () => {
@@ -212,8 +213,8 @@ describe('makeTile', () => {
 
   it('generates deterministic terrain chunks on demand beyond 10,000 m', () => {
     const deepRow = MOTHERLODE_ROW + 137;
-    const first = [];
-    const second = [];
+    const first: Tile[][] = [];
+    const second: Tile[][] = [];
 
     const firstRow = ensureWorldRow(first, deepRow);
     const secondRow = ensureWorldRow(second, deepRow);

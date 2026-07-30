@@ -4,21 +4,11 @@ import { ARTIFACTS, DANGER, MAX_WORLD_ROW, MOTHERLODE_ROW, ORES, SURFACE_HEIGHT,
 import type { Tile } from '../core/types';
 import { enemyHealth, enemyKindForDepthRoll } from '../core/enemy-types';
 
-/**
- * Deterministic pseudo-random value in [0,1) for a tile coordinate.
- * @param {number} x
- * @param {number} y
- * @returns {number}
- */
-export function rand(x,y){ let n = Math.sin(x*127.1 + y*311.7) * 43758.5453; return n - Math.floor(n); }
+/** Deterministic pseudo-random value in [0,1) for a tile coordinate. */
+export function rand(x: number, y: number): number { let n = Math.sin(x*127.1 + y*311.7) * 43758.5453; return n - Math.floor(n); }
 
-/**
- * Whether a natural air pocket / cave seam exists at this coordinate.
- * @param {number} x
- * @param {number} y
- * @returns {boolean}
- */
-export function naturalAirPocket(x,y){
+/** Whether a natural air pocket / cave seam exists at this coordinate. */
+export function naturalAirPocket(x: number, y: number): boolean {
   if (y < 5 || x < 2 || x > WORLD_W - 3) return false;
   const depth = Math.min(1, y / 85);
   const cellular = (rand(Math.floor(x/2), Math.floor(y/2)) + rand(Math.floor((x+1)/3)+41, Math.floor((y-1)/3)-17)) / 2;
@@ -72,12 +62,7 @@ export function artifactForDepthRoll(depth: number, roll: number) {
   return null;
 }
 
-/**
- * Generate the tile at a world coordinate. Deterministic for a given (x,y).
- * @param {number} x
- * @param {number} y
- * @returns {{type:string, [key:string]:any}}
- */
+/** Generate the tile at a world coordinate. Deterministic for a given (x,y). */
 export function makeTile(x: number, y: number): Tile {
   if (y < SURFACE_HEIGHT) return {type:'air'};
   if (y === SURFACE_HEIGHT && Math.abs(x - WORLD_W/2) < 7) return {type:'dirt', hp:2, maxHp:2};

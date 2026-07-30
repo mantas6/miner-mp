@@ -1,6 +1,6 @@
 // The world's data shapes are defined once, as zod schemas, in
 // `shared/world-schema.ts` — the relay validates against the same definitions.
-import type { EnemyKind, Tile } from '../../shared/world-schema';
+import type { EnemyKind, Ore, Tile } from '../../shared/world-schema';
 
 export type {
   AirTile,
@@ -40,8 +40,15 @@ export interface Player {
   gunOwned: boolean;
   bullets: number;
   visibility: number;
-  cargo: any[];
+  /** Mined ore awaiting sale at the depot; artifacts are banked instead. */
+  cargo: Ore[];
 }
+
+/** The transform fields shared by the local ship, its replicas, and renderers. */
+export type ShipTransform = Pick<
+  Player,
+  'x' | 'y' | 'drawX' | 'drawY' | 'facing' | 'bob' | 'drillAnim' | 'drillDx' | 'drillDy'
+>;
 
 export interface Enemy {
   id: number;

@@ -125,6 +125,36 @@ test('a flooding connection is rate limited instead of driving the world', async
   assert.equal(server.wss.clients.size, 1);
 });
 
+test('a third connection is told the room is full, closed, and given no world', async t => {
+  const {server, url} = await relayServer(t);
+  const host = await connect(url);
+  const guest = await connect(url);
+  t.after(() => { host.socket.terminate(); guest.socket.terminate(); });
+  await guest.next(message => message.t === 'paired');
+
+  const extra = await connect(url);
+  const closed = new Promise(resolve => extra.socket.once('close', resolve));
+  const rejection = await extra.next(message => message.t === 'room-full');
+
+  assert.equal(rejection.t, 'room-full');
+  await closed;
+  assert.equal(extra.socket.readyState, WebSocket.CLOSED);
+  await settle(50);
+  assert.equal(server.wss.clients.size, 2);
+
+  // The rejected peer never became a room member: the pair is untouched and no
+  // world state leaked to it.
+  relay(host.socket, {type:'worldInit',revision:1,tiles:[{x:2,y:9,tile:{type:'dirt',hp:2,maxHp:2}}]});
+  await guest.next(message => message.payload?.type === 'worldState' && message.payload.initialized);
+
+  // A slot freed by the pair is handed to the next connection as normal.
+  guest.socket.close();
+  await host.next(message => message.t === 'peer-left');
+  const replacement = await connect(url);
+  t.after(() => replacement.socket.terminate());
+  assert.equal((await replacement.next(message => message.t === 'paired')).role, 'guest');
+});
+
 test('the heartbeat keeps responsive connections and frees dead slots on close', async t => {
   const {server, url} = await relayServer(t, {heartbeatMs:25});
   const host = await connect(url);

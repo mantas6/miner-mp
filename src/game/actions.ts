@@ -18,7 +18,7 @@ import {
 import type { AudioController, Direction, GameState } from '../core/types';
 import { applyPlayerUpgrade, getPlayerUpgradeProgress, type PlayerUpgradeId } from '../core/upgrades';
 import { consumeBulletForShot, resolveShot } from '../core/weapon';
-import { H, W } from './dom';
+import { viewport } from './viewport';
 import type { EnemySim } from './enemies';
 import type { GameSession } from './session';
 import type { WorldGrid } from './world-grid';
@@ -257,7 +257,7 @@ export function createActions(deps: GameActionsDeps): GameActions {
     if (surf && !state.teleportReturnPosition) return toast('No underground teleport return point.');
     if (!surf && p.teleporters <= 0) { audio.alarm(); return toast('No teleporter. Buy one at the surface depot.'); }
     if (!surf && !canTeleportToSurface(p.y)) { audio.alarm(); return toast(`Teleport requires a depth of at least ${MIN_TELEPORT_DEPTH_METERS} m.`); }
-    const camX = Math.max(0, Math.min(WORLD_W - W, state.camX));
+    const camX = Math.max(0, Math.min(WORLD_W - viewport.tilesX, state.camX));
     const camY = Math.max(0, state.camY);
     const originScreenX = (p.drawX - camX + .5) * TILE;
     const originScreenY = (p.drawY - camY + .5) * TILE;
@@ -273,8 +273,8 @@ export function createActions(deps: GameActionsDeps): GameActions {
     state.teleportEffect = createTeleportEffect(originScreenX, originScreenY, p.x, p.y, reducedMotion);
     state.input.keyImpulse = null;
     state.input.gunArmed = false;
-    state.camX = Math.max(0, p.x - Math.floor(W / 2));
-    state.camY = surf ? Math.max(0, p.y - Math.floor(H / 2)) : 0;
+    state.camX = Math.max(0, p.x - Math.floor(viewport.tilesX / 2));
+    state.camY = surf ? Math.max(0, p.y - Math.floor(viewport.tilesY / 2)) : 0;
     saveProgress();
     if (state.connected && session.paired) session.send({type: 'teleported', x: p.x, y: p.y});
     toast(surf

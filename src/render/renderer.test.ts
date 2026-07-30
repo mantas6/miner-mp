@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TILE } from '../../shared/constants';
 import { explorationIndex } from '../../shared/exploration-codec';
+import type { Direction } from '../core/types';
 
 const mocks = vi.hoisted(() => {
   const gradient = {addColorStop: vi.fn()};
@@ -42,11 +43,11 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('../game/dom', () => ({
   canvas: mocks.canvas,
-  ctx: mocks.mainContext,
-  H: 10,
-  VIEW_HEIGHT: 640,
-  VIEW_WIDTH: 960,
-  W: 15
+  ctx: mocks.mainContext
+}));
+
+vi.mock('../game/viewport', () => ({
+  viewport: {widthPx: 960, heightPx: 640, tilesX: 15, tilesY: 10}
 }));
 
 import { createRenderer } from './renderer';
@@ -70,7 +71,7 @@ describe('terrain cache lifecycle', () => {
 
   it('renders only newly exposed chunks while the camera moves', () => {
     const state = {
-      world: {},
+      world: [],
       camX: 10.2,
       camY: 20.2,
       tick: 0,
@@ -119,7 +120,7 @@ describe('terrain cache lifecycle', () => {
 
   it('invalidates one changed tile chunk without rebuilding the viewport', () => {
     const state = {
-      world: {},
+      world: [],
       camX: 10.2,
       camY: 20.2,
       tick: 0,
@@ -159,7 +160,7 @@ describe('terrain cache lifecycle', () => {
 
   it('marks rare artifacts with a visually distinct cash glyph', () => {
     const state = {
-      world: {}, camX: 10, camY: 200, tick: 0, gameOver: false,
+      world: [], camX: 10, camY: 200, tick: 0, gameOver: false,
       particles: [], enemies: [], remotePlayers: [],
       player: {x:12, y:202, drawX:12, drawY:202, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
     };
@@ -177,13 +178,13 @@ describe('terrain cache lifecycle', () => {
 
   it('renders a buried enemy as ordinary dirt', () => {
     const state = {
-      world: {}, camX: 10, camY: 20, tick: 0, gameOver: false,
+      world: [], camX: 10, camY: 20, tick: 0, gameOver: false,
       particles: [], enemies: [], remotePlayers: [],
       player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
     };
     const renderer = createRenderer({
       state,
-      get: () => ({type:'enemy', kind:'tunnelFiend', hp:4, maxHp:4}),
+      get: () => ({type:'enemy', kind:'tunnelFiend' as const, hp:4, maxHp:4}),
       rand: () => 0
     });
 
@@ -195,9 +196,9 @@ describe('terrain cache lifecycle', () => {
 
   it('renders active variants with distinct deep-mine palettes', () => {
     const state = {
-      world: {}, camX: 10, camY: 1000, tick: 0, gameOver: false,
+      world: [], camX: 10, camY: 1000, tick: 0, gameOver: false,
       particles: [], remotePlayers: [],
-      enemies: [{id:1, kind:'abyssStalker', x:12, y:1002, drawX:12, drawY:1002, hp:8, maxHp:8, alive:true, moveTick:0, biteTick:0, flash:0}],
+      enemies: [{id:1, kind:'abyssStalker' as const, x:12, y:1002, drawX:12, drawY:1002, hp:8, maxHp:8, alive:true, moveTick:0, biteTick:0, flash:0}],
       player: {x:12, y:1002, drawX:12, drawY:1002, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
     };
     const renderer = createRenderer({state, get: () => ({type:'air'}), rand: () => 0});
@@ -211,7 +212,7 @@ describe('terrain cache lifecycle', () => {
 
   it('renders departure and arrival feedback across a camera jump', () => {
     const state = {
-      world: {}, camX: 37.5, camY: 0, tick: 0, gameOver: false,
+      world: [], camX: 37.5, camY: 0, tick: 0, gameOver: false,
       particles: [], enemies: [], remotePlayers: [],
       teleportEffect: {
         originScreenX: 480, originScreenY: 320,
@@ -231,10 +232,10 @@ describe('terrain cache lifecycle', () => {
 
   it('paints textured unexplored tiles without leaking enemies, peers, or particles', () => {
     const state = {
-      world: {}, camX: 10, camY: 20, tick: 0, gameOver: false,
+      world: [], camX: 10, camY: 20, tick: 0, gameOver: false,
       exploredTiles: new Set<number>(), teleportEffect: null,
       particles: [{x:12.5, y:22.5, vx:0, vy:0, life:20, color:'#fff', size:.1}],
-      enemies: [{id:1, kind:'tunnelFiend', x:12, y:22, drawX:12, drawY:22, hp:4, maxHp:4, alive:true, moveTick:0, biteTick:0, flash:0}],
+      enemies: [{id:1, kind:'tunnelFiend' as const, x:12, y:22, drawX:12, drawY:22, hp:4, maxHp:4, alive:true, moveTick:0, biteTick:0, flash:0}],
       remotePlayers: [{x:13, y:22, drawX:13, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}],
       player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
     };
@@ -253,7 +254,7 @@ describe('terrain cache lifecycle', () => {
 
   it('keeps cached fog chunks until exploration marks them dirty', () => {
     const state = {
-      world: {}, camX: 10.2, camY: 20.2, tick: 0, gameOver: false,
+      world: [], camX: 10.2, camY: 20.2, tick: 0, gameOver: false,
       exploredTiles: new Set<number>(), teleportEffect: null,
       particles: [], enemies: [], remotePlayers: [],
       player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
@@ -292,10 +293,10 @@ describe('terrain cache lifecycle', () => {
 
   it('draws boost jets opposite the active travel direction only', () => {
     const state = {
-      world: {}, camX: 10, camY: 20, tick: 4, gameOver: false, reducedMotion: false,
+      world: [], camX: 10, camY: 20, tick: 4, gameOver: false, reducedMotion: false,
       exploredTiles: new Set<number>(), teleportEffect: null,
       particles: [], enemies: [], remotePlayers: [],
-      input: {sprintDirection: [0, -1]},
+      input: {sprintDirection: [0, -1] as Direction | null},
       player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
     };
     const renderer = createRenderer({state, get: () => ({type:'air'}), rand: () => 0});
@@ -314,9 +315,9 @@ describe('terrain cache lifecycle', () => {
 
   it('keeps reduced-motion boost flames static across render frames', () => {
     const state = {
-      world: {}, camX: 10, camY: 20, tick: 1, gameOver: false, reducedMotion: true,
+      world: [], camX: 10, camY: 20, tick: 1, gameOver: false, reducedMotion: true,
       exploredTiles: new Set<number>(), teleportEffect: null,
-      particles: [], enemies: [], remotePlayers: [], input: {sprintDirection: [1, 0]},
+      particles: [], enemies: [], remotePlayers: [], input: {sprintDirection: [1, 0] as Direction | null},
       player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
     };
     const renderer = createRenderer({state, get: () => ({type:'air'}), rand: () => 0});

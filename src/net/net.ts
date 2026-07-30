@@ -94,7 +94,9 @@ interface ServerEnvelope {
 export function createNet(options: NetOptions = {}): NetClient {
   const url = options.url || DEFAULT_SERVER_URL;
   const cb = options.callbacks || {};
-  const WS = options.WebSocketImpl || (globalThis as any).WebSocket as typeof WebSocket;
+  // A non-browser host (a plain Node test runner) may have no WebSocket at all,
+  // which the DOM lib's type does not admit — hence the runtime guard below.
+  const WS: typeof WebSocket | undefined = options.WebSocketImpl || globalThis.WebSocket;
   const now = options.now || (() => Date.now());
 
   const playerStateGate = createRateLimiter(RATES.playerState);
