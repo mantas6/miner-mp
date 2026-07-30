@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { beginExtraction, cancelExtraction, completeExtractionAtDepot } from './extraction-phase';
+import { formatExtractionPresentation } from './extraction-presentation';
+
+const REWARD = 5000;
 
 describe('Motherlode extraction phase', () => {
   it('starts a single return-to-depot phase when a core is claimed', () => {
@@ -16,5 +19,33 @@ describe('Motherlode extraction phase', () => {
 
   it('cancels an unbanked core run on death or reset', () => {
     expect(cancelExtraction()).toBe('none');
+  });
+});
+
+describe('Motherlode extraction presentation', () => {
+  it.each([
+    ['returning', 0, 'Motherlode secured'],
+    ['completed', 1, 'Extraction complete'],
+    ['none', 2, 'Career milestone']
+  ] as const)('headlines the %s phase and always shows the reward in the info panel', (phase, extractions, hudHeadline) => {
+    const presentation = formatExtractionPresentation({ phase, motherlodeExtractions: extractions, reward: REWARD });
+
+    expect(presentation.hud).toContain(hudHeadline);
+    expect(presentation.info).toContain('$5,000');
+  });
+
+  it('pluralizes the career extraction count', () => {
+    const one = formatExtractionPresentation({ phase: 'none', motherlodeExtractions: 1, reward: REWARD });
+    const many = formatExtractionPresentation({ phase: 'none', motherlodeExtractions: 2, reward: REWARD });
+
+    expect(one.hud).toContain('1 Motherlode extraction banked');
+    expect(many.hud).toContain('2 Motherlode extractions banked');
+  });
+
+  it('hides the HUD line before the first core is claimed', () => {
+    const presentation = formatExtractionPresentation({ phase: 'none', motherlodeExtractions: 0, reward: REWARD });
+
+    expect(presentation.hud).toBeNull();
+    expect(presentation.info).toContain('10,000 m');
   });
 });

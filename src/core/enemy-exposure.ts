@@ -1,4 +1,5 @@
 import { isTraversableTerrain } from './movement';
+import { tileKey as key } from './tile-key';
 import type { Tile } from './types';
 
 export interface TileCoordinate {
@@ -7,10 +8,6 @@ export interface TileCoordinate {
 }
 
 const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
-
-function key(x: number, y: number): string {
-  return `${x},${y}`;
-}
 
 /**
  * Incrementally expands the traversable air component and returns dormant

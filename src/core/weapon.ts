@@ -1,4 +1,5 @@
 import { SURFACE_HEIGHT } from '../../shared/constants';
+import { tileKey } from './tile-key';
 import type { Direction, Tile } from './types';
 
 export interface ShotEnemyTarget {
@@ -42,7 +43,7 @@ export function resolveShot(
 ): ShotResult | null {
   if (!isCardinalDirection(direction) || range < 1) return null;
   const [dx, dy] = direction;
-  const activeEnemies = new Map(enemies.map(enemy => [`${Math.round(enemy.x)},${Math.round(enemy.y)}`, enemy]));
+  const activeEnemies = new Map(enemies.map(enemy => [tileKey(Math.round(enemy.x), Math.round(enemy.y)), enemy]));
   const path: {x: number; y: number}[] = [];
 
   for (let distance = 1; distance <= range; distance++) {
@@ -53,7 +54,7 @@ export function resolveShot(
       return {outcome: 'blocked', path};
     }
     path.push({x, y});
-    const enemy = activeEnemies.get(`${x},${y}`);
+    const enemy = activeEnemies.get(tileKey(x, y));
     if (enemy) return {outcome: 'hit', path, target: {kind: 'enemy', enemy}};
     const tile = row[x];
     if (tile.type === 'air') continue;

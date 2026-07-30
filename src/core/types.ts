@@ -226,7 +226,3 @@ export interface AudioController {
   musicNote(freq: number, dur: number, type: OscillatorType, gain: number, start: number): void;
   stopMusic(): void;
 }
-
-export interface Renderer {
-  draw(): void;
-}

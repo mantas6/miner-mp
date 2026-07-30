@@ -1,7 +1,5 @@
 import { MAX_WORLD_ROW, SURFACE_HEIGHT, WORLD_W } from './constants';
 
-export const STARTING_VISIBILITY = 3;
-
 export function explorationIndex(x: number, y: number): number {
   return y * WORLD_W + x;
 }

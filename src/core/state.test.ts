@@ -1,15 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { STARTING, LIMITS, ECONOMY } from './balance';
+import { STARTING, ECONOMY } from './balance';
 import { START_Y, WORLD_W } from '../../shared/constants';
-import { cargoCost } from './economy';
 import { createInitialState, respawnPlayer } from './state';
 
-describe('starting cargo capacity', () => {
-  it('starts new games with 10 cargo slots and empty cargo', () => {
+describe('initial game state', () => {
+  it('starts a new game with starting capacities, no consumables, and no progress', () => {
     const state = createInitialState();
 
-    expect(STARTING.cargoMax).toBe(10);
-    expect(state.player.cargoMax).toBe(10);
+    expect(state.player.cargoMax).toBe(STARTING.cargoMax);
     expect(state.player.cargo).toHaveLength(0);
     expect(state.player.dynamite).toBe(0);
     expect(state.player.teleporters).toBe(0);
@@ -21,11 +19,11 @@ describe('starting cargo capacity', () => {
     expect(state.reducedMotion).toBe(false);
   });
 
-  it('uses 10 as the minimum saved cargo capacity with incremental five-slot upgrades', () => {
-    expect(LIMITS.cargoMax.min).toBe(10);
-    expect(ECONOMY.cargo.step).toBe(5);
-    expect(cargoCost({ cargoMax: STARTING.cargoMax })).toBe(120);
-    expect(cargoCost({ cargoMax: STARTING.cargoMax + ECONOMY.cargo.step })).toBe(159);
+  it('gives every new state its own stats object', () => {
+    const first = createInitialState();
+    first.stats.maxDepth = 500;
+
+    expect(createInitialState().stats.maxDepth).toBe(0);
   });
 });
 

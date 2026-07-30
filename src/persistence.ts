@@ -1,20 +1,11 @@
 import { ECONOMY, LIMITS, STARTING } from './core/balance';
+import { createDefaultStats } from './core/state';
 import { encodeExploration, mergeExploration } from '../shared/exploration-codec';
 
 export const SAVE_KEY = 'moleload-progress-v1';
 export const SAVE_VERSION = 3;
 const LEGACY_CARGO_STEP = 10;
 const CARGO_BALANCE_SAVE_VERSION = 2;
-export const DEFAULT_STATS = {
-  maxDepth: 0,
-  totalCashEarned: 0,
-  oreMined: 0,
-  artifactsFound: 0,
-  enemiesDestroyed: 0,
-  deaths: 0,
-  motherlodeClaims: 0,
-  motherlodeExtractions: 0
-};
 
 export function numeric(value, fallback, min=0, max=Number.MAX_SAFE_INTEGER) {
   const n = Number(value);
@@ -44,8 +35,9 @@ export function load(state) {
     p.bullets = Math.floor(numeric(save.bullets, p.bullets, LIMITS.bullets.min, LIMITS.bullets.max));
     p.visibility = Math.floor(numeric(save.visibility, p.visibility, LIMITS.visibility.min, LIMITS.visibility.max));
     mergeExploration(state.exploredTiles, save.explored);
-    state.stats = {...DEFAULT_STATS, ...(save.stats || {})};
-    for (const key of Object.keys(DEFAULT_STATS)) state.stats[key] = numeric(state.stats[key], DEFAULT_STATS[key], 0);
+    const defaultStats = createDefaultStats();
+    state.stats = {...defaultStats, ...(save.stats || {})};
+    for (const key of Object.keys(defaultStats)) state.stats[key] = numeric(state.stats[key], defaultStats[key], 0);
   } catch (err) {
     console.warn('Could not load saved Moleload progress:', err);
   }

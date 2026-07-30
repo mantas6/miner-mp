@@ -1,4 +1,5 @@
-import { START_Y, SURFACE_HEIGHT, WORLD_W } from '../../shared/constants';
+import { START_Y, SURFACE_HEIGHT } from '../../shared/constants';
+import { placeAtSurfaceSpawn } from './state';
 import type { Player, TeleportEffect, TeleportReturnPosition } from './types';
 
 export const TELEPORT_EFFECT_FRAMES = 36;
@@ -41,13 +42,9 @@ export function teleportPlayerToSurface(player: Player): TeleportReturnPosition 
   if (!canTeleportToSurface(player.y) || player.teleporters <= 0) return null;
 
   const returnPosition = {x: player.x, y: player.y};
-  const x = Math.floor(WORLD_W / 2);
   player.teleporters--;
+  placeAtSurfaceSpawn(player);
   Object.assign(player, {
-    x,
-    y: START_Y,
-    drawX: x,
-    drawY: START_Y,
     bob: 0,
     drillAnim: 0
   });

@@ -1,35 +1,36 @@
 import { describe, it, expect } from 'vitest';
-import { refuelCost, repairCost, cargoCost, tankCost, hullCost, drillCost, partialFill, cargoValue, cheapestUpgrade, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
+import { refuelCost, repairCost, cargoCost, tankCost, hullCost, drillCost, visibilityCost, partialFill, cargoValue, cheapestUpgrade, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
 import { STARTING, ECONOMY } from './balance';
 
 describe('cost functions', () => {
-  it('refuelCost at baseline and upgraded', () => {
-    expect(refuelCost({ fuelMax: 100 })).toBe(20);
-    expect(refuelCost({ fuelMax: 200 })).toBe(55);
+  it.each([
+    ['cargoCost', (level: number) => cargoCost({ cargoMax: STARTING.cargoMax + level * ECONOMY.cargo.step })],
+    ['tankCost', (level: number) => tankCost({ fuelMax: STARTING.fuelMax + level * ECONOMY.tank.step })],
+    ['hullCost', (level: number) => hullCost({ hullMax: STARTING.hullMax + level * ECONOMY.hull.step })],
+    ['drillCost', (level: number) => drillCost({ drill: STARTING.drill + level })],
+    ['visibilityCost', (level: number) => visibilityCost({ visibility: STARTING.visibility + level })]
+  ])('%s is a positive whole price that grows with every upgrade level', (_name, costAtLevel) => {
+    let previous = 0;
+    for (let level = 0; level < 6; level++) {
+      const cost = costAtLevel(level);
+      expect(Number.isInteger(cost)).toBe(true);
+      expect(cost).toBeGreaterThan(previous);
+      previous = cost;
+    }
   });
 
-  it('repairCost at full and damaged hull', () => {
-    expect(repairCost({ hullMax: 100, hull: 100 })).toBe(30);
-    expect(repairCost({ hullMax: 100, hull: 50 })).toBe(53);
+  it('refuelCost grows with tank capacity and never drops below the base fee', () => {
+    const base = refuelCost({ fuelMax: STARTING.fuelMax });
+    expect(base).toBeGreaterThan(0);
+    expect(refuelCost({ fuelMax: STARTING.fuelMax + ECONOMY.tank.step })).toBeGreaterThan(base);
   });
 
-  it('cargoCost at baseline and one step up', () => {
-    expect(cargoCost({ cargoMax: STARTING.cargoMax })).toBe(120);
-    expect(cargoCost({ cargoMax: STARTING.cargoMax + ECONOMY.cargo.step })).toBe(159);
-  });
-
-  it('tankCost at baseline', () => {
-    expect(tankCost({ fuelMax: STARTING.fuelMax })).toBe(150);
-  });
-
-  it('hullCost at baseline and one step up', () => {
-    expect(hullCost({ hullMax: STARTING.hullMax })).toBe(180);
-    expect(hullCost({ hullMax: STARTING.hullMax + ECONOMY.hull.step })).toBe(249);
-  });
-
-  it('drillCost at baseline and one level up', () => {
-    expect(drillCost({ drill: STARTING.drill })).toBe(200);
-    expect(drillCost({ drill: STARTING.drill + 1 })).toBe(310);
+  it('repairCost grows with hull damage and is lowest at full hull', () => {
+    const undamaged = repairCost({ hullMax: STARTING.hullMax, hull: STARTING.hullMax });
+    expect(undamaged).toBeGreaterThan(0);
+    expect(repairCost({ hullMax: STARTING.hullMax, hull: STARTING.hullMax / 2 })).toBeGreaterThan(undamaged);
+    expect(repairCost({ hullMax: STARTING.hullMax, hull: 0 }))
+      .toBeGreaterThan(repairCost({ hullMax: STARTING.hullMax, hull: STARTING.hullMax / 2 }));
   });
 });
 

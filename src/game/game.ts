@@ -1,14 +1,14 @@
-import { ORES, START_Y, SURFACE_HEIGHT, TILE, WORLD_W } from '../../shared/constants';
-import { canvas, gamePanel, ctx, H, keys, ui, W } from './dom';
+import { START_Y, SURFACE_HEIGHT, TILE, WORLD_W } from '../../shared/constants';
+import { canvas, gamePanel, H, keys, ui, W } from './dom';
 import { createAudio } from '../audio/audio';
 import { shouldAttemptAutoAudio } from '../audio/audio-permission';
-import { createInitialState, respawnPlayer } from '../core/state';
+import { createDefaultStats, createInitialState, respawnPlayer } from '../core/state';
 import { createRenderer } from '../render/renderer';
 import { STARTING, FUEL, HULL, ENEMY, ECONOMY, LIMITS } from '../core/balance';
 import { refuelCost, repairCost, cargoCost, tankCost, hullCost, drillCost, visibilityCost, partialFill, cargoValue } from '../core/economy';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from '../core/hud-alerts';
 import { formatExpeditionObjective } from '../core/objective';
-import { load, save, DEFAULT_STATS } from '../persistence';
+import { load, save } from '../persistence';
 import { formatExpeditionStats } from '../core/stats';
 import { ensureWorldRow, rand, makeTile } from '../world/world';
 import { getInfoNavigationSection, getInfoTabFocusTarget } from '../ui/info-navigation';
@@ -16,7 +16,7 @@ import { getInfoNavigationSection, getInfoTabFocusTarget } from '../ui/info-navi
 import { beginExtraction, cancelExtraction, completeExtractionAtDepot } from '../core/extraction-phase';
 import { formatExtractionPresentation } from '../core/extraction-presentation';
 import { createNet, type NetClient } from '../net/net';
-import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, applyWorldSyncToWorld, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, mergeWorldSync, nextEnemyId, playerStateFrom, remotePlayerFrom, type EnemySnapshotEntry, type TileDiff } from '../net/net-protocol';
+import { applyEnemyDead, applyEnemySpawn, applyRemotePlayerState, applyTileDiff, enemyEntryFrom, enemySnapshotFrom, interpolateRemotePlayers, mergeEnemySnapshot, nextEnemyId, playerStateFrom, remotePlayerFrom, type EnemySnapshotEntry, type TileDiff } from '../net/net-protocol';
 import { loadServerUrl, saveServerUrl } from '../net/multiplayer-settings';
 import { activeSprintDirection, fuelAfterMovement, isOpenSpaceDestination, keyboardMovementRepeatMs, movementDestination } from '../core/movement';
 import { getDynamiteBlastTargets } from '../core/dynamite';
@@ -26,7 +26,7 @@ import type { Enemy, Tile } from '../core/types';
 import { applyPlayerUpgrade, getPlayerUpgradeProgress, updateDeveloperUpgradeControls, type PlayerUpgradeId } from '../core/upgrades';
 import { updateShopControls } from './shop';
 import { expandReachableAir } from '../core/enemy-exposure';
-import { encodeExploration, isTileExplored, mergeExploration, revealFootprint } from '../../shared/exploration-codec';
+import { encodeExploration, mergeExploration, revealFootprint } from '../../shared/exploration-codec';
 import { consumeBulletForShot, gunKeyAction, resolveShot } from '../core/weapon';
 import { confirmPlayerDataReset, resetPlayerData } from '../core/player-data-reset';
 import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDeveloperCash, updateDeveloperServiceControls, type DeveloperServiceId } from '../core/developer';
@@ -50,7 +50,7 @@ let worldRevision = 1;
 const reachableAir = new Set<string>();
 const ENEMY_AGGRO_RANGE = 24;
 
-state.stats = {...DEFAULT_STATS};
+state.stats = createDefaultStats();
 
 function loadProgress() { load(state); }
 
@@ -126,7 +126,7 @@ function resetPlayer(full=true){
   state.teleportEffect = null;
   state.teleportReturnPosition = null;
   state.input.gunArmed = false;
-  if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.player.visibility=STARTING.visibility; state.player.dynamite=STARTING.dynamite; state.player.teleporters=STARTING.teleporters; state.player.gunOwned=STARTING.gunOwned; state.player.bullets=STARTING.bullets; state.exploredTiles.clear(); state.stats = {...DEFAULT_STATS}; saveProgress(); }
+  if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.player.visibility=STARTING.visibility; state.player.dynamite=STARTING.dynamite; state.player.teleporters=STARTING.teleporters; state.player.gunOwned=STARTING.gunOwned; state.player.bullets=STARTING.bullets; state.exploredTiles.clear(); state.stats = createDefaultStats(); saveProgress(); }
   respawnPlayer(state.player);
   revealAtPlayer();
   state.camX = Math.max(0, state.player.x - Math.floor(W/2));
@@ -222,14 +222,6 @@ function startOnline(url: string){
             saveProgress();
             if (isPairedHost()) net?.send({type:'explore', revision:worldRevision, ranges:encodeExploration(state.exploredTiles)});
           }
-        }
-        if (msg.type === 'worldSync' && isGuestEnemyReplica()) {
-          applyWorldSyncToWorld(state.world, msg, makeTile);
-          renderer.invalidateTerrain();
-          tileDiff = mergeWorldSync(tileDiff, [], msg).diff;
-          mergeEnemyEntries(msg.enemies);
-          mergeExploration(state.exploredTiles, msg.explored);
-          saveProgress();
         }
         if (msg.type === 'enemySnapshot' && isGuestEnemyReplica()) mergeEnemyEntries(msg.enemies);
         if (msg.type === 'enemySpawn' && isGuestEnemyReplica()) {

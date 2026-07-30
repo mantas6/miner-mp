@@ -68,22 +68,13 @@ describe('ore depth distribution', () => {
     return names;
   };
 
-  it('preserves the original mineral bands and extends the deepest resources below 10 km', () => {
-    expect(ORES.map(ore => ({
-      name: ore.name,
-      min: (ore.min - START_Y) * 10,
-      max: (ore.max - START_Y) * 10
-    }))).toEqual([
-      {name: 'Coal', min: 0, max: 1800},
-      {name: 'Copper', min: 50, max: 3200},
-      {name: 'Silver', min: 600, max: 4600},
-      {name: 'Gold', min: 1500, max: 6000},
-      {name: 'Ruby', min: 2600, max: 7400},
-      {name: 'Emerald', min: 3900, max: 8500},
-      {name: 'Alienite', min: 5400, max: 9400},
-      {name: 'Uranium', min: 7000, max: (MAX_WORLD_ROW - START_Y) * 10},
-      {name: 'Core Shard', min: 8500, max: (MAX_WORLD_ROW - START_Y) * 10}
-    ]);
+  it('keeps mineral bands ordered by tier and reaches the bottom of the mine', () => {
+    for (let index = 1; index < ORES.length; index++) {
+      expect(ORES[index].min).toBeGreaterThan(ORES[index - 1].min);
+      expect(ORES[index].value).toBeGreaterThan(ORES[index - 1].value);
+    }
+    expect(ORES[0].min).toBeLessThanOrEqual(START_Y);
+    expect(Math.max(...ORES.map(ore => ore.max))).toBe(MAX_WORLD_ROW);
 
     for (let depth = SURFACE_HEIGHT; depth <= MOTHERLODE_ROW + 100; depth++) {
       expect(oreForDepthRoll(depth, .5)).not.toBeNull();

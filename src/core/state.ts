@@ -1,59 +1,45 @@
 import { START_Y, WORLD_W } from '../../shared/constants';
 import { STARTING } from './balance';
-import type { GameState, Player } from './types';
+import type { GameState, GameStats, Player } from './types';
+
+/** Tile column of the surface shaft where every ship starts or returns. */
+export const SURFACE_SPAWN_X = Math.floor(WORLD_W / 2);
+
+type PlaceablePlayer = Pick<Player, 'x' | 'y' | 'drawX' | 'drawY'>;
+
+/** Move a ship to the surface shaft spawn, keeping its render position in sync. */
+export function placeAtSurfaceSpawn(player: PlaceablePlayer): void {
+  Object.assign(player, {
+    x: SURFACE_SPAWN_X,
+    y: START_Y,
+    drawX: SURFACE_SPAWN_X,
+    drawY: START_Y
+  });
+}
 
 export function respawnPlayer(player: Player): void {
-  const x = Math.floor(WORLD_W / 2);
+  placeAtSurfaceSpawn(player);
   Object.assign(player, {
-    x,
-    y: START_Y,
-    drawX: x,
-    drawY: START_Y,
     fuel: player.fuelMax,
     hull: player.hullMax,
     cargo: []
   });
 }
 
-/**
- * @typedef {Object} Player
- * @property {number} x          Tile column the player occupies.
- * @property {number} y          Tile row the player occupies.
- * @property {number} drawX      Interpolated render column.
- * @property {number} drawY      Interpolated render row.
- * @property {number} facing     Horizontal facing direction (1 or -1).
- * @property {number} bob        Idle bob animation phase.
- * @property {number} drillAnim  Drill animation progress.
- * @property {number} drillDx    Drill direction x-component.
- * @property {number} drillDy    Drill direction y-component.
- * @property {number} fuel       Current fuel.
- * @property {number} fuelMax    Maximum fuel capacity.
- * @property {number} hull       Current hull integrity.
- * @property {number} hullMax    Maximum hull integrity.
- * @property {number} cargoMax   Maximum cargo slots.
- * @property {number} drill      Drill power level.
- * @property {number} dynamite   Carried dynamite charges.
- * @property {number} teleporters Carried teleporter charges.
- * @property {Object[]} cargo    Collected ore objects.
- */
+/** Fresh zeroed run/progress statistics, shared by new games and save loading. */
+export function createDefaultStats(): GameStats {
+  return {
+    maxDepth: 0,
+    totalCashEarned: 0,
+    oreMined: 0,
+    artifactsFound: 0,
+    enemiesDestroyed: 0,
+    deaths: 0,
+    motherlodeClaims: 0,
+    motherlodeExtractions: 0
+  };
+}
 
-/**
- * @typedef {Object} GameState
- * @property {Array} world         2D array of generated tiles.
- * @property {number} cash         Player currency.
- * @property {number} tick         Frame/tick counter.
- * @property {boolean} gameOver    Whether the run has ended.
- * @property {boolean} introStarted Whether the intro has begun.
- * @property {number} camX         Camera column offset.
- * @property {number} camY         Camera row offset.
- * @property {Array} particles     Active particle effects.
- * @property {Array} enemies       Active enemy entities.
- * @property {Object} input        Input/repeat timing state.
- * @property {Player} player       The player entity.
- * @property {Object} [stats]      Run/progress statistics.
- */
-
-/** @returns {GameState} */
 export function createInitialState(): GameState {
   return {
     world: [],
@@ -65,16 +51,7 @@ export function createInitialState(): GameState {
     camY: 0,
     particles: [],
     enemies: [],
-    stats: {
-      maxDepth: 0,
-      totalCashEarned: 0,
-      oreMined: 0,
-      artifactsFound: 0,
-      enemiesDestroyed: 0,
-      deaths: 0,
-      motherlodeClaims: 0,
-      motherlodeExtractions: 0
-    },
+    stats: createDefaultStats(),
     extractionPhase: 'none',
     role: null,
     connected: false,
@@ -91,9 +68,9 @@ export function createInitialState(): GameState {
       gunArmed: false
     },
     player: {
-      x: Math.floor(WORLD_W / 2),
+      x: SURFACE_SPAWN_X,
       y: START_Y,
-      drawX: Math.floor(WORLD_W / 2),
+      drawX: SURFACE_SPAWN_X,
       drawY: START_Y,
       facing: 1,
       bob: 0,

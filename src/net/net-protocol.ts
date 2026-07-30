@@ -1,12 +1,13 @@
 // Peer-to-peer message protocol for co-op multiplayer.
 //
-// Pure, DOM-free, and vitest-testable: message type definitions, JSON
-// encode/decode with validation, and small pure "apply" reducers operating on
-// plain data. See PLAN.md "Message protocol". These messages are the `payload`
+// Pure, DOM-free, and vitest-testable: message type definitions, validation of
+// decoded payloads, and small pure "apply" reducers operating on plain data.
+// See PLAN.md "Message protocol". These messages are the `payload`
 // carried inside the relay envelope (`{ t: 'relay', payload }`); the envelope
 // itself is handled in `net.ts`.
 
 import type { Tile, Ore, Artifact, Player, Enemy, EnemyKind, RemotePlayer } from '../core/types';
+import { tileKey } from '../core/tile-key';
 import { MAX_WORLD_ROW, SURFACE_HEIGHT, WORLD_CHUNK_ROWS, WORLD_W } from '../../shared/constants';
 
 // --- Message types ---------------------------------------------------------
@@ -135,14 +136,6 @@ export interface TileDiffEntry {
   tile: Tile;
 }
 
-/** Host -> new joiner: accumulated tile diff plus the current enemy list. */
-export interface WorldSyncMsg {
-  type: 'worldSync';
-  tiles: TileDiffEntry[];
-  enemies: EnemySnapshotEntry[];
-  explored: string;
-}
-
 /** Server -> client: complete authoritative terrain/entity/view state. */
 export interface WorldStateMsg {
   type: 'worldState';
@@ -181,7 +174,6 @@ export type NetMessage =
   | RespawnedMsg
   | TeleportedMsg
   | ExploreMsg
-  | WorldSyncMsg
   | WorldStateMsg
   | WorldInitMsg
   | WorldResetMsg;
@@ -357,14 +349,6 @@ export function validateMessage(v: unknown): NetMessage | null {
       return isNum(v.x) && isNum(v.y) ? (v as unknown as TeleportedMsg) : null;
     case 'explore':
       return isRevision(v.revision) && isExploration(v.ranges) ? (v as unknown as ExploreMsg) : null;
-    case 'worldSync':
-      return Array.isArray(v.tiles) &&
-        v.tiles.every(isTileDiffEntry) &&
-        Array.isArray(v.enemies) &&
-        v.enemies.every(isEnemyEntry) &&
-        isStr(v.explored)
-        ? (v as unknown as WorldSyncMsg)
-        : null;
     case 'worldState':
       return v.version === 1 && isRevision(v.revision) && isBool(v.initialized) &&
         Array.isArray(v.tiles) && v.tiles.length <= MAX_STATE_TILE_ENTRIES && v.tiles.every(isTileDiffEntry) &&
@@ -382,25 +366,6 @@ export function validateMessage(v: unknown): NetMessage | null {
     default:
       return null;
   }
-}
-
-/** Serialize a message to a JSON string. */
-export function encodeMessage(msg: NetMessage): string {
-  return JSON.stringify(msg);
-}
-
-/**
- * Parse and validate a JSON string into a NetMessage. Returns `null` on invalid
- * JSON or a malformed/unknown message. Never throws.
- */
-export function decodeMessage(raw: string): NetMessage | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  return validateMessage(parsed);
 }
 
 // --- Builders (plain-data constructors) ------------------------------------
@@ -494,26 +459,12 @@ export function nextEnemyId(enemies: Pick<EnemySnapshotEntry, 'id'>[]): number {
 /** Accumulated tile mutations keyed by coordinate. */
 export type TileDiff = Record<string, TileDiffEntry>;
 
-export function tileKey(x: number, y: number): string {
-  return `${x},${y}`;
-}
-
 /**
  * Apply a tile mutation to an accumulated diff (last-writer-wins), returning a
  * new diff. Pure — the input diff is not mutated.
  */
 export function applyTileDiff(diff: TileDiff, msg: Pick<TileMsg, 'x' | 'y' | 'tile'>): TileDiff {
   return { ...diff, [tileKey(msg.x, msg.y)]: { x: msg.x, y: msg.y, tile: msg.tile } };
-}
-
-/** Flatten a tile diff into the array form carried by worldSync. */
-export function tileDiffToArray(diff: TileDiff): TileDiffEntry[] {
-  return Object.values(diff);
-}
-
-/** Build a compact late-join world sync from the accumulated tile mutations. */
-export function worldSyncFrom(diff: TileDiff, enemies: Enemy[] = [], explored = ''): WorldSyncMsg {
-  return { type: 'worldSync', tiles: tileDiffToArray(diff), enemies: enemies.map(enemyEntryFrom), explored };
 }
 
 /**
@@ -530,12 +481,6 @@ export function applyTileToWorld(world: Tile[][], msg: Pick<TileMsg, 'x' | 'y' |
   }
   const row = world[msg.y];
   if (row && msg.x >= 0 && msg.x < row.length) row[msg.x] = msg.tile;
-  return world;
-}
-
-/** Apply a host's compact tile diff to a deterministic local world grid. */
-export function applyWorldSyncToWorld(world: Tile[][], msg: WorldSyncMsg, tileFactory?: (x: number, y: number) => Tile): Tile[][] {
-  for (const tile of msg.tiles) applyTileToWorld(world, tile, tileFactory);
   return world;
 }
 
@@ -597,26 +542,6 @@ export function applyEnemyDamage(
     const hp = e.hp - msg.amount;
     return { ...e, hp, alive: hp > 0 && e.alive };
   });
-}
-
-export interface WorldSyncResult {
-  diff: TileDiff;
-  enemies: EnemySnapshotEntry[];
-}
-
-/**
- * Reconcile a late joiner's local world diff and enemy list against a host
- * worldSync. Tiles are merged into the diff (last-writer-wins) and enemies are
- * replaced by the authoritative snapshot. Pure.
- */
-export function mergeWorldSync(
-  diff: TileDiff,
-  enemies: EnemySnapshotEntry[],
-  msg: WorldSyncMsg
-): WorldSyncResult {
-  let nextDiff = diff;
-  for (const t of msg.tiles) nextDiff = applyTileDiff(nextDiff, t);
-  return { diff: nextDiff, enemies: mergeEnemySnapshot(enemies, msg.enemies) };
 }
 
 // --- Rate limiting ---------------------------------------------------------

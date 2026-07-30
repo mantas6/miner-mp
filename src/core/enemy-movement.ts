@@ -1,4 +1,5 @@
 import { SURFACE_HEIGHT } from '../../shared/constants';
+import { tileKey as key } from './tile-key';
 import type { Tile } from './types';
 
 export interface EnemyPosition {
@@ -8,10 +9,6 @@ export interface EnemyPosition {
 
 export interface EnemyTarget extends EnemyPosition {
   local: boolean;
-}
-
-function key(x: number, y: number): string {
-  return `${x},${y}`;
 }
 
 export function findClosestEnemyTarget(

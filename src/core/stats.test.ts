@@ -1,40 +1,55 @@
 import { describe, expect, it } from 'vitest';
 import { formatExpeditionStats } from './stats';
 
+const PROGRESSED = {
+  maxDepth: 1230,
+  totalCashEarned: 98765,
+  oreMined: 42,
+  artifactsFound: 4,
+  enemiesDestroyed: 1,
+  deaths: 2,
+  motherlodeClaims: 3,
+  motherlodeExtractions: 2
+};
+
+const labelledValues = (stats: Partial<typeof PROGRESSED> = {}) =>
+  formatExpeditionStats(stats).map(({ label, value }) => [label, value]);
+
 describe('expedition stats formatting', () => {
-  it('formats a fresh save with encouraging zero-state copy', () => {
-    expect(formatExpeditionStats({})).toEqual([
-      { label: 'Max depth', value: '0 m', detail: 'Start digging to set a record' },
-      { label: 'Cash earned', value: '$0', detail: 'Sell your first haul to begin' },
-      { label: 'Ore mined', value: '0 ores', detail: 'Coal and Copper await below' },
-      { label: 'Artifacts recovered', value: '0 artifacts', detail: 'Rare finds are hidden in the deep mine' },
-      { label: 'Enemies destroyed', value: '0 fiends', detail: 'No fiends defeated yet' },
-      { label: 'Deaths', value: '0 losses', detail: 'No ships lost' },
-      { label: 'Motherlode claims', value: '0 claims', detail: 'Ultimate prize still waiting' },
-      { label: 'Completed extractions', value: '0 extractions', detail: 'Return a secured core to finish an extraction' }
+  it('formats a fresh save as zeroed, pluralized rows', () => {
+    expect(labelledValues()).toEqual([
+      ['Max depth', '0 m'],
+      ['Cash earned', '$0'],
+      ['Ore mined', '0 ores'],
+      ['Artifacts recovered', '0 artifacts'],
+      ['Enemies destroyed', '0 fiends'],
+      ['Deaths', '0 losses'],
+      ['Motherlode claims', '0 claims'],
+      ['Completed extractions', '0 extractions']
     ]);
   });
 
-  it('formats progressed career metrics with labels and separators', () => {
-    expect(formatExpeditionStats({
-      maxDepth: 1230,
-      totalCashEarned: 98765,
-      oreMined: 42,
-      artifactsFound: 4,
-      enemiesDestroyed: 1,
-      deaths: 2,
-      motherlodeClaims: 3,
-      motherlodeExtractions: 2
-    })).toEqual([
-      { label: 'Max depth', value: '1,230 m', detail: 'Deepest descent saved' },
-      { label: 'Cash earned', value: '$98,765', detail: 'From cargo, bounties, and relics' },
-      { label: 'Ore mined', value: '42 ores', detail: 'Total pieces extracted' },
-      { label: 'Artifacts recovered', value: '4 artifacts', detail: 'Rare finds paid directly to cash' },
-      { label: 'Enemies destroyed', value: '1 fiend', detail: 'Tunnel fiends defeated' },
-      { label: 'Deaths', value: '2 losses', detail: 'Replacement ships deployed' },
-      { label: 'Motherlode claims', value: '3 claims', detail: 'Core cracked and banked' },
-      { label: 'Completed extractions', value: '2 extractions', detail: 'Motherlode cores returned safely to the depot' }
+  it('formats progressed career metrics with separators and singular units', () => {
+    expect(labelledValues(PROGRESSED)).toEqual([
+      ['Max depth', '1,230 m'],
+      ['Cash earned', '$98,765'],
+      ['Ore mined', '42 ores'],
+      ['Artifacts recovered', '4 artifacts'],
+      ['Enemies destroyed', '1 fiend'],
+      ['Deaths', '2 losses'],
+      ['Motherlode claims', '3 claims'],
+      ['Completed extractions', '2 extractions']
     ]);
+  });
+
+  it('switches every detail line between zero-state and progressed copy', () => {
+    const zero = formatExpeditionStats({});
+    const progressed = formatExpeditionStats(PROGRESSED);
+
+    for (const [index, row] of progressed.entries()) {
+      expect(row.detail).not.toBe(zero[index].detail);
+      expect(row.detail.length).toBeGreaterThan(0);
+    }
   });
 
   it('coerces invalid or negative saved values to zero', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createInitialState } from '../core/state';
-import { confirmWorldStateReset, generatedNonAirTiles, resetWorldTerrain, WORLD_STATE_RESET_CONFIRMATION } from './world-state';
+import { confirmWorldStateReset, resetWorldTerrain, WORLD_STATE_RESET_CONFIRMATION } from './world-state';
 import type { Tile } from '../core/types';
 
 describe('world state reset', () => {
@@ -34,10 +34,5 @@ describe('world state reset', () => {
     expect(state.cash).toBe(9999);
     expect(state.stats).toEqual(statsBefore);
     expect(state.player).toMatchObject({ ...playerBefore, x:45, y:2, drawX:45, drawY:2 });
-  });
-
-  it('serializes generated non-air values but leaves natural air implicit', () => {
-    const world: Tile[][] = [[{type:'air'}, {type:'ore', ore:{name:'Gold',color:'#fc0',value:70,min:1,max:9,chance:.1}, hp:3,maxHp:4}]];
-    expect(generatedNonAirTiles(world)).toEqual([{x:1,y:0,tile:world[0][1]}]);
   });
 });

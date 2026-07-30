@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-  encodeMessage,
-  decodeMessage,
   validateMessage,
   isTile,
   playerStateFrom,
@@ -13,21 +11,22 @@ import {
   nextEnemyId,
   applyTileDiff,
   applyTileToWorld,
-  applyWorldSyncToWorld,
-  tileDiffToArray,
-  tileKey,
-  worldSyncFrom,
   mergeEnemySnapshot,
   applyEnemySpawn,
   applyEnemyDead,
   applyEnemyDamage,
-  mergeWorldSync,
   createRateLimiter,
   type NetMessage,
   type EnemySnapshotEntry,
   type TileDiff
 } from './net-protocol';
+import { tileKey } from '../core/tile-key';
 import type { Enemy, Player, Tile } from '../core/types';
+
+/** Mimic the relay hop: serialize, parse, then validate the decoded payload. */
+function roundTrip(msg: NetMessage): NetMessage | null {
+  return validateMessage(JSON.parse(JSON.stringify(msg)));
+}
 
 const ORE = { name: 'Gold', color: '#ffd65c', value: 70, min: 152, max: 602, chance: 0.04 };
 
@@ -66,35 +65,20 @@ const messages: NetMessage[] = [
   { type: 'respawned', x: 45, y: 2 },
   { type: 'teleported', x: 45, y: 2 },
   { type: 'explore', revision: 1, ranges: '270-278,360' },
-  {
-    type: 'worldSync',
-    tiles: [
-      { x: 1, y: 1, tile: { type: 'air' } },
-      { x: 2, y: 2, tile: { type: 'dirt', hp: 1, maxHp: 2 } }
-    ],
-    enemies: [{ id: 3, kind:'abyssStalker', x: 0, y: 0, drawX: 0, drawY: 0, hp: 4, maxHp: 4, alive: true }],
-    explored: '270-278'
-  },
   { type: 'worldState', version: 1, revision: 4, initialized: true, tiles: [{x:3,y:7,tile:{type:'air'}}], enemies: [], explored: '270-278' },
   { type: 'worldInit', revision: 4, tiles: [{x:3,y:7,tile:{type:'dirt',hp:2,maxHp:2}}] },
   { type: 'worldReset', revision: 4 }
 ];
 
-describe('encode/decode round-trips', () => {
+describe('wire round-trips', () => {
   for (const msg of messages) {
     it(`round-trips a ${msg.type} message`, () => {
-      const decoded = decodeMessage(encodeMessage(msg));
-      expect(decoded).toEqual(msg);
+      expect(roundTrip(msg)).toEqual(msg);
     });
   }
 });
 
-describe('decodeMessage / validateMessage rejection', () => {
-  it('returns null for invalid JSON', () => {
-    expect(decodeMessage('{not json')).toBeNull();
-    expect(decodeMessage('')).toBeNull();
-  });
-
+describe('validateMessage rejection', () => {
   it('returns null for non-object / missing type', () => {
     expect(validateMessage(null)).toBeNull();
     expect(validateMessage(42)).toBeNull();
@@ -171,17 +155,17 @@ describe('isTile', () => {
     for (const t of tiles) expect(isTile(t)).toBe(true);
   });
 
-  it('preserves artifact metadata and its removal in late-join terrain sync', () => {
+  it('preserves artifact metadata and its removal in accumulated tile diffs', () => {
     const artifact: Tile = {type:'artifact', artifact:{name:'Alien Reliquary', color:'#ff78e1', value:900, min:702, max:992, chance:.00025}, hp:7, maxHp:7};
-    expect(decodeMessage(encodeMessage({type:'tile', revision:1, x:8, y:740, tile:artifact}))).toEqual({type:'tile', revision:1, x:8, y:740, tile:artifact});
+    expect(roundTrip({type:'tile', revision:1, x:8, y:740, tile:artifact})).toEqual({type:'tile', revision:1, x:8, y:740, tile:artifact});
 
     const diff = applyTileDiff(applyTileDiff({}, {x:8, y:740, tile:artifact}), {x:8, y:740, tile:{type:'air'}});
-    expect(worldSyncFrom(diff).tiles).toEqual([{x:8, y:740, tile:{type:'air'}}]);
+    expect(Object.values(diff)).toEqual([{x:8, y:740, tile:{type:'air'}}]);
   });
 
   it('round-trips and applies tile mutations below 10,000 m', () => {
     const deep = {type:'tile', revision:1, x:8, y:1205, tile:{type:'air'}} as const;
-    expect(decodeMessage(encodeMessage(deep))).toEqual(deep);
+    expect(roundTrip(deep)).toEqual(deep);
 
     const world: Tile[][] = [];
     applyTileToWorld(world, deep, (x, y) => ({type:'dirt', hp:x + y + 1, maxHp:x + y + 1}));
@@ -278,15 +262,6 @@ describe('tile diff reducers', () => {
     expect(Object.keys(b)).toHaveLength(1);
   });
 
-  it('tileDiffToArray flattens entries', () => {
-    let diff: TileDiff = {};
-    diff = applyTileDiff(diff, { x: 0, y: 0, tile: { type: 'air' } });
-    diff = applyTileDiff(diff, { x: 1, y: 0, tile: { type: 'rock', hp: 999 } });
-    const arr = tileDiffToArray(diff);
-    expect(arr).toHaveLength(2);
-    expect(arr).toContainEqual({ x: 1, y: 0, tile: { type: 'rock', hp: 999 } });
-  });
-
   it('applyTileToWorld mutates the grid within bounds and ignores out-of-range', () => {
     const world: Tile[][] = [
       [{ type: 'dirt', hp: 1, maxHp: 1 }, { type: 'dirt', hp: 1, maxHp: 1 }],
@@ -298,38 +273,6 @@ describe('tile diff reducers', () => {
     applyTileToWorld(world, { x: 5, y: 0, tile: { type: 'rock', hp: 999 } });
     applyTileToWorld(world, { x: 0, y: 9, tile: { type: 'rock', hp: 999 } });
     expect(world).toHaveLength(2);
-  });
-
-  it('builds and applies a compact world sync without replacing the generated grid', () => {
-    let diff: TileDiff = {};
-    diff = applyTileDiff(diff, { x: 0, y: 0, tile: { type: 'air' } });
-    diff = applyTileDiff(diff, { x: 1, y: 1, tile: { type: 'dirt', hp: 1, maxHp: 2 } });
-    const sync = worldSyncFrom(diff);
-    const world: Tile[][] = [
-      [{ type: 'dirt', hp: 2, maxHp: 2 }, { type: 'rock', hp: 999 }],
-      [{ type: 'ore', ore: ORE, hp: 4, maxHp: 4 }, { type: 'dirt', hp: 2, maxHp: 2 }]
-    ];
-
-    expect(sync).toEqual({ type: 'worldSync', tiles: tileDiffToArray(diff), enemies: [], explored: '' });
-    expect(applyWorldSyncToWorld(world, sync)).toBe(world);
-    expect(world).toEqual([
-      [{ type: 'air' }, { type: 'rock', hp: 999 }],
-      [{ type: 'ore', ore: ORE, hp: 4, maxHp: 4 }, { type: 'dirt', hp: 1, maxHp: 2 }]
-    ]);
-  });
-
-  it('includes the host enemy list in a late-join world sync', () => {
-    const enemy = {
-      id: 12, kind:'skitterling', x: 7, y: 31, drawX: 6.8, drawY: 31, hp: 3, maxHp: 6,
-      alive: true, moveTick: 14, biteTick: 8, flash: 0.4
-    } as Enemy;
-
-    expect(worldSyncFrom({}, [enemy])).toEqual({
-      type: 'worldSync',
-      tiles: [],
-      enemies: [{ id: 12, kind:'skitterling', x: 7, y: 31, drawX: 6.8, drawY: 31, hp: 3, maxHp: 6, alive: true }],
-      explored: ''
-    });
   });
 });
 
@@ -384,33 +327,6 @@ describe('enemy list reducers', () => {
 
     const missing = applyEnemyDamage(base, { id: 99, amount: 5 });
     expect(missing).toEqual(base);
-  });
-});
-
-describe('mergeWorldSync', () => {
-  it('merges tiles into the diff and replaces enemies', () => {
-    let diff: TileDiff = {};
-    diff = applyTileDiff(diff, { x: 0, y: 0, tile: { type: 'rock', hp: 999 } });
-    const enemies: EnemySnapshotEntry[] = [
-      { id: 1, kind:'tunnelFiend', x: 0, y: 0, drawX: 0, drawY: 0, hp: 1, maxHp: 6, alive: true }
-    ];
-
-    const result = mergeWorldSync(diff, enemies, {
-      type: 'worldSync',
-      tiles: [
-        { x: 0, y: 0, tile: { type: 'air' } }, // overwrites existing
-        { x: 1, y: 2, tile: { type: 'dirt', hp: 1, maxHp: 2 } }
-      ],
-      enemies: [{ id: 2, kind:'ironback', x: 5, y: 5, drawX: 5, drawY: 5, hp: 6, maxHp: 6, alive: true }],
-      explored: '270-278'
-    });
-
-    expect(result.diff[tileKey(0, 0)].tile).toEqual({ type: 'air' });
-    expect(result.diff[tileKey(1, 2)].tile).toEqual({ type: 'dirt', hp: 1, maxHp: 2 });
-    expect(result.enemies.map((e) => e.id)).toEqual([2]);
-    // Inputs untouched.
-    expect(diff[tileKey(0, 0)].tile).toEqual({ type: 'rock', hp: 999 });
-    expect(enemies).toHaveLength(1);
   });
 });
 

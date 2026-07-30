@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { DEFAULT_STATS, SAVE_KEY, SAVE_VERSION, load, numeric, save } from './persistence';
+import { SAVE_KEY, SAVE_VERSION, load, numeric, save } from './persistence';
 import { createInitialState } from './core/state';
 import { ECONOMY } from './core/balance';
 import { cargoCost } from './core/economy';
@@ -9,54 +9,45 @@ import { explorationIndex } from '../shared/exploration-codec';
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** Stub localStorage with an in-memory store, optionally pre-seeded with a save. */
+function stubStorage(existingSave?: unknown): Map<string, string> {
+  const stored = new Map<string, string>();
+  if (existingSave !== undefined) stored.set(SAVE_KEY, JSON.stringify(existingSave));
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => stored.get(key) ?? null,
+    setItem: (key: string, value: string) => stored.set(key, value)
+  });
+  return stored;
+}
+
 describe('numeric clamp', () => {
-  it('passes through a finite value within range', () => {
-    expect(numeric(50, 0, 0, 100)).toBe(50);
-  });
-
-  it('clamps a value below min to min', () => {
-    expect(numeric(-5, 0, 10, 100)).toBe(10);
-  });
-
-  it('clamps a value above max to max', () => {
-    expect(numeric(150, 0, 0, 100)).toBe(100);
-  });
-
-  it('returns fallback for non-finite (NaN) input', () => {
-    expect(numeric(NaN, 7)).toBe(7);
-  });
-
-  it('coerces a numeric string', () => {
-    expect(numeric('5', 0)).toBe(5);
-  });
-
-  it('returns fallback for a non-numeric string', () => {
-    expect(numeric('abc', 42)).toBe(42);
-  });
-
-  it('applies default min of 0', () => {
-    expect(numeric(-3, 99)).toBe(0);
+  it.each([
+    ['passes through a finite value within range', 50, 0, 0, 100, 50],
+    ['clamps a value below min to min', -5, 0, 10, 100, 10],
+    ['clamps a value above max to max', 150, 0, 0, 100, 100],
+    ['returns the fallback for non-finite input', NaN, 7, undefined, undefined, 7],
+    ['coerces a numeric string', '5', 0, undefined, undefined, 5],
+    ['returns the fallback for a non-numeric string', 'abc', 42, undefined, undefined, 42],
+    ['applies a default min of 0', -3, 99, undefined, undefined, 0]
+  ])('%s', (_name, value, fallback, min, max, expected) => {
+    expect(min === undefined ? numeric(value, fallback) : numeric(value, fallback, min, max)).toBe(expected);
   });
 });
 
 describe('Motherlode extraction save compatibility', () => {
   it('gives legacy saves a zero completed-extraction counter', () => {
-    const legacyStats = { motherlodeClaims: 1 };
+    stubStorage({ version: SAVE_VERSION, stats: { motherlodeClaims: 1 } });
+    const state = createInitialState();
 
-    expect({ ...DEFAULT_STATS, ...legacyStats }).toMatchObject({
-      motherlodeClaims: 1,
-      motherlodeExtractions: 0
-    });
+    load(state);
+
+    expect(state.stats).toMatchObject({ motherlodeClaims: 1, motherlodeExtractions: 0 });
   });
 });
 
 describe('artifact payout persistence', () => {
   it('round-trips immediately banked cash and artifact count without cargo', () => {
-    const stored = new Map<string, string>();
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => stored.get(key) ?? null,
-      setItem: (key: string, value: string) => stored.set(key, value)
-    });
+    stubStorage();
     const state = createInitialState();
     claimArtifact(state, ARTIFACTS[0]);
     save(state);
@@ -77,10 +68,7 @@ describe('cargo balance persistence', () => {
     [30, 20, 210],
     [40, 25, 276]
   ])('maps legacy capacity %i to rebalanced capacity %i at the same price level', (legacyCapacity, capacity, nextCost) => {
-    vi.stubGlobal('localStorage', {
-      getItem: () => JSON.stringify({version: 1, cargoMax: legacyCapacity}),
-      setItem: vi.fn()
-    });
+    stubStorage({ version: 1, cargoMax: legacyCapacity });
     const state = createInitialState();
 
     load(state);
@@ -90,11 +78,7 @@ describe('cargo balance persistence', () => {
   });
 
   it('round-trips rebalanced cargo capacity without migrating it again', () => {
-    const stored = new Map<string, string>();
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => stored.get(key) ?? null,
-      setItem: (key: string, value: string) => stored.set(key, value)
-    });
+    const stored = stubStorage();
     const state = createInitialState();
     state.player.cargoMax += ECONOMY.cargo.step * 2;
     save(state);
@@ -110,101 +94,41 @@ describe('cargo balance persistence', () => {
   });
 });
 
-describe('dynamite persistence', () => {
-  it('round-trips carried charges with progression', () => {
-    const stored = new Map<string, string>();
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => stored.get(key) ?? null,
-      setItem: (key: string, value: string) => stored.set(key, value)
-    });
+describe('carried item persistence', () => {
+  it.each([
+    ['dynamite charges', { dynamite: 3 }],
+    ['teleporters', { teleporters: 2 }],
+    ['gun ownership and ammunition', { gunOwned: true, bullets: 17 }]
+  ])('round-trips %s through save and load', (_name, owned) => {
+    const stored = stubStorage();
     const state = createInitialState();
-    state.player.dynamite = 3;
+    Object.assign(state.player, owned);
     save(state);
 
     const restored = createInitialState();
     load(restored);
 
-    expect(restored.player.dynamite).toBe(3);
-    expect(JSON.parse(stored.get(SAVE_KEY) || '{}').dynamite).toBe(3);
+    expect(restored.player).toMatchObject(owned);
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject(owned);
   });
 
-  it('keeps zero charges when loading a legacy save', () => {
-    vi.stubGlobal('localStorage', {
-      getItem: () => JSON.stringify({cash: 90}),
-      setItem: vi.fn()
-    });
+  it.each([
+    ['dynamite charges', { dynamite: 0 }],
+    ['teleporters', { teleporters: 0 }],
+    ['gun ownership and ammunition', { gunOwned: false, bullets: 0 }]
+  ])('gives a legacy save no %s', (_name, empty) => {
+    stubStorage({ cash: 90 });
     const state = createInitialState();
 
     load(state);
 
-    expect(state.player.dynamite).toBe(0);
-  });
-});
-
-describe('teleporter persistence', () => {
-  it('round-trips carried teleporters with progression', () => {
-    const stored = new Map<string, string>();
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => stored.get(key) ?? null,
-      setItem: (key: string, value: string) => stored.set(key, value)
-    });
-    const state = createInitialState();
-    state.player.teleporters = 2;
-    save(state);
-
-    const restored = createInitialState();
-    load(restored);
-
-    expect(restored.player.teleporters).toBe(2);
-    expect(JSON.parse(stored.get(SAVE_KEY) || '{}').teleporters).toBe(2);
-  });
-
-  it('keeps zero teleporters when loading a legacy save', () => {
-    vi.stubGlobal('localStorage', {
-      getItem: () => JSON.stringify({cash: 90}),
-      setItem: vi.fn()
-    });
-    const state = createInitialState();
-
-    load(state);
-
-    expect(state.player.teleporters).toBe(0);
-  });
-});
-
-describe('gun persistence', () => {
-  it('round-trips permanent ownership and consumable ammunition', () => {
-    const stored = new Map<string, string>();
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => stored.get(key) ?? null,
-      setItem: (key: string, value: string) => stored.set(key, value)
-    });
-    const state = createInitialState();
-    state.player.gunOwned = true;
-    state.player.bullets = 17;
-    save(state);
-
-    const restored = createInitialState();
-    load(restored);
-    expect(restored.player).toMatchObject({gunOwned:true, bullets:17});
-    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({gunOwned:true, bullets:17});
-  });
-
-  it('gives legacy saves no gun or ammunition', () => {
-    vi.stubGlobal('localStorage', {getItem: () => JSON.stringify({cash:90}), setItem: vi.fn()});
-    const state = createInitialState();
-    load(state);
-    expect(state.player).toMatchObject({gunOwned:false, bullets:0});
+    expect(state.player).toMatchObject(empty);
   });
 });
 
 describe('fog exploration persistence', () => {
   it('round-trips compact explored ranges and sensor level', () => {
-    const stored = new Map<string, string>();
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => stored.get(key) ?? null,
-      setItem: (key: string, value: string) => stored.set(key, value)
-    });
+    const stored = stubStorage();
     const state = createInitialState();
     state.player.visibility = 4;
     state.exploredTiles.add(explorationIndex(10, 10));
@@ -221,10 +145,7 @@ describe('fog exploration persistence', () => {
   });
 
   it('preserves existing saves with default sensors and no explored coordinates', () => {
-    vi.stubGlobal('localStorage', {
-      getItem: () => JSON.stringify({version: 2, cargoMax: 20, cash: 90}),
-      setItem: vi.fn()
-    });
+    stubStorage({ version: 2, cargoMax: 20, cash: 90 });
     const state = createInitialState();
     load(state);
 

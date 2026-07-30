@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { expandReachableAir } from './enemy-exposure';
-import { applyEnemySpawn, mergeEnemySnapshot, worldSyncFrom } from '../net/net-protocol';
+import { applyEnemySpawn, enemySnapshotFrom, mergeEnemySnapshot } from '../net/net-protocol';
 import type { Enemy, Tile } from './types';
 
 function dirt(): Tile {
@@ -53,7 +53,7 @@ describe('buried enemy exposure', () => {
     const spawn = {type: 'enemySpawn' as const, id: 7, kind:'skitterling' as const, ...exposed[0], hp: 4, maxHp: 4};
     const guestSpawn = applyEnemySpawn([], spawn);
     const hostEnemy: Enemy = {...guestSpawn[0], moveTick: 0, biteTick: 0, flash: 0};
-    const sync = worldSyncFrom({}, [hostEnemy]);
+    const sync = enemySnapshotFrom([hostEnemy]);
 
     expect(exposed).toEqual([{x: 3, y: 3}]);
     expect(mergeEnemySnapshot([], sync.enemies)).toEqual(guestSpawn);

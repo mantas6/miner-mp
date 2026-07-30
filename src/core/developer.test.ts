@@ -18,25 +18,25 @@ describe('developer tools activation gate', () => {
 });
 
 describe('developer money cheat', () => {
-  it('grants exactly $1,000 to local cash without changing earned-cash stats', () => {
+  it('grants the full cheat amount to local cash without changing earned-cash stats', () => {
     const state = createInitialState();
     const startingCash = state.cash;
 
     grantDeveloperCash(state);
 
-    expect(DEVELOPER_CASH_GRANT).toBe(1_000);
-    expect(state.cash).toBe(startingCash + 1_000);
+    expect(state.cash).toBe(startingCash + DEVELOPER_CASH_GRANT);
     expect(state.stats.totalCashEarned).toBe(0);
   });
 
   it('allows repeated grants', () => {
     const state = createInitialState();
+    const startingCash = state.cash;
 
     grantDeveloperCash(state);
     grantDeveloperCash(state);
     grantDeveloperCash(state);
 
-    expect(state.cash).toBe(3_060);
+    expect(state.cash).toBe(startingCash + DEVELOPER_CASH_GRANT * 3);
   });
 
   it('persists granted cash through the regular save path', () => {
@@ -46,13 +46,14 @@ describe('developer money cheat', () => {
       setItem: (key: string, value: string) => stored.set(key, value)
     });
     const state = createInitialState();
+    const startingCash = state.cash;
     grantDeveloperCash(state);
     save(state);
 
     const restored = createInitialState();
     load(restored);
 
-    expect(restored.cash).toBe(1_060);
+    expect(restored.cash).toBe(startingCash + DEVELOPER_CASH_GRANT);
   });
 });
 
