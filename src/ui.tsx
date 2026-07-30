@@ -123,7 +123,7 @@ export function MinerApp({ developerToolsEnabled = false }: { developerToolsEnab
                 </article>
                 <article className="shop-item" data-shop-item="bullets">
                   <span className="equipment-icon icon-bullets" aria-hidden="true"><i></i></span>
-                  <div className="shop-item-copy"><h4>Gun Ammunition</h4><p>Six precision rounds. Requires the permanent Linebreaker Gun.</p><strong data-shop-current>Ammo: 0 · +{ECONOMY.gun.ammoBundle} per bundle</strong><span>Arm with <kbd>G</kbd>, then press or tap a direction</span></div>
+                  <div className="shop-item-copy"><h4>Gun Ammunition</h4><p>Six precision rounds. Requires the permanent Linebreaker Gun.</p><strong data-shop-current>Ammo: 0 · +{ECONOMY.gun.ammoBundle} per bundle</strong><span>Arm with <kbd>G</kbd>, then a direction key</span></div>
                   <span className="shop-state" data-shop-status>Gun required</span><button id="shopBulletsBtn" type="button">Buy {ECONOMY.gun.ammoBundle} · ${ECONOMY.gun.ammoPrice}</button>
                 </article>
               </div>
@@ -252,12 +252,11 @@ export function MinerApp({ developerToolsEnabled = false }: { developerToolsEnab
                 <li><kbd>WASD</kbd> / <kbd>Arrows</kbd><span>Move, fly, and dig</span></li>
                 <li><strong>Fog map</strong><span>Movement permanently reveals the sensor footprint. Co-op miners share explored tiles.</span></li>
                 <li><kbd>Shift</kbd> + movement<span>Sprint through open space at increased fuel cost; open-space descent is free and drilling stays normal</span></li>
-                <li><kbd>Tap / hold</kbd><span>Move toward the touched side of the ship</span></li>
                 <li><kbd>Enter</kbd><span>Sell cargo at the surface depot</span></li>
                 <li><kbd>Space</kbd><span>Repair or refuel at the surface</span></li>
                 <li><kbd>E</kbd> / <kbd>Detonate</kbd><span>Use one carried dynamite underground; blasts yield no cargo, and destroyed artifacts grant no cash</span></li>
                 <li><kbd>T</kbd> / <kbd>Teleport</kbd><span>At 100 m or deeper, use one carried teleporter to visit the depot, then press T again to return to the same underground location</span></li>
-                <li><kbd>G</kbd> then direction / <kbd>Arm Gun</kbd> then tap<span>Fire one bullet up to {ECONOMY.gun.range} tiles; press G or Escape to cancel aiming. Shots destroy the first eligible block or enemy, but valuables give no cargo or artifact cash.</span></li>
+                <li><kbd>G</kbd> / <kbd>Arm Gun</kbd> then a direction key<span>Fire one bullet up to {ECONOMY.gun.range} tiles; press G or Escape to cancel aiming. Shots destroy the first eligible block or enemy, but valuables give no cargo or artifact cash.</span></li>
                 <li><kbd>R</kbd> then <kbd>R</kbd><span>Confirm reset while alive</span></li>
               </ul>
             </section>
@@ -299,11 +298,11 @@ export function MinerApp({ developerToolsEnabled = false }: { developerToolsEnab
               <h2>Moleload</h2>
               <p className="intro-cta">Press the screen to start</p>
               <ul className="intro-rules">
-                <li><strong>Move &amp; dig:</strong> WASD / arrows, or tap around the ship.</li>
+                <li><strong>Move &amp; dig:</strong> WASD / arrows.</li>
                 <li><strong>Make money:</strong> mine ore, return to surface, press Sell or Enter. Space repairs/refuels.</li>
                 <li><strong>Dynamite:</strong> buy charges at the depot, then press E or Detonate underground to clear terrain.</li>
                 <li><strong>Teleporter:</strong> buy one at the depot, then press T or Teleport at 100 m or deeper for an emergency round trip.</li>
-                <li><strong>Gun:</strong> buy the permanent gun and bullet bundles, then press G and a direction; touch players use Arm Gun then tap a direction.</li>
+                <li><strong>Gun:</strong> buy the permanent gun and bullet bundles, then press G (or Arm Gun) and a direction key.</li>
                 <li><strong>Do not die:</strong> deep magma pockets, tougher rock, and tunnel fiends scale with depth.</li>
                 <li><strong>Enemies:</strong> drilling nearby blocks wakes them; drill them back before they chew the hull.</li>
                 <li><strong>Goal:</strong> reach the Motherlode core at 10,000 m, crack it, and get home alive. The mine continues below it.</li>

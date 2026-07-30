@@ -166,9 +166,6 @@ export interface InputState {
   sprintDirection: Direction | null;
   lastKeyboardMove: number;
   keyboardRepeatMs: number;
-  touchHoldDir: Direction | null;
-  lastTouchMove: number;
-  touchRepeatMs: number;
   gunArmed: boolean;
 }
 

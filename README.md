@@ -139,15 +139,19 @@ VITE_MP_SERVER_URL=ws://localhost:9000 npm run dev
 
 ## Controls
 
-| Action | Desktop | Touch/mobile |
+Ship movement and aiming are keyboard-only. Touch/mouse input is used for UI
+only (menus, buttons, modals, starting the run, restarting, audio unlock).
+
+| Action | Keyboard | UI (click/tap) |
 |---|---|---|
-| Start game | `Enter`, `Space`, or click/tap intro | Tap intro screen |
-| Move / dig | `WASD` or arrow keys | Tap/hold around the ship |
-| Sell cargo | `Enter` or Sell button | Sell button |
+| Start game | `Enter` or `Space` | Click/tap intro screen |
+| Move / dig | `WASD` or arrow keys | — |
+| Fire gun | `G` then a direction key | Arm Gun button, then a direction key |
+| Sell cargo | `Enter` | Sell button |
 | Surface service | `Space` repairs first, then refuels | Repair / Refuel buttons |
-| Restart after game over | `R` or tap/click | Tap anywhere |
-| Reset shared world (development opt-in only) | Info / Cargo -> Dev tools (local) -> Reset World State | Same |
-| Toggle sound | Sound button | Sound button or first touch gesture may auto-enable |
+| Restart after game over | `R` | Click/tap anywhere |
+| Reset shared world (development opt-in only) | — | Info / Cargo -> Dev tools (local) -> Reset World State |
+| Toggle sound | — | Sound button or first pointer/touch gesture may auto-enable |
 
 ## Gameplay notes
 

@@ -86,7 +86,7 @@ describe('React GUI shell', () => {
     expect(markup).toContain('choose tank, hull, cargo, drill, and sensor upgrades carefully');
   });
 
-  it('exposes dynamite purchasing and keyboard/touch detonation controls', () => {
+  it('exposes dynamite purchasing and keyboard detonation controls', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
 
     expect(markup).toContain('id="dynamiteBtn"');
@@ -107,14 +107,15 @@ describe('React GUI shell', () => {
     expect(markup).toContain('without unloading or servicing the ship');
   });
 
-  it('shows permanent gun ownership, prerequisite ammunition, and keyboard/touch instructions', () => {
+  it('shows permanent gun ownership, prerequisite ammunition, and keyboard instructions', () => {
     const markup = renderToStaticMarkup(React.createElement(MinerApp));
     expect(markup).toContain('data-shop-gun="true"');
     expect(markup).toContain('Buy · $1500');
     expect(markup).toContain('data-shop-item="bullets"');
     expect(markup).toContain('Buy 6 · $120');
     expect(markup).toContain('<kbd>G</kbd>, then a direction');
-    expect(markup).toContain('touch players use Arm Gun then tap a direction');
+    expect(markup).toContain('press G (or Arm Gun) and a direction key');
+    expect(markup).not.toMatch(/tap a direction|Tap \/ hold/);
     expect(markup).toContain('up to 8 tiles');
   });
 

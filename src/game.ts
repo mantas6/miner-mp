@@ -1,5 +1,5 @@
 import { ORES, START_Y, SURFACE_HEIGHT, TILE, WORLD_W } from './constants';
-import { canvas, gamePanel, ctx, H, keys, ui, VIEW_HEIGHT, VIEW_WIDTH, W } from './dom';
+import { canvas, gamePanel, ctx, H, keys, ui, W } from './dom';
 import { createAudio } from './audio';
 import { shouldAttemptAutoAudio } from './audio-permission';
 import { createInitialState, respawnPlayer } from './state';
@@ -487,10 +487,8 @@ function restartGame(){
   keys.clear();
   state.input.keyImpulse = null;
   state.input.sprintDirection = null;
-  state.input.touchHoldDir = null;
   state.input.gunArmed = false;
   state.input.lastKeyboardMove = 0;
-  state.input.lastTouchMove = 0;
   // An online death/reset only replaces this miner's ship; the shared world
   // and host-owned enemy list must remain intact for the other player.
   if (state.connected) resetPlayer(false);
@@ -681,9 +679,8 @@ function setGunArmed(armed: boolean){
     if (p.bullets <= 0) { audio.alarm(); return toast('No ammunition. Buy bullet bundles at the surface shop.'); }
     keys.clear();
     state.input.keyImpulse = null;
-    state.input.touchHoldDir = null;
     state.input.gunArmed = true;
-    toast('GUN ARMED — press or tap a direction. G or Escape cancels.');
+    toast('GUN ARMED — press a direction key. G or Escape cancels.');
     return;
   }
   if (state.input.gunArmed) toast('Gun aim cancelled. No bullet used.');
@@ -697,7 +694,6 @@ function fireGun(direction: [number, number]){
   if (!shot) return false;
   if (!consumeBulletForShot(p, state.input.gunArmed, direction)) return false;
   state.input.gunArmed = false;
-  state.input.touchHoldDir = null;
   p.drillDx = direction[0]; p.drillDy = direction[1];
   if (direction[0]) p.facing = direction[0];
   spawnShotTrail(shot.path);
@@ -743,7 +739,6 @@ function useTeleporter(){
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   state.teleportEffect = createTeleportEffect(originScreenX, originScreenY, p.x, p.y, reducedMotion);
   state.input.keyImpulse = null;
-  state.input.touchHoldDir = null;
   state.input.gunArmed = false;
   state.camX = Math.max(0, p.x - Math.floor(W/2));
   state.camY = surf ? Math.max(0, p.y - Math.floor(H/2)) : 0;
@@ -923,7 +918,7 @@ function updateButtonStates(){
   ui.sell.disabled = !surf || currentCargoValue() <= 0;
   ui.dynamiteBtn.textContent = `Detonate (E) · x${p.dynamite}`;
   ui.teleporterBtn.textContent = surf ? 'Return (T)' : canTeleportToSurface(p.y) ? `Teleport (T) · x${p.teleporters}` : `Teleport at ${MIN_TELEPORT_DEPTH_METERS} m (T) · x${p.teleporters}`;
-  ui.gunBtn.textContent = state.input.gunArmed ? `AIMING — tap direction · x${p.bullets}` : `Arm Gun (G) · x${p.bullets}`;
+  ui.gunBtn.textContent = state.input.gunArmed ? `AIMING — press direction · x${p.bullets}` : `Arm Gun (G) · x${p.bullets}`;
   ui.gunBtn.classList.toggle('armed', state.input.gunArmed);
   ui.gunBtn.setAttribute('aria-pressed', String(state.input.gunArmed));
   ui.dynamiteBtn.disabled = surf || p.dynamite <= 0 || state.gameOver;
@@ -974,83 +969,7 @@ function input(){
   if (held && now - state.input.lastKeyboardMove >= keyboardMovementRepeatMs(state.input.keyboardRepeatMs, sprinting, destinationOpen)) {
     state.input.lastKeyboardMove = now;
     move(held[0], held[1], sprinting);
-    return;
   }
-  const touch = state.input.touchHoldDir;
-  if (touch && now - state.input.lastTouchMove >= state.input.touchRepeatMs) {
-    state.input.lastTouchMove = now;
-    moveFromTouch(touch[0], touch[1], false);
-  }
-}
-function moveFromTouch(dx, dy, immediate=true) {
-  if (!state.introStarted) return;
-  if (state.input.gunArmed) { fireGun([dx, dy]); return; }
-  if (immediate) state.input.lastTouchMove = performance.now();
-  move(dx, dy);
-}
-function canvasCoverGeometry(){
-  const rect = canvas.getBoundingClientRect();
-  const scale = Math.max(rect.width / VIEW_WIDTH, rect.height / VIEW_HEIGHT);
-  const drawnW = VIEW_WIDTH * scale;
-  const drawnH = VIEW_HEIGHT * scale;
-  return {rect, scale, offsetX: (rect.width - drawnW) / 2, offsetY: (rect.height - drawnH) / 2};
-}
-function shipClientPosition(){
-  const {rect, scale, offsetX, offsetY} = canvasCoverGeometry();
-  const p = state.player;
-  const camX = Math.max(0, Math.min(WORLD_W-W, state.camX));
-  const camY = Math.max(0, state.camY);
-  return {
-    x: rect.left + offsetX + (p.drawX - camX + 0.5) * TILE * scale,
-    y: rect.top + offsetY + (p.drawY - camY + 0.5) * TILE * scale
-  };
-}
-function directionFromPoint(clientX: number, clientY: number, fallbackStart: {x: number; y: number} | null = null): [number, number] | null {
-  const ship = shipClientPosition();
-  let dx = clientX - ship.x;
-  let dy = clientY - ship.y;
-  if (Math.hypot(dx, dy) < 18 && fallbackStart) {
-    dx = clientX - fallbackStart.x;
-    dy = clientY - fallbackStart.y;
-  }
-  const adx = Math.abs(dx), ady = Math.abs(dy);
-  if (Math.max(adx, ady) < 12) return null;
-  return adx > ady * 0.75 ? [dx > 0 ? 1 : -1, 0] : [0, dy > 0 ? 1 : -1];
-}
-function bindTouchControls(){
-  let start = null, tracking = false, aimedGesture = false;
-  gamePanel.addEventListener('pointerdown', e => {
-    const target = e.target as Element;
-    if (target.closest && target.closest('button, #info-screen, #lobby-screen')) return;
-    tracking = true;
-    aimedGesture = state.input.gunArmed;
-    start = {x: e.clientX, y: e.clientY};
-    const dir = directionFromPoint(e.clientX, e.clientY);
-    state.input.touchHoldDir = dir;
-    tryAutoAudio(e);
-    if (dir) moveFromTouch(dir[0], dir[1]);
-    gamePanel.setPointerCapture?.(e.pointerId);
-    e.preventDefault();
-  });
-  gamePanel.addEventListener('pointermove', e => {
-    if (!tracking) return;
-    const dir = directionFromPoint(e.clientX, e.clientY, start);
-    if (dir) state.input.touchHoldDir = dir;
-    e.preventDefault();
-  });
-  gamePanel.addEventListener('pointerup', e => {
-    if (!tracking) return;
-    tracking = false;
-    const dir = directionFromPoint(e.clientX, e.clientY, start);
-    state.input.touchHoldDir = null;
-    // Keep quick flicks/swipes working, but taps already move on pointerdown.
-    if (dir && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 28 && !aimedGesture) moveFromTouch(dir[0], dir[1]);
-    start = null;
-    aimedGesture = false;
-    e.preventDefault();
-  });
-  gamePanel.addEventListener('pointercancel', () => { tracking = false; aimedGesture = false; state.input.touchHoldDir = null; start = null; });
-  gamePanel.addEventListener('touchmove', e => e.preventDefault(), {passive:false});
 }
 function updateAnimation(){
   const p = state.player;
@@ -1278,5 +1197,5 @@ export function initGame(options: { developerToolsEnabled?: boolean } = {}){
     e.stopPropagation();
   }, {capture:true, passive:false});
   addEventListener('pointerdown', tryAutoAudio);
-  bindButtons(); bindTouchControls(); generate(); setInterval(saveProgress, 60000); addEventListener('beforeunload', saveProgress); focusGame(); setTimeout(focusGame, 60); loop();
+  bindButtons(); generate(); setInterval(saveProgress, 60000); addEventListener('beforeunload', saveProgress); focusGame(); setTimeout(focusGame, 60); loop();
 }

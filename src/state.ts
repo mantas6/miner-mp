@@ -88,9 +88,6 @@ export function createInitialState(): GameState {
       sprintDirection: null,
       lastKeyboardMove: 0,
       keyboardRepeatMs: 105,
-      touchHoldDir: null,
-      lastTouchMove: 0,
-      touchRepeatMs: 130,
       gunArmed: false
     },
     player: {
