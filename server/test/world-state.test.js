@@ -49,6 +49,53 @@ test('reset advances revision and rejects stale initialization and mutations', t
   assert.deepEqual(store.snapshot(), emptyWorld(2));
 });
 
+test('repeated writes to one coordinate replace it in place', t => {
+  const temporary = temporaryState();
+  t.after(() => fs.rmSync(temporary.directory, {recursive:true, force:true}));
+  const store = createWorldStore(temporary.file);
+  const dirt = hp => ({type:'dirt', hp, maxHp:4});
+  assert.equal(store.initialize(1, [{x:1,y:5,tile:dirt(4)}, {x:2,y:5,tile:dirt(4)}]), true);
+
+  assert.equal(store.setTile(1, {x:1,y:5,tile:dirt(2)}), true);
+  assert.equal(store.setTile(1, {x:9,y:5,tile:dirt(4)}), true);
+  assert.equal(store.setTile(1, {x:1,y:5,tile:{type:'air'}}), true);
+
+  // Coordinates are indexed, so a rewrite updates its slot instead of appending.
+  assert.deepEqual(store.snapshot().tiles, [
+    {x:1,y:5,tile:{type:'air'}},
+    {x:2,y:5,tile:dirt(4)},
+    {x:9,y:5,tile:dirt(4)}
+  ]);
+});
+
+test('a reset clears the coordinate index so the next world starts empty', t => {
+  const temporary = temporaryState();
+  t.after(() => fs.rmSync(temporary.directory, {recursive:true, force:true}));
+  const store = createWorldStore(temporary.file);
+  assert.equal(store.initialize(1, [{x:1,y:5,tile:{type:'dirt',hp:4,maxHp:4}}]), true);
+  assert.equal(store.reset(1), true);
+  assert.equal(store.initialize(2, [{x:1,y:5,tile:{type:'dirt',hp:4,maxHp:4}}]), true);
+  assert.equal(store.setTile(2, {x:1,y:5,tile:{type:'air'}}), true);
+  assert.deepEqual(store.snapshot().tiles, [{x:1,y:5,tile:{type:'air'}}]);
+});
+
+test('a failing write is logged instead of crashing the relay', t => {
+  const temporary = temporaryState();
+  t.after(() => fs.rmSync(temporary.directory, {recursive:true, force:true}));
+  const blocker = path.join(temporary.directory, 'blocker');
+  fs.writeFileSync(blocker, 'not a directory');
+  const errors = [];
+  t.mock.method(console, 'warn', () => {});
+  t.mock.method(console, 'error', message => errors.push(message));
+
+  const store = createWorldStore(path.join(blocker, 'world.json'));
+  // The in-memory world stays authoritative for the connected players.
+  assert.equal(store.initialize(1, []), true);
+  assert.equal(store.flush(), false);
+  assert.equal(store.snapshot().initialized, true);
+  assert.match(errors.at(-1), /Failed to persist world state/);
+});
+
 test('deep terrain, enemies, and exploration survive relay persistence', t => {
   const temporary = temporaryState();
   t.after(() => fs.rmSync(temporary.directory, {recursive:true, force:true}));

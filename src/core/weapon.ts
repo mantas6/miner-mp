@@ -1,5 +1,5 @@
 import { SURFACE_HEIGHT } from '../../shared/constants';
-import { tileKey } from './tile-key';
+import { tileKey } from '../../shared/tile-key';
 import type { Direction, Tile } from './types';
 
 export interface ShotEnemyTarget {

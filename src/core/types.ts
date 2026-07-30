@@ -1,73 +1,23 @@
-export interface Ore {
-  name: string;
-  color: string;
-  value: number;
-  min: number;
-  max: number;
-  chance: number;
-}
+// The world's data shapes are defined once, as zod schemas, in
+// `shared/world-schema.ts` — the relay validates against the same definitions.
+import type { EnemyKind, Tile } from '../../shared/world-schema';
 
-export interface Artifact {
-  name: string;
-  color: string;
-  value: number;
-  min: number;
-  max: number;
-  chance: number;
-}
+export type {
+  AirTile,
+  Artifact,
+  ArtifactTile,
+  DirtTile,
+  DormantEnemyTile,
+  EnemyKind,
+  HazardTile,
+  MotherlodeTile,
+  Ore,
+  OreTile,
+  RockTile,
+  Tile
+} from '../../shared/world-schema';
 
 export type Direction = [number, number];
-export type EnemyKind = 'tunnelFiend' | 'skitterling' | 'ironback' | 'abyssStalker';
-
-export interface AirTile {
-  type: 'air';
-}
-
-export interface DirtTile {
-  type: 'dirt';
-  hp: number;
-  maxHp: number;
-}
-
-export interface RockTile {
-  type: 'rock';
-  hp: number;
-}
-
-export interface OreTile {
-  type: 'ore';
-  ore: Ore;
-  hp: number;
-  maxHp: number;
-}
-
-export interface HazardTile {
-  type: 'hazard';
-  hp: number;
-  maxHp: number;
-}
-
-export interface ArtifactTile {
-  type: 'artifact';
-  artifact: Artifact;
-  hp: number;
-  maxHp: number;
-}
-
-export interface MotherlodeTile {
-  type: 'motherlode';
-  hp: number;
-  maxHp: number;
-}
-
-export interface DormantEnemyTile {
-  type: 'enemy';
-  kind: EnemyKind;
-  hp: number;
-  maxHp: number;
-}
-
-export type Tile = AirTile | DirtTile | RockTile | OreTile | HazardTile | ArtifactTile | MotherlodeTile | DormantEnemyTile;
 
 export interface Player {
   x: number;

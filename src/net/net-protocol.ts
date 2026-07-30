@@ -1,371 +1,63 @@
 // Peer-to-peer message protocol for co-op multiplayer.
 //
-// Pure, DOM-free, and vitest-testable: message type definitions, validation of
-// decoded payloads, and small pure "apply" reducers operating on plain data.
-// See PLAN.md "Message protocol". These messages are the `payload`
-// carried inside the relay envelope (`{ t: 'relay', payload }`); the envelope
-// itself is handled in `net.ts`.
+// Pure, DOM-free, and vitest-testable: small "apply" reducers operating on plain
+// data, plus builders that project game state onto the wire. The message shapes
+// and their validation live in `shared/protocol.ts` so that the relay enforces
+// the same rules; this module re-exports them for stable client call sites.
 
-import type { Tile, Ore, Artifact, Player, Enemy, EnemyKind, RemotePlayer } from '../core/types';
-import { tileKey } from '../core/tile-key';
-import { MAX_WORLD_ROW, SURFACE_HEIGHT, WORLD_CHUNK_ROWS, WORLD_W } from '../../shared/constants';
+import type { Tile, Player, Enemy, RemotePlayer } from '../core/types';
+import type {
+  EnemyDamageMsg,
+  EnemyDeadMsg,
+  EnemySnapshotEntry,
+  EnemySnapshotMsg,
+  EnemySpawnMsg,
+  NetMessage,
+  PlayerStateMsg,
+  TileDiffEntry,
+  TileMsg
+} from '../../shared/protocol';
+import { tileKey } from '../../shared/tile-key';
+import { parseNetMessage } from '../../shared/protocol';
+import { tileSchema } from '../../shared/world-schema';
+import { MAX_WORLD_ROW, WORLD_CHUNK_ROWS, WORLD_W } from '../../shared/constants';
 
-// --- Message types ---------------------------------------------------------
+// --- Message shapes and validation (defined in shared/protocol.ts) ----------
 
-/** Local ship transform, throttled. Transform only — no fuel/hull vitals. */
-export interface PlayerStateMsg {
-  type: 'playerState';
-  x: number;
-  y: number;
-  drawX: number;
-  drawY: number;
-  facing: number;
-  drillAnim: number;
-  drillDx: number;
-  drillDy: number;
-  bob: number;
-}
-
-/** A single local tile mutation (last-writer-wins). */
-export interface TileMsg {
-  type: 'tile';
-  revision: number;
-  x: number;
-  y: number;
-  tile: Tile;
-}
-
-/** Guest -> host: request to wake dormant enemies around a coordinate. */
-export interface WakeNearMsg {
-  type: 'wakeNear';
-  x: number;
-  y: number;
-}
-
-/** One enemy as carried in snapshots and world sync. */
-export interface EnemySnapshotEntry {
-  id: number;
-  kind: EnemyKind;
-  x: number;
-  y: number;
-  drawX: number;
-  drawY: number;
-  hp: number;
-  maxHp: number;
-  alive: boolean;
-}
-
-/** Host -> guest: authoritative list of current enemies (~15 Hz). */
-export interface EnemySnapshotMsg {
-  type: 'enemySnapshot';
-  revision: number;
-  enemies: EnemySnapshotEntry[];
-}
-
-/** Host -> guest: a newly-woken enemy. */
-export interface EnemySpawnMsg {
-  type: 'enemySpawn';
-  id: number;
-  kind: EnemyKind;
-  x: number;
-  y: number;
-  hp: number;
-  maxHp: number;
-}
-
-/** Host -> guest: an enemy died (with bounty attribution). */
-export interface EnemyDeadMsg {
-  type: 'enemyDead';
-  id: number;
-  bounty: number;
-  killerIsGuest: boolean;
-}
-
-/** Guest -> host: guest drilled an enemy. */
-export interface EnemyDamageMsg {
-  type: 'enemyDamage';
-  id: number;
-  amount: number;
-  by: 'host' | 'guest';
-}
-
-/** Guest -> host: destroy a dormant enemy tile with one valid gun shot. */
-export interface EnemyTileShotMsg {
-  type: 'enemyTileShot';
-  x: number;
-  y: number;
-  by: 'guest';
-}
-
-/** Host -> guest: credit a guest kill locally. */
-export interface BountyMsg {
-  type: 'bounty';
-  amount: number;
-}
-
-/** Inform partner the local ship has died. */
-export interface DiedMsg {
-  type: 'died';
-}
-
-/** Inform partner the local ship has respawned at a coordinate. */
-export interface RespawnedMsg {
-  type: 'respawned';
-  x: number;
-  y: number;
-}
-
-/** Inform partner the local ship teleported to a coordinate. */
-export interface TeleportedMsg {
-  type: 'teleported';
-  x: number;
-  y: number;
-}
-
-/** Newly explored row-major tile ranges, shared as co-op cartography. */
-export interface ExploreMsg {
-  type: 'explore';
-  revision: number;
-  ranges: string;
-}
-
-/** A single accumulated tile diff entry. */
-export interface TileDiffEntry {
-  x: number;
-  y: number;
-  tile: Tile;
-}
-
-/** Server -> client: complete authoritative terrain/entity/view state. */
-export interface WorldStateMsg {
-  type: 'worldState';
-  version: 1;
-  revision: number;
-  initialized: boolean;
-  tiles: TileDiffEntry[];
-  enemies: EnemySnapshotEntry[];
-  explored: string;
-}
-
-/** Client -> server: deterministic generated non-air tiles for a new revision. */
-export interface WorldInitMsg {
-  type: 'worldInit';
-  revision: number;
-  tiles: TileDiffEntry[];
-}
-
-/** Client request or server broadcast for an authoritative terrain reset. */
-export interface WorldResetMsg {
-  type: 'worldReset';
-  revision: number;
-}
-
-export type NetMessage =
-  | PlayerStateMsg
-  | TileMsg
-  | WakeNearMsg
-  | EnemySnapshotMsg
-  | EnemySpawnMsg
-  | EnemyDeadMsg
-  | EnemyDamageMsg
-  | EnemyTileShotMsg
-  | BountyMsg
-  | DiedMsg
-  | RespawnedMsg
-  | TeleportedMsg
-  | ExploreMsg
-  | WorldStateMsg
-  | WorldInitMsg
-  | WorldResetMsg;
-
-export type NetMessageType = NetMessage['type'];
-
-// --- Low-level validation helpers ------------------------------------------
-
-function isObj(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-function isNum(v: unknown): v is number {
-  return typeof v === 'number' && Number.isFinite(v);
-}
-function isInt(v: unknown): v is number {
-  return isNum(v) && Number.isSafeInteger(v);
-}
-function isBool(v: unknown): v is boolean {
-  return typeof v === 'boolean';
-}
-function isStr(v: unknown): v is string {
-  return typeof v === 'string';
-}
-
-const MAX_STATE_TILE_ENTRIES = 100_000;
-const MAX_EXPLORED_TILES = 90 * 1004;
-const MAX_ENEMIES = 2048;
-
-const TILE_TYPES = new Set(['air', 'dirt', 'rock', 'ore', 'hazard', 'artifact', 'motherlode', 'enemy']);
-const ENEMY_KINDS = new Set<EnemyKind>(['tunnelFiend', 'skitterling', 'ironback', 'abyssStalker']);
-
-function isEnemyKind(v: unknown): v is EnemyKind {
-  return typeof v === 'string' && ENEMY_KINDS.has(v as EnemyKind);
-}
-
-function isOre(v: unknown): v is Ore {
-  return (
-    isObj(v) &&
-    isStr(v.name) &&
-    isStr(v.color) &&
-    isNum(v.value) &&
-    isNum(v.min) &&
-    isNum(v.max) &&
-    isNum(v.chance)
-  );
-}
-
-function isArtifact(v: unknown): v is Artifact {
-  return (
-    isObj(v) &&
-    isStr(v.name) &&
-    isStr(v.color) &&
-    isNum(v.value) &&
-    isNum(v.min) &&
-    isNum(v.max) &&
-    isNum(v.chance)
-  );
-}
-
-export function isTile(v: unknown): v is Tile {
-  if (!isObj(v) || !isStr(v.type) || !TILE_TYPES.has(v.type)) return false;
-  switch (v.type) {
-    case 'air':
-      return true;
-    case 'rock':
-      return isNum(v.hp);
-    case 'ore':
-      return isNum(v.hp) && isNum(v.maxHp) && isOre(v.ore);
-    case 'artifact':
-      return isNum(v.hp) && isNum(v.maxHp) && isArtifact(v.artifact);
-    case 'dirt':
-    case 'hazard':
-    case 'motherlode':
-      return isNum(v.hp) && isNum(v.maxHp);
-    case 'enemy':
-      return isEnemyKind(v.kind) && isNum(v.hp) && isNum(v.maxHp);
-    default:
-      return false;
-  }
-}
-
-function isEnemyEntry(v: unknown): v is EnemySnapshotEntry {
-  return (
-    isObj(v) &&
-    isInt(v.id) &&
-    isEnemyKind(v.kind) &&
-    isNum(v.x) &&
-    isNum(v.y) &&
-    isNum(v.drawX) &&
-    isNum(v.drawY) &&
-    isNum(v.hp) &&
-    isNum(v.maxHp) &&
-    isBool(v.alive)
-  );
-}
-
-function isTileDiffEntry(v: unknown): v is TileDiffEntry {
-  return isObj(v) && isInt(v.x) && v.x >= 0 && v.x < WORLD_W && isInt(v.y) && v.y >= 0 && v.y <= MAX_WORLD_ROW && isTile(v.tile);
-}
-
-function isRevision(v: unknown): v is number {
-  return isInt(v) && v >= 1;
-}
-
-function isExploration(v: unknown): v is string {
-  if (!isStr(v) || v.length > MAX_STATE_TILE_ENTRIES * 8) return false;
-  if (!v) return true;
-  let count = 0;
-  return v.split(',').every(range => {
-    const match = /^(\d+)(?:-(\d+))?$/.exec(range);
-    if (!match) return false;
-    const start = Number(match[1]);
-    const end = Number(match[2] ?? match[1]);
-    count += end - start + 1;
-    return Number.isSafeInteger(start) && Number.isSafeInteger(end) &&
-      start >= SURFACE_HEIGHT * WORLD_W && end >= start && end <= MAX_WORLD_ROW * WORLD_W + WORLD_W - 1 &&
-      count <= MAX_EXPLORED_TILES;
-  });
-}
-
-// --- Message validation ----------------------------------------------------
+export type {
+  BountyMsg,
+  DiedMsg,
+  EnemyDamageMsg,
+  EnemyDeadMsg,
+  EnemySnapshotEntry,
+  EnemySnapshotMsg,
+  EnemySpawnMsg,
+  EnemyTileShotMsg,
+  ExploreMsg,
+  NetMessage,
+  NetMessageType,
+  PlayerStateMsg,
+  RespawnedMsg,
+  TeleportedMsg,
+  TileDiffEntry,
+  TileMsg,
+  WakeNearMsg,
+  WorldInitMsg,
+  WorldResetMsg,
+  WorldStateMsg
+} from '../../shared/protocol';
 
 /**
- * Validate an already-parsed value as a NetMessage. Returns the typed message
- * on success or `null` on any malformed input. Never throws.
+ * Validate an already-parsed value as a NetMessage. Returns the normalized
+ * message on success or `null` on any malformed input. Never throws.
  */
-export function validateMessage(v: unknown): NetMessage | null {
-  if (!isObj(v) || !isStr(v.type)) return null;
-  switch (v.type) {
-    case 'playerState':
-      return isNum(v.x) &&
-        isNum(v.y) &&
-        isNum(v.drawX) &&
-        isNum(v.drawY) &&
-        isNum(v.facing) &&
-        isNum(v.drillAnim) &&
-        isNum(v.drillDx) &&
-        isNum(v.drillDy) &&
-        isNum(v.bob)
-        ? (v as unknown as PlayerStateMsg)
-        : null;
-    case 'tile':
-      return isRevision(v.revision) && isTileDiffEntry(v) ? (v as unknown as TileMsg) : null;
-    case 'wakeNear':
-      return isNum(v.x) && isNum(v.y) ? (v as unknown as WakeNearMsg) : null;
-    case 'enemySnapshot':
-      return isRevision(v.revision) && Array.isArray(v.enemies) && v.enemies.length <= MAX_ENEMIES && v.enemies.every(isEnemyEntry)
-        ? (v as unknown as EnemySnapshotMsg)
-        : null;
-    case 'enemySpawn':
-      return isInt(v.id) && isEnemyKind(v.kind) && isNum(v.x) && isNum(v.y) && isNum(v.hp) && isNum(v.maxHp)
-        ? (v as unknown as EnemySpawnMsg)
-        : null;
-    case 'enemyDead':
-      return isInt(v.id) && isNum(v.bounty) && isBool(v.killerIsGuest)
-        ? (v as unknown as EnemyDeadMsg)
-        : null;
-    case 'enemyDamage':
-      return isInt(v.id) && isNum(v.amount) && (v.by === 'host' || v.by === 'guest')
-        ? (v as unknown as EnemyDamageMsg)
-        : null;
-    case 'enemyTileShot':
-      return isNum(v.x) && isNum(v.y) && v.by === 'guest'
-        ? (v as unknown as EnemyTileShotMsg)
-        : null;
-    case 'bounty':
-      return isNum(v.amount) ? (v as unknown as BountyMsg) : null;
-    case 'died':
-      return { type: 'died' };
-    case 'respawned':
-      return isNum(v.x) && isNum(v.y) ? (v as unknown as RespawnedMsg) : null;
-    case 'teleported':
-      return isNum(v.x) && isNum(v.y) ? (v as unknown as TeleportedMsg) : null;
-    case 'explore':
-      return isRevision(v.revision) && isExploration(v.ranges) ? (v as unknown as ExploreMsg) : null;
-    case 'worldState':
-      return v.version === 1 && isRevision(v.revision) && isBool(v.initialized) &&
-        Array.isArray(v.tiles) && v.tiles.length <= MAX_STATE_TILE_ENTRIES && v.tiles.every(isTileDiffEntry) &&
-        Array.isArray(v.enemies) && v.enemies.length <= MAX_ENEMIES && v.enemies.every(isEnemyEntry) &&
-        isExploration(v.explored)
-        ? (v as unknown as WorldStateMsg)
-        : null;
-    case 'worldInit':
-      return isRevision(v.revision) && Array.isArray(v.tiles) && v.tiles.length <= MAX_STATE_TILE_ENTRIES &&
-        v.tiles.every(entry => isTileDiffEntry(entry) && entry.tile.type !== 'air')
-        ? (v as unknown as WorldInitMsg)
-        : null;
-    case 'worldReset':
-      return isRevision(v.revision) ? (v as unknown as WorldResetMsg) : null;
-    default:
-      return null;
-  }
+export function validateMessage(value: unknown): NetMessage | null {
+  return parseNetMessage(value);
+}
+
+/** Whether a value is a well-formed tile. */
+export function isTile(value: unknown): value is Tile {
+  return tileSchema.safeParse(value).success;
 }
 
 // --- Builders (plain-data constructors) ------------------------------------

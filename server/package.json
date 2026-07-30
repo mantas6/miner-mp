@@ -10,6 +10,8 @@
     "typecheck": "node --check index.js && node --check world-state.js"
   },
   "dependencies": {
-    "ws": "^8.18.0"
+    "write-file-atomic": "^7.0.0",
+    "ws": "^8.18.0",
+    "zod": "^4.4.3"
   }
 }

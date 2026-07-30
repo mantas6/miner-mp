@@ -1,5 +1,5 @@
 import { SURFACE_HEIGHT } from '../../shared/constants';
-import { tileKey as key } from './tile-key';
+import { tileKey as key } from '../../shared/tile-key';
 import type { Tile } from './types';
 
 export interface EnemyPosition {

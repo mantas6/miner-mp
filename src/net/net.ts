@@ -5,8 +5,14 @@
 // incoming messages via callbacks. Send throttling is provided for the two
 // high-frequency streams (playerState ~20 Hz, enemySnapshot ~15 Hz).
 //
+// The socket is a partysocket ReconnectingWebSocket: a dropped connection is
+// retried with backoff instead of ending the session. The relay needs no join
+// handshake — it replies to every accepted connection with `worldState` followed
+// by `paired` — so reconnecting re-hydrates the world through the normal path.
+//
 // See PLAN.md "Phase 2 - Client net layer".
 
+import ReconnectingWebSocket from 'partysocket/ws';
 import {
   createRateLimiter,
   validateMessage,
@@ -26,6 +32,13 @@ export const DEFAULT_SERVER_URL =
 export const RATES = Object.freeze({
   playerState: 20,
   enemySnapshot: 15
+});
+
+/** Reconnect backoff: 0.5 s, growing 1.5x per attempt, capped at 10 s. */
+export const RECONNECT = Object.freeze({
+  minDelayMs: 500,
+  maxDelayMs: 10_000,
+  growthFactor: 1.5
 });
 
 export interface NetCallbacks {
@@ -57,6 +70,7 @@ export interface NetOptions {
 }
 
 export interface NetClient {
+  /** Open the session. Reconnects automatically until `disconnect` is called. */
   connect(): void;
   disconnect(): void;
   /** Send a game message immediately, wrapped in the relay envelope. */
@@ -86,7 +100,7 @@ export function createNet(options: NetOptions = {}): NetClient {
   const playerStateGate = createRateLimiter(RATES.playerState);
   const enemySnapshotGate = createRateLimiter(RATES.enemySnapshot);
 
-  let ws: WebSocket | null = null;
+  let ws: ReconnectingWebSocket | null = null;
   let role: Role | null = null;
   let connected = false;
   let paired = false;
@@ -119,6 +133,8 @@ export function createNet(options: NetOptions = {}): NetClient {
         break;
       case 'room-full':
         cb.onRoomFull?.();
+        // The room rejected us; retrying would only be rejected again.
+        ws?.close(1000, 'room full');
         break;
       case 'relay': {
         const msg = validateMessage(env.payload);
@@ -136,9 +152,17 @@ export function createNet(options: NetOptions = {}): NetClient {
       cb.onError?.(new Error('No WebSocket implementation available'));
       return;
     }
-    let socket: WebSocket;
+    let socket: ReconnectingWebSocket;
     try {
-      socket = new WS(url);
+      socket = new ReconnectingWebSocket(url, undefined, {
+        WebSocket: WS,
+        minReconnectionDelay: RECONNECT.minDelayMs,
+        maxReconnectionDelay: RECONNECT.maxDelayMs,
+        reconnectionDelayGrowFactor: RECONNECT.growthFactor,
+        // Never buffer game messages across a gap: `send` already refuses while
+        // the socket is down, and replaying stale transforms would be worse.
+        maxEnqueuedMessages: 0
+      });
     } catch (err) {
       cb.onError?.(err);
       return;
@@ -159,7 +183,8 @@ export function createNet(options: NetOptions = {}): NetClient {
       connected = false;
       paired = false;
       role = null;
-      ws = null;
+      // Keep the handle while a retry is pending so `connect` stays idempotent.
+      if (!socket.shouldReconnect) ws = null;
       cb.onClose?.();
     };
   }

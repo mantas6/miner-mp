@@ -19,7 +19,10 @@ miner/
 ├── vite.config.ts
 ├── shared/
 │   ├── constants.ts
-│   └── exploration-codec.ts
+│   ├── exploration-codec.ts
+│   ├── protocol.ts
+│   ├── tile-key.ts
+│   └── world-schema.ts
 ├── src/
 │   ├── main.tsx
 │   ├── persistence.ts
@@ -44,8 +47,11 @@ miner/
 | Path | Purpose |
 |---|---|
 | `index.html` | Main game page and root mount node; loaded by Vite. |
-| `shared/constants.ts` | World constants, camera scale, ore and artifact tables. Intended to be consumable by both client and relay server. |
+| `shared/constants.ts` | World constants, camera scale, protocol limits, ore and artifact tables. Consumed by both the client and the relay server. |
 | `shared/exploration-codec.ts` | Fog-of-war index math and the run-length encoding shared with persistence and the relay. |
+| `shared/protocol.ts` | Zod schemas and derived types for every co-op message and the relay envelope. |
+| `shared/world-schema.ts` | Zod schemas and derived types for tiles, enemies, and the persisted world state. |
+| `shared/tile-key.ts` | Canonical `"x,y"` coordinate key used by tile maps on both sides. |
 | `src/main.tsx` | Vite entry point: imports styles, renders the React shell, then starts the game runtime. |
 | `src/persistence.ts` | Local save/load of player progress and explored tiles. |
 | `src/core/` | Pure gameplay rules and types: balance, economy, upgrades, movement, weapon, dynamite, teleporter, enemies, objectives, extraction, stats, danger, developer tools. |
@@ -100,7 +106,15 @@ npm run preview
 ## Multiplayer (co-op)
 
 Co-op play uses an authoritative WebSocket world server in `server/`. It is a
-Node process built on the [`ws`](https://github.com/websockets/ws) library.
+Node process built on the [`ws`](https://github.com/websockets/ws) library. It
+imports the shared zod schemas in `shared/` directly, so it needs a Node release
+with TypeScript type stripping (Node 22.18+ or newer).
+
+Install its dependencies once:
+
+```bash
+npm --prefix server install
+```
 
 Start the relay server:
 
@@ -126,10 +140,18 @@ WORLD_STATE_PATH=/var/lib/moleload/world-state.json PORT=9000 node server/index.
 The ignored runtime file is versioned JSON (`version: 1`) containing the world
 revision, generated non-air tile values, explicit air/dug overrides, active
 world enemies, and shared exploration ranges. Input is schema-, coordinate-,
-count-, and size-validated; updates are written through a same-directory
-temporary file and atomic rename. Clients receive this authoritative snapshot
-before their pairing event, and every mutation carries a world revision so
-traffic from before a reset cannot repopulate the new mine.
+count-, and size-validated against `shared/world-schema.ts` — the same
+definitions the client validates against, so neither side can accept a message
+the other silently drops. Updates are written atomically with
+[`write-file-atomic`](https://github.com/npm/write-file-atomic), and a failed
+write is logged rather than crashing the relay. Clients receive this
+authoritative snapshot before their pairing event, and every mutation carries a
+world revision so traffic from before a reset cannot repopulate the new mine.
+
+The relay pings each connection every 30 seconds and drops peers that miss two
+pings, so a dead transport frees its room slot; it also rate limits each
+connection to 200 messages per second. Clients reconnect automatically with
+backoff and re-hydrate through the normal snapshot-then-pair handshake.
 
 Player and shared-world reset controls are development-only tools. They are
 omitted from normal local play and production builds. To expose the visibly

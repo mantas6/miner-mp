@@ -11,6 +11,9 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    // shared/ is imported both by Vite and directly by the Node relay, which
+    // resolves ES module specifiers verbatim — so those imports spell out `.ts`.
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,

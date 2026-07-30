@@ -20,7 +20,8 @@ import {
   type EnemySnapshotEntry,
   type TileDiff
 } from './net-protocol';
-import { tileKey } from '../core/tile-key';
+import { tileKey } from '../../shared/tile-key';
+import { PROTOCOL_CASES } from '../../shared/protocol-fixtures';
 import type { Enemy, Player, Tile } from '../core/types';
 
 /** Mimic the relay hop: serialize, parse, then validate the decoded payload. */
@@ -137,6 +138,24 @@ describe('validateMessage rejection', () => {
     expect(validateMessage({type:'enemySpawn', id:2, kind:'unknown', x:1, y:500, hp:8, maxHp:8})).toBeNull();
     expect(validateMessage({type:'enemySnapshot', revision:1, enemies:[{id:2,kind:'abyssStalker',x:1,y:1002,drawX:1,drawY:1002,hp:8,maxHp:8,alive:true}]}))
       .not.toBeNull();
+  });
+});
+
+describe('client/relay validation parity', () => {
+  // The relay asserts the same verdicts over the same table in
+  // server/test/protocol-parity.test.js, so neither side can drift again.
+  for (const { label, message, valid } of PROTOCOL_CASES) {
+    it(`${valid ? 'accepts' : 'rejects'} ${label}`, () => {
+      expect(validateMessage(message) !== null).toBe(valid);
+    });
+  }
+
+  it('normalizes a legacy kindless enemy instead of dropping it', () => {
+    const msg = validateMessage({
+      type: 'enemySnapshot', revision: 1,
+      enemies: [{ id: 2, x: 1, y: 8, drawX: 1, drawY: 8, hp: 8, maxHp: 8, alive: true }]
+    });
+    expect(msg).toMatchObject({ enemies: [{ id: 2, kind: 'tunnelFiend' }] });
   });
 });
 

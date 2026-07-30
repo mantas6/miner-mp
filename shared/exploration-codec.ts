@@ -1,4 +1,8 @@
-import { MAX_WORLD_ROW, SURFACE_HEIGHT, WORLD_W } from './constants';
+import { MAX_EXPLORED_TILES, MAX_WORLD_ROW, SURFACE_HEIGHT, WORLD_W } from './constants.ts';
+
+const RANGE = /^(\d+)(?:-(\d+))?$/;
+const MIN_INDEX = SURFACE_HEIGHT * WORLD_W;
+const MAX_INDEX = MAX_WORLD_ROW * WORLD_W + WORLD_W - 1;
 
 export function explorationIndex(x: number, y: number): number {
   return y * WORLD_W + x;
@@ -31,9 +35,30 @@ export function revealFootprint(explored: Set<number>, x: number, y: number, siz
   return added;
 }
 
+/**
+ * Whether an encoded payload is a well-formed, in-bounds, size-capped set of
+ * ranges. This is the validation half of the codec, shared by the client's
+ * message schema and the relay, so both reject exactly the same payloads.
+ */
+export function isEncodedExploration(encoded: string): boolean {
+  if (!encoded) return true;
+  let count = 0;
+  for (const range of encoded.split(',')) {
+    const match = RANGE.exec(range);
+    if (!match) return false;
+    const start = Number(match[1]);
+    const end = Number(match[2] ?? match[1]);
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end)) return false;
+    if (end < start || start < MIN_INDEX || end > MAX_INDEX) return false;
+    count += end - start + 1;
+    if (count > MAX_EXPLORED_TILES) return false;
+  }
+  return true;
+}
+
 export function encodeExploration(explored: Iterable<number>): string {
   const indexes = [...new Set(explored)]
-    .filter(index => Number.isSafeInteger(index) && index >= SURFACE_HEIGHT * WORLD_W && index <= MAX_WORLD_ROW * WORLD_W + WORLD_W - 1)
+    .filter(index => Number.isSafeInteger(index) && index >= MIN_INDEX && index <= MAX_INDEX)
     .sort((a, b) => a - b);
   const ranges: string[] = [];
   for (let i = 0; i < indexes.length; i++) {
@@ -49,11 +74,11 @@ export function mergeExploration(explored: Set<number>, encoded: unknown): numbe
   if (typeof encoded !== 'string' || !encoded) return [];
   const added: number[] = [];
   for (const range of encoded.split(',')) {
-    const match = /^(\d+)(?:-(\d+))?$/.exec(range);
+    const match = RANGE.exec(range);
     if (!match) continue;
     const start = Number(match[1]);
     const end = Number(match[2] ?? match[1]);
-    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end < start || start < SURFACE_HEIGHT * WORLD_W || end > MAX_WORLD_ROW * WORLD_W + WORLD_W - 1) continue;
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end < start || start < MIN_INDEX || end > MAX_INDEX) continue;
     for (let index = start; index <= end; index++) {
       if (explored.has(index)) continue;
       explored.add(index);

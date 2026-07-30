@@ -1,5 +1,3 @@
-import type { Artifact, Ore } from '../src/core/types';
-
 // Keep the mine's zoom in one shared world-to-screen scale.  The previous
 // 64px tile baseline is reduced by 25%, so rendering, camera coverage, and
 // pointer-to-ship geometry all use the same 48px tile size.
@@ -14,6 +12,25 @@ export const MOTHERLODE_ROW = 1002;
 // Keep row-major exploration indexes exact within JavaScript's safe integers.
 export const MAX_WORLD_ROW = Math.floor(Number.MAX_SAFE_INTEGER / WORLD_W) - 1;
 
+// --- Protocol / persistence limits (shared by the client and the relay) -----
+
+/** Schema version of the relay's persisted world-state file. */
+export const WORLD_STATE_VERSION = 1;
+/** Upper bound on persisted/transmitted tile mutations. */
+export const MAX_STATE_TILE_ENTRIES = 100_000;
+/** Upper bound on exploration indexes carried by one message. */
+export const MAX_EXPLORED_TILES = WORLD_W * 1004;
+/** Upper bound on encoded exploration payload length. */
+export const MAX_EXPLORED_CHARS = MAX_STATE_TILE_ENTRIES * 8;
+/** Upper bound on replicated live enemies. */
+export const MAX_ENEMIES = 2048;
+/** Upper bound on the persisted world-state file and on a relay frame. */
+export const MAX_STATE_BYTES = 16 * 1024 * 1024;
+/** Highest value a valuable (ore/artifact) may declare. */
+export const MAX_VALUABLE_VALUE = 1_000_000;
+
+export const ENEMY_KINDS = ['tunnelFiend', 'skitterling', 'ironback', 'abyssStalker'] as const;
+
 // World-generation thresholds shared with player-facing danger guidance.
 // Row values are world coordinates; distance below the depot is derived from START_Y.
 export const DANGER = Object.freeze({
@@ -23,7 +40,8 @@ export const DANGER = Object.freeze({
 });
 
 // Chance is the relative tier weight once the independent ore-spawn roll succeeds.
-export const ORES: Ore[] = [
+// These entries are validated as `Ore` values by shared/world-schema.ts.
+export const ORES = [
   {name:'Coal', color:'#343434', value:8, min:2, max:182, chance:.10},
   {name:'Copper', color:'#c47b45', value:16, min:7, max:322, chance:.08},
   {name:'Silver', color:'#c8d3e0', value:36, min:62, max:462, chance:.055},
@@ -36,7 +54,7 @@ export const ORES: Ore[] = [
 ];
 
 // Absolute per-tile chances, checked only after ordinary ore generation.
-export const ARTIFACTS: Artifact[] = [
+export const ARTIFACTS = [
   {name:'Ancient Coin Cache', color:'#ffd166', value:180, min:202, max:502, chance:.00045},
   {name:'Lost Cosmonaut Medal', color:'#71e5ff', value:450, min:452, max:802, chance:.00035},
   {name:'Alien Reliquary', color:'#ff78e1', value:900, min:702, max:MAX_WORLD_ROW, chance:.00025}
