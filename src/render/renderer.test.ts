@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TILE } from '../../shared/constants';
+import { explorationIndex } from '../../shared/exploration-codec';
 
 const mocks = vi.hoisted(() => {
   const gradient = {addColorStop: vi.fn()};
@@ -241,10 +242,52 @@ describe('terrain cache lifecycle', () => {
 
     renderer.draw();
 
-    expect(mocks.mainContext.fillRect).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), TILE + 2, TILE + 2);
-    expect(mocks.mainContext.bezierCurveTo).toHaveBeenCalled();
+    // TILE + 2 is the fog tile's overdrawn base rect; it now lands in a cached
+    // chunk canvas rather than straight on the visible context.
+    expect(mocks.terrainContext.fillRect).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), TILE + 2, TILE + 2);
+    expect(mocks.mainContext.fillRect).not.toHaveBeenCalledWith(expect.any(Number), expect.any(Number), TILE + 2, TILE + 2);
+    expect(mocks.terrainContext.bezierCurveTo).toHaveBeenCalled();
     expect(mocks.mainContext.fillText).not.toHaveBeenCalledWith('PARTNER', expect.any(Number), expect.any(Number));
     expect(mocks.mainContext.createRadialGradient).not.toHaveBeenCalled();
+  });
+
+  it('keeps cached fog chunks until exploration marks them dirty', () => {
+    const state = {
+      world: {}, camX: 10.2, camY: 20.2, tick: 0, gameOver: false,
+      exploredTiles: new Set<number>(), teleportEffect: null,
+      particles: [], enemies: [], remotePlayers: [],
+      player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+    const renderer = createRenderer({state, get: () => ({type:'dirt', hp:1, maxHp:1}), rand: () => 0});
+    // The fog base rect is the only draw sized TILE + 2, so it isolates fog work
+    // from the terrain tiles sharing the offscreen context mock.
+    const fogTileDraws = () => mocks.terrainContext.fillRect.mock.calls
+      .filter(([, , width]) => width === TILE + 2).length;
+
+    renderer.draw();
+    const initial = fogTileDraws();
+    expect(initial).toBeGreaterThan(0);
+
+    renderer.draw();
+    expect(fogTileDraws()).toBe(initial);
+
+    // One newly explored tile repaints only its own 4x4 chunk, minus that tile.
+    state.exploredTiles.add(explorationIndex(12, 22));
+    renderer.invalidateFog(12, 22);
+    renderer.draw();
+    expect(fogTileDraws()).toBe(initial + 15);
+
+    renderer.invalidateFog();
+    renderer.draw();
+    expect(fogTileDraws()).toBe(initial * 2 + 14);
+
+    // A fully explored chunk caches "nothing to draw": no canvas, no blit, no paint.
+    const canvasesBefore = mocks.terrainCanvases.length;
+    for (let y = 20; y < 24; y++) for (let x = 12; x < 16; x++) state.exploredTiles.add(explorationIndex(x, y));
+    renderer.invalidateFog(12, 22);
+    renderer.draw();
+    expect(fogTileDraws()).toBe(initial * 2 + 14);
+    expect(mocks.terrainCanvases.length).toBe(canvasesBefore);
   });
 
   it('draws boost jets opposite the active travel direction only', () => {

@@ -8,9 +8,12 @@ import { TERRAIN_CHUNK_TILES, terrainChunkCoordinate, terrainChunkKeyForTile } f
 import type { EnemyKind } from '../core/types';
 
 const TERRAIN_CHUNK_PADDING = 52;
-const MAX_EXTRA_TERRAIN_CHUNKS = 32;
+// Fog bleeds one pixel past a tile plus half a vein stroke, so it needs far less
+// room around a chunk than the terrain's blob and strata overdraw.
+const FOG_CHUNK_PADDING = 8;
+const MAX_EXTRA_CHUNKS = 32;
 
-interface TerrainChunk {
+interface CachedChunk {
   canvas: HTMLCanvasElement;
   startX: number;
   startY: number;
@@ -18,90 +21,128 @@ interface TerrainChunk {
   height: number;
 }
 
+interface ChunkLayerOptions {
+  /** Extra room around a chunk for draws that intentionally spill past tile bounds. */
+  padding: number;
+  /** Identity of the data the layer is built from; the whole cache resets when it changes. */
+  source(): unknown;
+  /** Draws the chunk's tiles into `drawingContext`, offset by `padding`. */
+  paint(startX: number, startY: number, endX: number, endY: number, padding: number): void;
+  /** Chunks that would paint nothing skip both the canvas and the per-frame blit. */
+  isBlank?(startX: number, startY: number, endX: number, endY: number): boolean;
+}
+
 export function createRenderer({ state, get, rand }) {
   let drawingContext = ctx;
-  const terrainChunks = new Map<string, TerrainChunk>();
-  let cachedTerrainScale = 0;
-  let cachedTerrainWorld: unknown = null;
   const isExplored = (x: number, y: number) => !state.exploredTiles || isTileExplored(state.exploredTiles, x, y);
 
-  function terrainChunkKey(chunkX: number, chunkY: number){ return `${chunkX},${chunkY}`; }
-  function invalidateTerrain(x?: number, y?: number){
-    if (x === undefined || y === undefined) {
-      terrainChunks.clear();
-      return;
-    }
-    terrainChunks.delete(terrainChunkKeyForTile(x, y));
-  }
-
-  function createTerrainChunk(chunkX: number, chunkY: number, scale: number): TerrainChunk {
-    const startX = chunkX * TERRAIN_CHUNK_TILES;
-    const startY = chunkY * TERRAIN_CHUNK_TILES;
-    const endX = Math.min(WORLD_W - 1, startX + TERRAIN_CHUNK_TILES - 1);
-    const endY = startY + TERRAIN_CHUNK_TILES - 1;
-    const width = (endX - startX + 1) * TILE;
-    const height = (endY - startY + 1) * TILE;
-    const terrainCanvas = document.createElement('canvas');
-    terrainCanvas.width = Math.ceil((width + TERRAIN_CHUNK_PADDING * 2) * scale);
-    terrainCanvas.height = Math.ceil((height + TERRAIN_CHUNK_PADDING * 2) * scale);
-    const terrainContext = terrainCanvas.getContext('2d');
-    if (!terrainContext) throw new Error('2D terrain cache context is unavailable.');
-    terrainContext.setTransform(scale, 0, 0, scale, 0, 0);
-
-    const mainContext = drawingContext;
-    drawingContext = terrainContext;
-    try {
+  // Terrain and fog both change rarely (mining / exploration) but were redrawn per
+  // frame, so both use the same chunked offscreen cache: DPR-aware scale, LRU trim,
+  // and per-tile dirty invalidation on the shared chunk grid.
+  const terrainLayer = createChunkLayer({
+    padding: TERRAIN_CHUNK_PADDING,
+    source: () => state.world,
+    paint: (startX, startY, endX, endY, padding) => {
       for(let wy=startY;wy<=endY;wy++) for(let wx=startX;wx<=endX;wx++) {
-        drawTile(
-          get(wx,wy), wx, wy,
-          TERRAIN_CHUNK_PADDING + (wx-startX)*TILE,
-          TERRAIN_CHUNK_PADDING + (wy-startY)*TILE
-        );
+        drawTile(get(wx,wy), wx, wy, padding + (wx-startX)*TILE, padding + (wy-startY)*TILE);
       }
-    } finally {
-      drawingContext = mainContext;
+    }
+  });
+  const fogLayer = createChunkLayer({
+    padding: FOG_CHUNK_PADDING,
+    source: () => state.exploredTiles,
+    paint: paintFog,
+    isBlank: (startX, startY, endX, endY) => {
+      for(let wy=startY;wy<=endY;wy++) for(let wx=startX;wx<=endX;wx++) if (!isExplored(wx, wy)) return false;
+      return true;
+    }
+  });
+
+  function invalidateTerrain(x?: number, y?: number){ terrainLayer.invalidate(x, y); }
+  function invalidateFog(x?: number, y?: number){ fogLayer.invalidate(x, y); }
+
+  function createChunkLayer({ padding, source, paint, isBlank }: ChunkLayerOptions){
+    // `null` is a cached "nothing to draw here" result, not a cache miss.
+    const chunks = new Map<string, CachedChunk | null>();
+    let cachedScale = 0;
+    let cachedSource: unknown = null;
+
+    function build(chunkX: number, chunkY: number, scale: number): CachedChunk | null {
+      const startX = chunkX * TERRAIN_CHUNK_TILES;
+      const startY = chunkY * TERRAIN_CHUNK_TILES;
+      const endX = Math.min(WORLD_W - 1, startX + TERRAIN_CHUNK_TILES - 1);
+      const endY = startY + TERRAIN_CHUNK_TILES - 1;
+      if (isBlank?.(startX, startY, endX, endY)) return null;
+      const width = (endX - startX + 1) * TILE;
+      const height = (endY - startY + 1) * TILE;
+      const chunkCanvas = document.createElement('canvas');
+      chunkCanvas.width = Math.ceil((width + padding * 2) * scale);
+      chunkCanvas.height = Math.ceil((height + padding * 2) * scale);
+      const chunkContext = chunkCanvas.getContext('2d');
+      if (!chunkContext) throw new Error('2D chunk cache context is unavailable.');
+      chunkContext.setTransform(scale, 0, 0, scale, 0, 0);
+
+      const mainContext = drawingContext;
+      drawingContext = chunkContext;
+      try {
+        paint(startX, startY, endX, endY, padding);
+      } finally {
+        drawingContext = mainContext;
+      }
+
+      return {canvas: chunkCanvas, startX, startY, width, height};
     }
 
-    return {canvas: terrainCanvas, startX, startY, width, height};
-  }
+    return {
+      invalidate(x?: number, y?: number){
+        if (x === undefined || y === undefined) {
+          chunks.clear();
+          return;
+        }
+        chunks.delete(terrainChunkKeyForTile(x, y));
+      },
+      draw(camX: number, camY: number){
+        const range = getVisibleTileRange(camX, camY, W, H, WORLD_W);
+        // Cache at CSS-pixel resolution so high-DPI screens do not multiply generation cost.
+        const scale = Math.min(1, canvas.width / VIEW_WIDTH);
+        const currentSource = source();
+        if (cachedScale !== scale || cachedSource !== currentSource) {
+          chunks.clear();
+          cachedScale = scale;
+          cachedSource = currentSource;
+        }
 
-  function drawTerrain(camX, camY){
-    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W);
-    // Cache at CSS-pixel resolution so high-DPI screens do not multiply terrain generation cost.
-    const scale = Math.min(1, canvas.width / VIEW_WIDTH);
-    if (cachedTerrainScale !== scale || cachedTerrainWorld !== state.world) {
-      terrainChunks.clear();
-      cachedTerrainScale = scale;
-      cachedTerrainWorld = state.world;
-    }
+        const startChunkX = terrainChunkCoordinate(range.startX);
+        const endChunkX = terrainChunkCoordinate(range.endX);
+        const startChunkY = terrainChunkCoordinate(range.startY);
+        const endChunkY = terrainChunkCoordinate(range.endY);
+        let visibleChunkCount = 0;
+        for(let chunkY=startChunkY;chunkY<=endChunkY;chunkY++) for(let chunkX=startChunkX;chunkX<=endChunkX;chunkX++) {
+          const key = `${chunkX},${chunkY}`;
+          const cached = chunks.has(key);
+          const chunk = cached ? chunks.get(key)! : build(chunkX, chunkY, scale);
+          // Re-inserting keeps the Map ordered least- to most-recently used.
+          if (cached) chunks.delete(key);
+          chunks.set(key, chunk);
+          visibleChunkCount++;
+          if (!chunk) continue;
+          drawingContext.drawImage(
+            chunk.canvas,
+            0, 0, chunk.canvas.width, chunk.canvas.height,
+            (chunk.startX-camX)*TILE-padding,
+            (chunk.startY-camY)*TILE-padding,
+            chunk.width+padding*2,
+            chunk.height+padding*2
+          );
+        }
 
-    const startChunkX = terrainChunkCoordinate(range.startX);
-    const endChunkX = terrainChunkCoordinate(range.endX);
-    const startChunkY = terrainChunkCoordinate(range.startY);
-    const endChunkY = terrainChunkCoordinate(range.endY);
-    let visibleChunkCount = 0;
-    for(let chunkY=startChunkY;chunkY<=endChunkY;chunkY++) for(let chunkX=startChunkX;chunkX<=endChunkX;chunkX++) {
-      const key = terrainChunkKey(chunkX, chunkY);
-      let terrain = terrainChunks.get(key);
-      if (!terrain) terrain = createTerrainChunk(chunkX, chunkY, scale);
-      else terrainChunks.delete(key);
-      terrainChunks.set(key, terrain);
-      visibleChunkCount++;
-      drawingContext.drawImage(
-        terrain.canvas,
-        0, 0, terrain.canvas.width, terrain.canvas.height,
-        (terrain.startX-camX)*TILE-TERRAIN_CHUNK_PADDING,
-        (terrain.startY-camY)*TILE-TERRAIN_CHUNK_PADDING,
-        terrain.width+TERRAIN_CHUNK_PADDING*2,
-        terrain.height+TERRAIN_CHUNK_PADDING*2
-      );
-    }
-
-    while (terrainChunks.size > visibleChunkCount + MAX_EXTRA_TERRAIN_CHUNKS) {
-      const oldestKey = terrainChunks.keys().next().value;
-      if (oldestKey === undefined) break;
-      terrainChunks.delete(oldestKey);
-    }
+        while (chunks.size > visibleChunkCount + MAX_EXTRA_CHUNKS) {
+          const oldestKey = chunks.keys().next().value;
+          if (oldestKey === undefined) break;
+          chunks.delete(oldestKey);
+        }
+      }
+    };
   }
 
   function drawTerrainDamage(camX, camY){
@@ -119,7 +160,7 @@ export function createRenderer({ state, get, rand }) {
     const sky = ctx.createLinearGradient(0,0,0,VIEW_HEIGHT);
     sky.addColorStop(0,'#163762'); sky.addColorStop(.25,'#0e1d31'); sky.addColorStop(.26,'#2a1a11'); sky.addColorStop(1,'#050301');
     ctx.fillStyle = sky; ctx.fillRect(0,0,VIEW_WIDTH,VIEW_HEIGHT);
-    drawTerrain(camX, camY);
+    terrainLayer.draw(camX, camY);
     drawTerrainDamage(camX, camY);
     drawTerrainBlendOverlay(camY);
     drawSurface(camX, camY);
@@ -133,7 +174,7 @@ export function createRenderer({ state, get, rand }) {
       ctx.globalAlpha = 1;
     }
     drawRemotePlayers(camX, camY);
-    drawFog(camX, camY);
+    fogLayer.draw(camX, camY);
     const sx=(p.drawX-camX)*TILE, sy=(p.drawY-camY)*TILE;
     drawTeleportEffect(camX, camY, false);
     ctx.save();
@@ -154,12 +195,14 @@ export function createRenderer({ state, get, rand }) {
       ctx.textAlign='left';
     }
   }
-  function drawFog(camX, camY) {
-    const range = getVisibleTileRange(camX, camY, W, H, WORLD_W);
+  // Static per tile — every value is keyed off `rand(wx, wy)`, never `state.tick` —
+  // so the cached image is pixel-identical to the old per-frame draw.
+  function paintFog(startX: number, startY: number, endX: number, endY: number, padding: number) {
+    const ctx = drawingContext;
     ctx.fillStyle = '#030608';
-    for (let wy=range.startY; wy<=range.endY; wy++) for (let wx=range.startX; wx<=range.endX; wx++) {
+    for (let wy=startY; wy<=endY; wy++) for (let wx=startX; wx<=endX; wx++) {
       if (isExplored(wx, wy)) continue;
-      const sx = (wx-camX)*TILE, sy = (wy-camY)*TILE;
+      const sx = padding + (wx-startX)*TILE, sy = padding + (wy-startY)*TILE;
       ctx.fillRect(sx-1, sy-1, TILE+2, TILE+2);
 
       const grainX = sx + TILE*(.14 + rand(wx+17, wy-11)*.72);
@@ -663,5 +706,5 @@ export function createRenderer({ state, get, rand }) {
     ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
   }
 
-  return { draw, invalidateTerrain };
+  return { draw, invalidateTerrain, invalidateFog };
 }

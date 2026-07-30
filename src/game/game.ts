@@ -33,6 +33,7 @@ import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDevelo
 import { confirmWorldStateReset, resetWorldTerrain } from '../world/world-state';
 import { findClosestEnemyTarget, findEnemyPathStep } from '../core/enemy-movement';
 import { enemyBiteCooldown, enemyBiteDamage, enemyMoveDelay, getEnemyType } from '../core/enemy-types';
+import { createFixedStepper } from '../core/fixed-step';
 
 const state = createInitialState();
 let audio;
@@ -52,12 +53,17 @@ const ENEMY_AGGRO_RANGE = 24;
 
 state.stats = createDefaultStats();
 
-function loadProgress() { load(state); }
+function loadProgress() { load(state); renderer?.invalidateFog(); }
 
 function saveProgress() { save(state); }
+// Fog is cached per chunk, so every newly explored tile has to mark its chunk dirty.
+function invalidateFogTiles(indexes: number[]) {
+  for (const index of indexes) renderer?.invalidateFog(index % WORLD_W, Math.floor(index / WORLD_W));
+}
 function revealAtPlayer(broadcast=true) {
   const added = revealFootprint(state.exploredTiles, state.player.x, state.player.y, state.player.visibility);
   if (!added.length) return;
+  invalidateFogTiles(added);
   if (broadcast && state.connected && net?.paired) net.send({type:'explore', revision:worldRevision, ranges:encodeExploration(state.exploredTiles)});
   clearTimeout(explorationSaveTimer);
   explorationSaveTimer = window.setTimeout(saveProgress, 500);
@@ -100,6 +106,7 @@ function clearWorldRuntime(){
   enemyIdCounter = 1;
   keys.clear();
   renderer?.invalidateTerrain();
+  renderer?.invalidateFog();
 }
 function initializeServerWorld(){
   net?.send({type:'worldInit', revision:worldRevision, tiles:[]});
@@ -118,6 +125,7 @@ function applyAuthoritativeWorld(msg: Extract<import('../net/net-protocol').NetM
   mergeExploration(state.exploredTiles, msg.explored);
   reachableAir.clear();
   renderer?.invalidateTerrain();
+  renderer?.invalidateFog();
   saveProgress();
   if (!msg.initialized) initializeServerWorld();
 }
@@ -126,7 +134,7 @@ function resetPlayer(full=true){
   state.teleportEffect = null;
   state.teleportReturnPosition = null;
   state.input.gunArmed = false;
-  if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.player.visibility=STARTING.visibility; state.player.dynamite=STARTING.dynamite; state.player.teleporters=STARTING.teleporters; state.player.gunOwned=STARTING.gunOwned; state.player.bullets=STARTING.bullets; state.exploredTiles.clear(); state.stats = createDefaultStats(); saveProgress(); }
+  if (full) { state.cash = STARTING.cash; state.player.fuelMax=STARTING.fuelMax; state.player.hullMax=STARTING.hullMax; state.player.cargoMax=STARTING.cargoMax; state.player.drill=STARTING.drill; state.player.visibility=STARTING.visibility; state.player.dynamite=STARTING.dynamite; state.player.teleporters=STARTING.teleporters; state.player.gunOwned=STARTING.gunOwned; state.player.bullets=STARTING.bullets; state.exploredTiles.clear(); state.stats = createDefaultStats(); saveProgress(); renderer?.invalidateFog(); }
   respawnPlayer(state.player);
   revealAtPlayer();
   state.camX = Math.max(0, state.player.x - Math.floor(W/2));
@@ -219,6 +227,7 @@ function startOnline(url: string){
         if (msg.type === 'explore') {
           const added = mergeExploration(state.exploredTiles, msg.ranges);
           if (added.length) {
+            invalidateFogTiles(added);
             saveProgress();
             if (isPairedHost()) net?.send({type:'explore', revision:worldRevision, ranges:encodeExploration(state.exploredTiles)});
           }
@@ -980,10 +989,6 @@ function updateAnimation(){
     return pt.life > 0;
   });
 }
-function draw(){
-  updateAnimation();
-  renderer.draw();
-}
 function hud(){
   const p=state.player;
   ui.cash.textContent = `$${Math.floor(state.cash)}`;
@@ -1031,7 +1036,10 @@ function hud(){
   }
   updateButtonStates();
 }
-function loop(){
+// Everything tuned in ticks lives here: `state.tick`, enemy cooldowns, keyboard
+// repeat, and the per-step easing in updateAnimation(). It runs a whole number of
+// times per frame at exactly 60 Hz, independent of the display's refresh rate.
+function step(){
   input();
   if (!state.gameOver && net?.paired && state.connected) net.sendPlayerState(playerStateFrom(state.player));
   if (state.introStarted) {
@@ -1043,7 +1051,16 @@ function loop(){
       if (isPairedHost()) net?.sendEnemySnapshot(enemySnapshotFrom(state.enemies, worldRevision));
     }
   }
-  draw(); hud(); requestAnimationFrame(loop);
+  updateAnimation();
+}
+const stepper = createFixedStepper(step);
+function loop(now = performance.now()){
+  // Rendering is once per animation frame against the latest simulated state; the
+  // 60 Hz step is small enough that interpolation buys nothing visible.
+  stepper.advance(now);
+  renderer.draw();
+  hud();
+  requestAnimationFrame(loop);
 }
 function tryAutoAudio(event?: Event, allowLobby=false) {
   const target = event?.target as Element | null;
@@ -1143,7 +1160,12 @@ export function initGame(options: { developerToolsEnabled?: boolean } = {}){
   gamePanel.addEventListener('keyup', handleKeyUp, {capture:true});
   canvas.addEventListener('keyup', handleKeyUp, {capture:true});
   addEventListener('focus', focusGame);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) focusGame(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    // Animation frames stop while hidden; discard the gap instead of fast-forwarding.
+    stepper.reset();
+    focusGame();
+  });
   ui.intro?.addEventListener('pointerdown', e => {
     startIntro(e);
     e.preventDefault();
