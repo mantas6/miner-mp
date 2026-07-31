@@ -1,6 +1,5 @@
 .intro { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 22px; cursor: pointer; background: radial-gradient(circle at 50% 18%, rgba(255,216,88,.18), transparent 25%), linear-gradient(145deg, rgba(83,8,8,.98), rgba(15,8,8,.99) 58%, #050509); overflow: hidden; }
 .intro::before { content: ''; position: absolute; inset: -18%; background: repeating-linear-gradient(115deg, rgba(255,216,88,.10) 0 2px, transparent 2px 18px), radial-gradient(circle at 10% 90%, rgba(255,216,88,.18), transparent 32%); opacity: .75; }
-.intro.hidden { opacity: 0; pointer-events: none; transition: opacity .28s ease; }
 .card { position: relative; width: min(880px, 94vw); display: grid; grid-template-columns: 250px 1fr; gap: 24px; align-items: center; padding: 30px; border: 3px solid #ffd65c; border-radius: var(--r-xl); background: linear-gradient(135deg, rgba(122,18,18,.92), rgba(44,10,10,.86)); box-shadow: 0 32px 90px rgba(0,0,0,.62), inset 0 0 0 2px var(--hairline-2); }
 .card::before, .card::after { content: '★'; position: absolute; color: #ffd65c; font-size: 38px; top: 16px; text-shadow: 0 3px 0 #5e120f; }
 .card::before { left: 20px; } .card::after { right: 20px; }

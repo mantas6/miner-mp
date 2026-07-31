@@ -1,44 +1,39 @@
-import clsx from 'clsx';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { FUEL } from '../core/balance';
 import { MIN_TELEPORT_DEPTH_METERS } from '../core/teleporter';
 import { uiCommands } from './commands';
-import { useUiStore } from './store';
 import styles from './Intro.module.css';
 import '../styles/intro-art.css';
 
-/** Time the fade-out is given before the intro stops taking up layout. */
-const FADE_OUT_MS = 320;
-
-/** Title card and rules, dismissed by the first tap or key. */
+/**
+ * Title card and rules: the first phase. Any press hands over to the lobby.
+ *
+ * The keyboard shortcut is a window listener rather than the card's own
+ * `onKeyDown` because the game panel holds focus at boot; the listener only
+ * exists while this overlay is mounted, so it cannot leak into the run.
+ */
 export function Intro() {
-  const started = useUiStore(state => state.introStarted);
-  const [faded, setFaded] = useState(false);
-
   useEffect(() => {
-    if (!started) {
-      setFaded(false);
-      return;
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      // A key press cannot unlock audio, so no event is forwarded here.
+      uiCommands.dismissIntro();
+      event.preventDefault();
     }
-    const timer = setTimeout(() => setFaded(true), FADE_OUT_MS);
-    return () => clearTimeout(timer);
-  }, [started]);
+    addEventListener('keydown', onKeyDown, {capture: true});
+    return () => removeEventListener('keydown', onKeyDown, {capture: true});
+  }, []);
 
   return (
     <div
       id="intro"
-      className={clsx(styles.intro, started && styles.hidden)}
-      style={faded ? {display: 'none'} : undefined}
+      className={styles.intro}
       role="button"
       tabIndex={0}
-      aria-label="Press screen to start Moleload"
-      onPointerDown={event => { uiCommands.startIntro(event.nativeEvent); event.preventDefault(); event.stopPropagation(); }}
-      onKeyDown={event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        uiCommands.startIntro();
-        event.preventDefault();
-        event.stopPropagation();
-      }}
+      aria-label="Press to continue to the shift dispatch"
+      // Cancelling the press keeps the touch-compatibility click from landing on
+      // the lobby button that appears underneath the moment this card unmounts.
+      onPointerDown={event => { uiCommands.dismissIntro(event.nativeEvent); event.preventDefault(); }}
     >
       <div className={styles.card}>
         <div className="soviet-badge" aria-hidden="true">
@@ -55,7 +50,7 @@ export function Intro() {
         <div className={styles.copy}>
           <p className={styles.kicker}>Workers of the mine, unite!</p>
           <h2>Moleload</h2>
-          <p className={styles.cta}>Press the screen to start</p>
+          <p className={styles.cta}>Press to continue</p>
           <ul className={styles.rules}>
             <li><strong>Move &amp; dig:</strong> WASD / arrows.</li>
             <li><strong>Make money:</strong> mine ore, return to surface, press Sell or Enter. Space repairs/refuels.</li>

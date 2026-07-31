@@ -60,7 +60,7 @@ interface Harness {
   invalidateFogTiles: ReturnType<typeof vi.fn>;
   invalidateTerrain: ReturnType<typeof vi.fn>;
   invalidateFog: ReturnType<typeof vi.fn>;
-  startIntro: ReturnType<typeof vi.fn>;
+  startGame: ReturnType<typeof vi.fn>;
   spawnDust: ReturnType<typeof vi.fn>;
   spawnExplosion: ReturnType<typeof vi.fn>;
   /** Deliver a peer message through the real dispatcher. */
@@ -80,7 +80,8 @@ function harness(): Harness {
     invalidateFogTiles: vi.fn(),
     invalidateTerrain: vi.fn(),
     invalidateFog: vi.fn(),
-    startIntro: vi.fn(),
+    // Stands in for game.ts's startGame, whose job is exactly this transition.
+    startGame: vi.fn(() => { uiStore.getState().setPhase('playing'); }),
     spawnDust: vi.fn(),
     spawnExplosion: vi.fn()
   };
@@ -102,7 +103,7 @@ function harness(): Harness {
     spawnDust: context.spawnDust,
     spawnExplosion: context.spawnExplosion,
     clearWorldRuntime: context.clearWorldRuntime,
-    startIntro: context.startIntro
+    startGame: context.startGame
   });
   // Every dispatcher test needs a live socket; pairing details are set per test.
   session.startOnline('ws://relay.test');
@@ -145,6 +146,8 @@ beforeEach(() => {
   mocks.net.connectCalls = 0;
   mocks.net.disconnectCalls = 0;
   vi.clearAllMocks();
+  // Every session decision is made from the lobby.
+  uiStore.getState().setPhase('lobby');
 });
 
 describe('world hydration', () => {
@@ -370,16 +373,29 @@ describe('dispatcher robustness', () => {
 });
 
 describe('session lifecycle', () => {
-  it('shows host and guest status, and starts the run once paired', () => {
+  it('keeps the host waiting in the lobby until its partner joins', () => {
     const h = harness();
 
     mocks.net.callbacks?.onPaired?.('host');
     expect(uiStore.getState().connectionStatus).toContain('waiting for player');
-    expect(h.startIntro).not.toHaveBeenCalled();
+    expect(h.startGame).not.toHaveBeenCalled();
+    expect(uiStore.getState().phase).toBe('lobby');
 
     mocks.net.paired = true;
     mocks.net.callbacks?.onPeerJoined?.();
-    expect(h.startIntro).toHaveBeenCalled();
+    expect(h.startGame).toHaveBeenCalled();
+    expect(uiStore.getState().phase).toBe('playing');
+  });
+
+  it('auto-starts the guest the moment the relay pairs it', () => {
+    const h = harness();
+    mocks.net.paired = true;
+
+    mocks.net.callbacks?.onPaired?.('guest');
+
+    expect(uiStore.getState().connectionStatus).toContain('Guest');
+    expect(h.startGame).toHaveBeenCalled();
+    expect(uiStore.getState().phase).toBe('playing');
   });
 
   it('promotes the remaining guest to host when its peer leaves', () => {
@@ -405,7 +421,7 @@ describe('session lifecycle', () => {
     expect(h.state.role).toBe(null);
   });
 
-  it('drops the socket and reports solo play', () => {
+  it('drops the socket, reports solo play, and starts the run', () => {
     const h = harness();
     asPairedHost(h);
 
@@ -414,8 +430,8 @@ describe('session lifecycle', () => {
     expect(mocks.net.disconnectCalls).toBe(1);
     expect(h.state).toMatchObject({connected: false, role: null, remotePlayers: []});
     expect(uiStore.getState().connectionStatus).toBe('Solo');
-    expect(uiStore.getState().lobbyVisible).toBe(false);
-    expect(h.startIntro).toHaveBeenCalled();
+    expect(h.startGame).toHaveBeenCalled();
+    expect(uiStore.getState().phase).toBe('playing');
   });
 
   it('asks the relay for a world reset only while connected', () => {

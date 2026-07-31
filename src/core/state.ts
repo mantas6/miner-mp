@@ -46,7 +46,6 @@ export function createInitialState(): GameState {
     cash: STARTING.cash,
     tick: 0,
     gameOver: false,
-    introStarted: false,
     camX: 0,
     camY: 0,
     particles: [],

@@ -133,7 +133,6 @@ export interface GameState {
   cash: number;
   tick: number;
   gameOver: boolean;
-  introStarted: boolean;
   camX: number;
   camY: number;
   particles: Particle[];

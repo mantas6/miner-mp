@@ -250,9 +250,11 @@ export function createEnemySim(deps: EnemySimDeps): EnemySim {
     toast(`${getEnemyType(e.kind).name} chewing the hull! -${bite}`);
   }
 
+  // The three per-tick passes are only called while the run is live; the caller
+  // owns that gate (the UI phase), so they only rule out a finished run here.
   function update(): void {
     if (session.isGuestEnemyReplica()) return;
-    if (!state.introStarted || (state.gameOver && !state.remotePlayers.length)) return;
+    if (state.gameOver && !state.remotePlayers.length) return;
     state.enemies = state.enemies.filter(e => e.alive);
     for (const e of state.enemies) {
       easeEnemy(e);
@@ -272,12 +274,12 @@ export function createEnemySim(deps: EnemySimDeps): EnemySim {
   }
 
   function updatePresentation(): void {
-    if (state.gameOver || !state.introStarted) return;
+    if (state.gameOver) return;
     for (const e of state.enemies) easeEnemy(e);
   }
 
   function updateBites(): void {
-    if (state.gameOver || !state.introStarted) return;
+    if (state.gameOver) return;
     if (session.isGuestEnemyReplica() && !session.paired) return;
     const p = state.player;
     for (const e of state.enemies) {

@@ -82,6 +82,17 @@ export interface ToastMessage {
   message: string;
 }
 
+/**
+ * Which screen the player is on. The whole boot flow is this one field:
+ *
+ *   intro --(any press)--> lobby --(solo | paired)--> playing
+ *
+ * React renders the overlay for the current phase and nothing else, so the
+ * splash and the lobby can never be on screen at the same time, and the game
+ * only takes input once the run is live.
+ */
+export type UiPhase = 'intro' | 'lobby' | 'playing';
+
 export interface UiState {
   hud: HudSnapshot;
   player: PlayerSnapshot;
@@ -90,8 +101,7 @@ export interface UiState {
   shopOpen: boolean;
   infoOpen: boolean;
   infoTab: string;
-  lobbyVisible: boolean;
-  introStarted: boolean;
+  phase: UiPhase;
   connectionStatus: string;
   connectionInHud: boolean;
   soundOn: boolean;
@@ -106,8 +116,7 @@ export interface UiState {
   setShopOpen(open: boolean): void;
   setInfoOpen(open: boolean): void;
   setInfoTab(tab: string): void;
-  setLobbyVisible(visible: boolean): void;
-  setIntroStarted(started: boolean): void;
+  setPhase(phase: UiPhase): void;
   setConnection(status: string, showInHud: boolean): void;
   setSound(on: boolean, label: string): void;
   pushToast(message: string): void;
@@ -205,8 +214,7 @@ export const uiStore = createStore<UiState>((set, get) => ({
   shopOpen: false,
   infoOpen: false,
   infoTab: INFO_NAVIGATION_SECTIONS[0].id,
-  lobbyVisible: true,
-  introStarted: false,
+  phase: 'intro',
   connectionStatus: 'Disconnected',
   connectionInHud: false,
   soundOn: false,
@@ -248,12 +256,8 @@ export const uiStore = createStore<UiState>((set, get) => ({
     if (get().infoTab !== tab) set({infoTab: tab});
   },
 
-  setLobbyVisible(visible) {
-    if (get().lobbyVisible !== visible) set({lobbyVisible: visible});
-  },
-
-  setIntroStarted(started) {
-    if (get().introStarted !== started) set({introStarted: started});
+  setPhase(phase) {
+    if (get().phase !== phase) set({phase});
   },
 
   setConnection(status, showInHud) {

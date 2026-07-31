@@ -6,8 +6,10 @@
 // event type is enough: window is the first node of every capture path, so a
 // handler there sees the key before any dialog or canvas listener.
 //
-// Which overlay is up is read from the UI store rather than from class names, and
-// Tab containment is the modal `<dialog>`'s job now, not ours.
+// Nothing here reacts before the run is live: the store's `phase` gates the whole
+// module, so the splash and the lobby own their own keys and presses. Which
+// dialog is up is read from the same store rather than from class names, and Tab
+// containment is the modal `<dialog>`'s job now, not ours.
 
 import { gunKeyAction } from '../core/weapon';
 import { activeSprintDirection, keyboardMovementRepeatMs } from '../core/movement';
@@ -52,7 +54,6 @@ export interface GameInputDeps {
   /** Whether the ship would fly (not drill) into this direction's destination. */
   isOpenMovementDestination(dx: number, dy: number): boolean;
   restartGame(): void;
-  startIntro(event?: Event): void;
   closeShopScreen(): void;
   closeInfoScreen(): void;
   toast(message: string): void;
@@ -97,10 +98,14 @@ export function createInput(deps: GameInputDeps): GameInput {
     deps.toast('Press R again to reset progress in this run.');
   }
 
+  function isPlaying(): boolean {
+    return uiStore.getState().phase === 'playing';
+  }
+
   function tick(): void {
     state.tick++;
     state.input.sprintDirection = null;
-    if (!state.introStarted) return;
+    if (!isPlaying()) return;
     const now = performance.now();
     const sprinting = keys.has('shift');
     const impulse = state.input.keyImpulse;
@@ -125,6 +130,8 @@ export function createInput(deps: GameInputDeps): GameInput {
     // Sound can still be enabled with the Sound button or any pointer/touch input.
     const key = e.key.toLowerCase();
     const ui = uiStore.getState();
+    // The splash and the lobby are React's; they handle their own keys.
+    if (ui.phase !== 'playing') return;
     if (ui.shopOpen) {
       // Escape is handled here so the dialog closes through the same path as the
       // buttons; preventDefault keeps the UA from also firing its close request.
@@ -135,12 +142,7 @@ export function createInput(deps: GameInputDeps): GameInput {
       if (key === 'escape') { deps.closeInfoScreen(); e.preventDefault(); e.stopPropagation(); }
       return;
     }
-    if (ui.lobbyVisible) return;
     const dir = movementKeys[key];
-    if (!state.introStarted) {
-      if (key === 'enter' || key === ' ') { deps.startIntro(); e.preventDefault(); }
-      return;
-    }
     if (key === 'shift') {
       keys.add(key);
       return;
@@ -168,15 +170,11 @@ export function createInput(deps: GameInputDeps): GameInput {
     if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); }
   }
 
-  /**
-   * Tap/click anywhere outside the overlays to start the run, or to deploy a
-   * replacement ship once the current one is gone.
-   */
+  /** Tap/click anywhere outside the dialogs to deploy a replacement ship. */
   function handleRestartPointer(e: Event): void {
+    if (!isPlaying() || !state.gameOver) return;
     const target = e.target as Element;
-    if (target.closest && target.closest('#info-screen, #shop-screen, #lobby-screen')) return;
-    if (!state.introStarted) { deps.startIntro(e); e.preventDefault(); e.stopPropagation(); return; }
-    if (!state.gameOver) return;
+    if (target.closest && target.closest('#info-screen, #shop-screen')) return;
     deps.tryAutoAudio(e);
     deps.restartGame();
     e.preventDefault();

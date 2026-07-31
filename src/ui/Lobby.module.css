@@ -1,5 +1,5 @@
-.screen { position: absolute; inset: 0; z-index: 25; display: grid; place-items: center; padding: 22px; background: radial-gradient(circle at 50% 18%, rgba(255,216,88,.15), transparent 26%), rgba(5,7,12,.78); backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px); }
-.screen.hidden { display: none; }
+/* Same layer as the intro splash: the phase machine guarantees only one exists. */
+.screen { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 22px; background: radial-gradient(circle at 50% 18%, rgba(255,216,88,.15), transparent 26%), rgba(5,7,12,.78); backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px); }
 .card { width: min(500px, 94vw); display: grid; gap: 14px; padding: 28px; border: 2px solid #ffd65c; border-radius: var(--r-xl); background: linear-gradient(145deg, rgba(82,15,15,.96), rgba(22,12,17,.97)); box-shadow: 0 30px 90px rgba(0,0,0,.62), inset 0 0 0 2px var(--hairline-2); }
 .kicker { margin: 0; color: #ffe28b; font-size: var(--fs-xs); font-weight: 950; letter-spacing: .17em; text-transform: uppercase; }
 .card h2 { margin: -7px 0 0; color: #ffd65c; font-size: clamp(29px, 5vw, 42px); line-height: .95; letter-spacing: .04em; text-transform: uppercase; text-shadow: 0 3px 0 #6a1512; }

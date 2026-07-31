@@ -13,7 +13,7 @@
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import React from 'react';
-import { act, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import { MinerApp } from '../ui/ui';
 
 /** happy-dom has no canvas raster, so drawing calls go into a black hole. */
@@ -79,14 +79,26 @@ describe('booting the game', () => {
     expect(text('depth')).toBe('0 m');
     expect(text('cash')).toBe('$60');
     expect(text('fuelLabel')).toBe('100/100');
-    // The lobby owns the screen until a mode is chosen.
-    expect(document.getElementById('lobby-screen')?.className).not.toMatch(/hidden/);
+    // Boot phase: the splash owns the screen alone, with no lobby behind it.
+    expect(document.getElementById('intro')).not.toBeNull();
+    expect(document.getElementById('lobby-screen')).toBeNull();
+  });
+
+  it('walks the splash → lobby → run phases, one overlay at a time', () => {
+    act(() => { fireEvent.pointerDown(document.getElementById('intro')!); });
+    expect(document.getElementById('intro')).toBeNull();
+    expect(document.getElementById('lobby-screen')).not.toBeNull();
+    // Keys still belong to the lobby, so the ship has not moved.
+    press('s');
+    renderFrame();
+    expect(text('depth')).toBe('0 m');
+
+    click('soloBtn');
+    expect(document.getElementById('lobby-screen')).toBeNull();
+    expect(text('toast')).toContain('Drill ready');
   });
 
   it('runs the whole input → move → terrain → HUD chain on a keypress', () => {
-    click('soloBtn');
-    expect(document.getElementById('lobby-screen')?.className).toMatch(/hidden/);
-
     press('s');
     renderFrame();
 

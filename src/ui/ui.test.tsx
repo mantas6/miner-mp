@@ -22,10 +22,11 @@ const DOM_CONTRACT = [
   'shopDynamiteBtn', 'shopTeleporterBtn', 'shopGunBtn', 'shopBulletsBtn',
   'info-screen', 'info-card', 'infoCloseBtn', 'objectiveInfoStatus', 'extractionInfoStatus',
   'cargoList', 'expeditionStats', 'prospectingGuide', 'dangerGuide',
-  'fuel-warning', 'toast',
-  'lobby-screen', 'serverUrl', 'lobbyConnectionStatus', 'connectBtn', 'soloBtn',
-  'intro'
+  'fuel-warning', 'toast'
 ];
+
+/** Ids that only exist in one phase, because only that overlay is mounted. */
+const LOBBY_CONTRACT = ['lobby-screen', 'serverUrl', 'lobbyConnectionStatus', 'connectBtn', 'soloBtn'];
 
 const pristine = {...uiStore.getState()};
 const pristineCommands = {...uiCommands};
@@ -68,6 +69,82 @@ describe('app shell', () => {
 
     act(() => { uiStore.getState().setInfoOpen(true); });
     expect(info.open).toBe(true);
+  });
+});
+
+describe('boot phase machine', () => {
+  it('mounts the intro alone, then the lobby alone, then neither', () => {
+    render(<MinerApp />);
+
+    expect(document.getElementById('intro')).not.toBeNull();
+    expect(document.getElementById('lobby-screen')).toBeNull();
+
+    act(() => { uiStore.getState().setPhase('lobby'); });
+    expect(document.getElementById('intro')).toBeNull();
+    for (const id of LOBBY_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
+
+    act(() => { uiStore.getState().setPhase('playing'); });
+    expect(document.getElementById('intro')).toBeNull();
+    expect(document.getElementById('lobby-screen')).toBeNull();
+  });
+
+  it('dismisses the intro on a press, forwarding the gesture for audio unlock', () => {
+    const dismissIntro = vi.fn();
+    setUiCommands({dismissIntro});
+    render(<MinerApp />);
+
+    fireEvent.pointerDown(document.getElementById('intro')!);
+
+    expect(dismissIntro).toHaveBeenCalledTimes(1);
+    expect(dismissIntro.mock.calls[0][0]).toBeInstanceOf(Event);
+  });
+
+  it('dismisses the intro on Enter or Space wherever focus happens to be', () => {
+    const dismissIntro = vi.fn();
+    setUiCommands({dismissIntro});
+    render(<MinerApp />);
+
+    fireEvent.keyDown(document.body, {key: 'x'});
+    expect(dismissIntro).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(document.body, {key: 'Enter'});
+    fireEvent.keyDown(document.body, {key: ' '});
+    expect(dismissIntro).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops listening for the intro keys once the lobby takes over', () => {
+    const dismissIntro = vi.fn();
+    setUiCommands({dismissIntro});
+    render(<MinerApp />);
+
+    act(() => { uiStore.getState().setPhase('lobby'); });
+    fireEvent.keyDown(document.body, {key: 'Enter'});
+
+    expect(dismissIntro).not.toHaveBeenCalled();
+  });
+
+  it('dispatches the lobby choices with the entered relay URL', () => {
+    const connect = vi.fn();
+    const playSolo = vi.fn();
+    setUiCommands({connect, playSolo});
+    render(<MinerApp />);
+    act(() => { uiStore.getState().setPhase('lobby'); });
+
+    fireEvent.change(document.getElementById('serverUrl')!, {target: {value: ' ws://relay.test '}});
+    fireEvent.click(document.getElementById('connectBtn')!);
+    expect(connect).toHaveBeenCalledWith('ws://relay.test');
+
+    fireEvent.click(document.getElementById('soloBtn')!);
+    expect(playSolo).toHaveBeenCalled();
+  });
+
+  it('keeps reporting connection progress while the host waits in the lobby', () => {
+    render(<MinerApp />);
+    act(() => { uiStore.getState().setPhase('lobby'); });
+
+    act(() => { uiStore.getState().setConnection('Host - waiting for player', true); });
+
+    expect(document.getElementById('lobbyConnectionStatus')?.textContent).toBe('Host - waiting for player');
   });
 });
 

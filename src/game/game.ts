@@ -180,7 +180,7 @@ function registerUiCommands(){
     openInfo: openInfoScreen,
     closeInfo: closeInfoScreen,
     toggleSound: () => { void audio.toggle(); },
-    startIntro: event => startIntro(event),
+    dismissIntro: event => dismissIntro(event),
     connect: url => {
       if (!url) { session.setConnectionStatus('Enter a server URL'); return; }
       saveServerUrl(url);
@@ -334,7 +334,7 @@ function syncUi(){
 function step(){
   gameInput.tick();
   if (!state.gameOver && session.paired && state.connected) session.sendPlayerState();
-  if (state.introStarted) {
+  if (isPlaying()) {
     if (session.isGuestEnemyReplica()) {
       enemies.updatePresentation();
       enemies.updateBites();
@@ -354,9 +354,8 @@ function loop(now = performance.now()){
   syncUi();
   requestAnimationFrame(loop);
 }
-function tryAutoAudio(event?: Event, allowLobby=false) {
-  const target = event?.target as Element | null;
-  if (!allowLobby && target?.closest?.('#lobby-screen')) return;
+/** Enable sound on the first trusted pointer gesture, if the player wants it. */
+function tryAutoAudio(event?: Event) {
   if (shouldAttemptAutoAudio({
     wantsSound: audio.wantsSound,
     enabled: audio.enabled,
@@ -368,12 +367,28 @@ function focusGame(){
   try { (gamePanel || canvas).focus({preventScroll:true}); }
   catch { try { (gamePanel || canvas).focus(); } catch { /* focus is best-effort */ } }
 }
-function startIntro(event?: Event){
-  if (state.introStarted) return;
-  state.introStarted = true;
-  uiStore.getState().setIntroStarted(true);
+/** Whether the run is live. The simulation and the keyboard both hang off this. */
+function isPlaying(){
+  return uiStore.getState().phase === 'playing';
+}
+/** Splash → lobby. The press that got us here is the audio-unlock gesture. */
+function dismissIntro(event?: Event){
+  const store = uiStore.getState();
+  if (store.phase !== 'intro') return;
+  tryAutoAudio(event);
+  store.setPhase('lobby');
+}
+/**
+ * The one way into the run: solo play, a host whose partner arrived, and a guest
+ * auto-started by pairing all land here, so the start-of-run side effects exist
+ * exactly once.
+ */
+function startGame(event?: Event){
+  const store = uiStore.getState();
+  if (store.phase === 'playing') return;
+  store.setPhase('playing');
   focusGame();
-  tryAutoAudio(event, true);
+  tryAutoAudio(event);
   toast('Drill ready. Mine ore, sell it, and watch your fuel.');
 }
 
@@ -402,7 +417,7 @@ function wireModules(){
     spawnDust,
     spawnExplosion,
     clearWorldRuntime: () => run.clearWorldRuntime(),
-    startIntro
+    startGame
   });
   run = createRun({
     state,
@@ -466,7 +481,6 @@ function wireModules(){
     move: movement.move,
     isOpenMovementDestination: movement.isOpenMovementDestination,
     restartGame: run.restartGame,
-    startIntro,
     closeShopScreen,
     closeInfoScreen,
     toast,

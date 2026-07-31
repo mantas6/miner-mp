@@ -80,8 +80,8 @@ export interface GameSessionDeps {
   spawnExplosion(x: number, y: number): void;
   /** Reset local world runtime state after the shared world was reset. */
   clearWorldRuntime(): void;
-  /** Reveal the intro and begin the run. */
-  startIntro(event?: Event): void;
+  /** Leave the lobby and begin the run (the one owner of that transition). */
+  startGame(event?: Event): void;
 }
 
 export function createSession(deps: GameSessionDeps): GameSession {
@@ -146,10 +146,10 @@ export function createSession(deps: GameSessionDeps): GameSession {
     if (!msg.initialized) initializeServerWorld();
   }
 
+  /** A live pairing starts the run for both sides: the host on join, the guest on pair. */
   function startOnlineGame(): void {
     if (!net?.paired) return;
-    uiStore.getState().setLobbyVisible(false);
-    deps.startIntro();
+    deps.startGame();
   }
 
   function handleMessage(msg: NetMessage): void {
@@ -301,8 +301,7 @@ export function createSession(deps: GameSessionDeps): GameSession {
     state.remotePlayers = [];
     connectionIssue = null;
     setConnectionStatus('Solo');
-    uiStore.getState().setLobbyVisible(false);
-    deps.startIntro(event);
+    deps.startGame(event);
   }
 
   function resetForPlayerData(): void {
