@@ -1,7 +1,7 @@
 // Keep the mine's zoom in one shared world-to-screen scale.  The previous
-// 64px tile baseline is reduced by 25%, so rendering, camera coverage, and
-// pointer-to-ship geometry all use the same 48px tile size.
-export const BASE_CAMERA_TILE = 64;
+// 48px tile baseline is reduced by a further 25%, so rendering, camera
+// coverage, and pointer-to-ship geometry all use the same 36px tile size.
+export const BASE_CAMERA_TILE = 48;
 export const CAMERA_ZOOM_OUT = 0.25;
 export const TILE = BASE_CAMERA_TILE * (1 - CAMERA_ZOOM_OUT);
 export const WORLD_W = 90;
