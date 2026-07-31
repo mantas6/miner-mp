@@ -46,6 +46,7 @@ import { createSession, type GameSession } from './session';
 import { createEnemySim, type EnemySim } from './enemies';
 import { createActions, type GameActions } from './actions';
 import { createMovement } from './move';
+import { createReadouts, type HudReadouts } from './readouts';
 import { createRun, type GameRun } from './run';
 import { createInput, type GameInput } from './input';
 
@@ -61,6 +62,7 @@ let enemies: EnemySim;
 let actions: GameActions;
 let run: GameRun;
 let gameInput: GameInput;
+let readouts: HudReadouts;
 
 state.stats = createDefaultStats();
 
@@ -197,6 +199,7 @@ function registerUiCommands(){
       session.resetForPlayerData();
       gameInput.clearKeys();
       resetPlayerData(state);
+      readouts.reset();
       revealAtPlayer(false);
       explorationSave.cancel();
       saveProgress();
@@ -320,6 +323,9 @@ function syncUi(){
   hudScratch.teleportReturn = state.teleportReturnPosition !== null;
   hudScratch.teleportDepthReached = canTeleportToSurface(p.y);
   hudScratch.teleportUsable = canUseTeleporter(p, state.teleportReturnPosition);
+  // Scanner line, return-fuel forecast, and depth landmark, each recomputed only
+  // when its own inputs moved. Milestone crossings toast from in here.
+  readouts.sync(hudScratch);
 
   const store = uiStore.getState();
   store.syncHud(hudScratch);
@@ -475,6 +481,7 @@ function wireModules(){
     spawnShotTrail,
     clearKeys: () => gameInput.clearKeys()
   });
+  readouts = createReadouts({state, grid, enemies, atSurface, toast});
   gameInput = createInput({
     state,
     actions,

@@ -10,6 +10,19 @@
    that is a visual change and belongs to its own task. */
 .extractionStatus { display: none; margin-top: 2px; padding: 8px 10px; border-radius: var(--r-md); font-size: var(--fs-xs); font-weight: 850; letter-spacing: .03em; text-align: center; font-variant-numeric: tabular-nums; line-height: 1.25; background: rgba(255,200,87,.16); border: 1px solid rgba(255,216,108,.46); color: #fff0bb; }
 
+/* Return-fuel forecast: same column rhythm as the meters, one notch quieter. */
+.reserve { display: grid; grid-template-columns: 58px auto 1fr; gap: 10px; align-items: center; margin: -4px 0 2px; }
+.reserve[hidden] { display: none; }
+.reserve label { color: var(--muted); font-size: var(--fs-3xs); text-transform: uppercase; letter-spacing: .12em; font-weight: 800; }
+.reserveStatus { padding: 2px 7px; border-radius: 999px; font-size: var(--fs-3xs); font-weight: 900; letter-spacing: .1em; border: 1px solid currentColor; }
+.reserve .barValue { font-size: var(--fs-3xs); }
+.safe { color: #a8c7ee; }
+.safe .reserveStatus { color: #8fd8a6; background: rgba(105,219,124,.12); }
+.caution { color: #ffd98d; }
+.caution .reserveStatus { color: #ffc857; background: rgba(255,200,87,.14); }
+.urgent { color: #ffc3cd; }
+.urgent .reserveStatus { color: #ff8d9e; background: rgba(255,93,115,.18); box-shadow: 0 0 12px rgba(255,93,115,.35); }
+
 .bar.alert { animation: hudBarFlash .7s ease-in-out infinite alternate; }
 .bar.alert label, .bar.alert .barValue { color: #fff1a3; text-shadow: 0 0 10px rgba(255,205,76,.72); }
 .bar.alert meter { filter: drop-shadow(0 0 9px rgba(255,80,80,.9)) brightness(1.2); }
@@ -23,5 +36,6 @@
   .bar { grid-template-columns: 42px minmax(0, 1fr) 48px; gap: 6px; }
   .bar label { font-size: var(--fs-3xs); }
   .barValue { font-size: var(--fs-3xs); }
+  .reserve { grid-template-columns: 42px auto 1fr; gap: 6px; }
   .extractionStatus { padding: 6px 7px; font-size: var(--fs-3xs); }
 }

@@ -5,10 +5,13 @@
 .stat { display: grid; gap: 1px; padding: 12px 14px; min-width: 120px; background: rgba(255,255,255,.035); }
 .stat span { color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .12em; font-weight: 800; }
 .stat strong { font-size: var(--fs-2xl); }
+.target { color: #a8bcda; font-size: var(--fs-3xs); font-style: normal; font-weight: 800; letter-spacing: .04em; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.target[data-kind="motherlode"] { color: var(--gold); }
 
 @media (max-width: 760px) {
   .statsGrid { grid-template-columns: 1fr; border-radius: var(--r-md); }
   .stat { min-width: 104px; padding: 8px 10px; }
   .stat span { font-size: var(--fs-3xs); }
   .stat strong { font-size: var(--fs-lg); }
+  .target { display: none; }
 }

@@ -5,10 +5,18 @@ import styles from './StatsGrid.module.css';
 export function StatsGrid() {
   const cash = useUiStore(state => state.hud.cash);
   const depthMeters = useUiStore(state => state.hud.depthMeters);
+  // The next depth landmark rides under the depth number; crossing one also toasts.
+  const depthTarget = useUiStore(state => state.hud.depthTarget);
+  const depthTargetKind = useUiStore(state => state.hud.depthTargetKind);
+  const depthTargetRemaining = useUiStore(state => state.hud.depthTargetRemaining);
   return (
     <div className={styles.statsGrid}>
       <div className={styles.stat}><span>Cash</span><strong id="cash">${Math.floor(cash)}</strong></div>
-      <div className={styles.stat}><span>Depth</span><strong id="depth">{depthMeters} m</strong></div>
+      <div className={styles.stat}>
+        <span>Depth</span>
+        <strong id="depth">{depthMeters} m</strong>
+        <em id="depthTarget" className={styles.target} data-kind={depthTargetKind}>↓ {depthTargetRemaining} m to {depthTarget}</em>
+      </div>
     </div>
   );
 }

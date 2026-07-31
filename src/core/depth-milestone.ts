@@ -55,6 +55,23 @@ export function getDepthMilestone(
   };
 }
 
+/**
+ * Announcement copy for a landmark the expedition has just cleared. The caller
+ * decides *when* a landmark is cleared (this module only reports the next one);
+ * this is the wording used when it is.
+ */
+export function formatDepthMilestoneReached(milestone: DepthMilestone): string {
+  const depth = `Depth ${milestone.depthMeters} m`;
+  switch (milestone.kind) {
+    case 'starter':
+      return `${depth} — ${milestone.target} reached. Fill the cargo bay.`;
+    case 'ore':
+      return `${depth} — ${milestone.target} band reached. Richer ore, harder rock.`;
+    case 'motherlode':
+      return `${depth} — ${milestone.target} reached. Crack it and climb out alive.`;
+  }
+}
+
 /** Formats the compact, always-visible progress readout used by the HUD. */
 export function formatDepthMilestone(playerY: number, ores: Ore[] = ORES, startY = START_Y, motherlodeRow = MOTHERLODE_ROW): string {
   const milestone = getDepthMilestone(playerY, ores, startY, motherlodeRow);

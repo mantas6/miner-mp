@@ -1,5 +1,6 @@
 import { ActionBar } from './ActionBar';
 import { BarRow } from './BarRow';
+import { Scanner } from './Scanner';
 import { StatsGrid } from './StatsGrid';
 import { uiCommands } from './commands';
 import { useUiStore } from './store';
@@ -27,6 +28,7 @@ export function Hud() {
       </div>
 
       <StatsGrid />
+      <Scanner />
       <BarRow />
       <ActionBar />
     </div>

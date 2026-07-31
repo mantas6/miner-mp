@@ -14,6 +14,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react';
+import { uiStore } from '../ui/store';
 import { MinerApp } from '../ui/ui';
 
 /** happy-dom has no canvas raster, so drawing calls go into a black hole. */
@@ -127,5 +128,29 @@ describe('booting the game', () => {
 
     expect(dialogOpen('shop-screen')).toBe(false);
     expect(text('toast')).toBe('Shop is at the surface depot.');
+  });
+
+  // Kept last: this one digs far enough to change cargo and depth for good.
+  it('feeds the scanner, the return-fuel forecast and the milestone toast from one dive', () => {
+    // Underground there is a climb to pay for, so the forecast is on screen.
+    expect((document.getElementById('fuelReserve') as HTMLElement).hidden).toBe(false);
+    expect(document.getElementById('fuelReserveLabel')?.textContent).toContain('after climb');
+    expect(text('scanner')).toMatch(/^Scanner/);
+    expect(text('depthTarget')).toContain('starter Coal/Copper seam');
+
+    // The first landmark is that starter seam, 50 m down.
+    for (let attempt = 0; attempt < 200 && text('depth') !== '50 m'; attempt++) {
+      press('s');
+      renderFrame();
+    }
+
+    expect(text('depth')).toBe('50 m');
+    expect(text('toast')).toContain('Depth 50 m');
+    expect(text('depthTarget')).toBe('↓ 550 m to Silver');
+
+    // Crossing announces once: the next frame leaves the toast alone.
+    act(() => { uiStore.getState().pushToast('Cleared.'); });
+    renderFrame();
+    expect(text('toast')).toBe('Cleared.');
   });
 });

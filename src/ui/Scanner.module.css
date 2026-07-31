@@ -1,0 +1,14 @@
+/* Sits in the HUD grid's middle row, under the sound/relay strip, so it never
+   competes with the depth readout on the right or the meters below. */
+.scanner {
+  composes: glass from './common.module.css';
+  justify-self: start; align-self: start; max-width: min(420px, 46%);
+  padding: 9px 12px; border-radius: var(--r-md);
+  color: #cfe0fb; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .04em; line-height: 1.3;
+  font-variant-numeric: tabular-nums; text-wrap: balance;
+}
+.scanner[hidden] { display: none; }
+
+@media (max-width: 760px) {
+  .scanner { max-width: calc(100% - 126px); padding: 6px 8px; font-size: var(--fs-3xs); }
+}

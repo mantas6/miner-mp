@@ -1,0 +1,15 @@
+import { useUiStore } from './store';
+import styles from './Scanner.module.css';
+
+/**
+ * Terrain readout for the tile the drill is aimed at. The game re-formats it only
+ * when the target, its hit points, or what is standing in it change, so this
+ * repaints on a new tile rather than on every frame.
+ */
+export function Scanner() {
+  const scanner = useUiStore(state => state.hud.scanner);
+  const gameOver = useUiStore(state => state.hud.gameOver);
+  return (
+    <div id="scanner" className={styles.scanner} hidden={gameOver}>{scanner}</div>
+  );
+}

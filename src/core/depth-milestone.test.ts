@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MOTHERLODE_ROW, ORES, START_Y } from '../../shared/constants';
-import { formatDepthMilestone, getDepthMilestone } from './depth-milestone';
+import { formatDepthMilestone, formatDepthMilestoneReached, getDepthMilestone } from './depth-milestone';
 
 describe('expedition depth milestone helper', () => {
   it('guides fresh miners through the Coal/Copper starter seam', () => {
@@ -31,5 +31,18 @@ describe('expedition depth milestone helper', () => {
       remainingMeters: 1400
     });
     expect(formatDepthMilestone(coreRow + 20)).toBe('Depth target: Motherlode core — 0 m deeper.');
+  });
+
+  it('announces a cleared landmark by depth, naming what the seam holds', () => {
+    const starter = formatDepthMilestoneReached(getDepthMilestone(START_Y));
+    expect(starter).toContain('Depth 50 m');
+    expect(starter).toContain('starter Coal/Copper seam');
+
+    const ore = formatDepthMilestoneReached(getDepthMilestone(START_Y + 5));
+    expect(ore).toContain('Depth 600 m');
+    expect(ore).toContain('Silver band');
+
+    expect(formatDepthMilestoneReached(getDepthMilestone(START_Y + 860)))
+      .toContain('Depth 10000 m — Motherlode core');
   });
 });

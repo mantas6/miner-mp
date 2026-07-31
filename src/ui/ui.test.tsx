@@ -14,8 +14,8 @@ import { MinerApp } from './ui';
 /** Ids the game runtime, the keyboard layer, and the tests address directly. */
 const DOM_CONTRACT = [
   'shell', 'game-panel', 'game',
-  'hud', 'soundBtn', 'connectionStatus', 'cash', 'depth',
-  'fuel', 'fuelLabel', 'hull', 'hullLabel', 'cargo', 'cargoLabel', 'extractionStatus',
+  'hud', 'soundBtn', 'connectionStatus', 'cash', 'depth', 'depthTarget', 'scanner',
+  'fuel', 'fuelLabel', 'fuelReserve', 'fuelReserveLabel', 'hull', 'hullLabel', 'cargo', 'cargoLabel', 'extractionStatus',
   'sell', 'shopBtn', 'dynamiteBtn', 'teleporterBtn', 'gunBtn', 'infoBtn',
   'shop-screen', 'shop-card', 'shopCloseBtn',
   'fuelBtn', 'repairBtn', 'cargoBtn', 'tankBtn', 'hullBtn', 'drillBtn', 'visibilityBtn',
@@ -192,6 +192,66 @@ describe('store-driven HUD', () => {
     expect(gun.className).toMatch(/armed/);
     expect(gun.getAttribute('aria-pressed')).toBe('true');
     expect(gun.textContent).toContain('AIMING');
+  });
+
+  it('paints the scanner line the game formatted, and drops it once the ship is lost', () => {
+    render(<MinerApp />);
+
+    patchHud({scanner: 'Scanner ↓: Copper — $16, 4 hits.'});
+    const scanner = document.getElementById('scanner') as HTMLElement;
+    expect(scanner.textContent).toBe('Scanner ↓: Copper — $16, 4 hits.');
+    expect(scanner.hidden).toBe(false);
+
+    patchHud({gameOver: true});
+    expect(scanner.hidden).toBe(true);
+  });
+
+  it('shows the return-fuel forecast underground only, with its status decision', () => {
+    render(<MinerApp />);
+    const reserve = document.getElementById('fuelReserve') as HTMLElement;
+
+    // At the depot there is no climb to reserve fuel for.
+    expect(reserve.hidden).toBe(true);
+
+    patchHud({atSurface: false, fuelReserveStatus: 'caution', fuelReserveMargin: 7, fuelReserveNeeded: 34});
+    expect(reserve.hidden).toBe(false);
+    expect(reserve.dataset.status).toBe('caution');
+    expect(reserve.className).toMatch(/caution/);
+    expect(document.getElementById('fuelReserveLabel')?.textContent).toBe('7 after climb');
+
+    // Urgent stops reporting a margin and reports the shortfall instead.
+    patchHud({fuelReserveStatus: 'urgent', fuelReserveMargin: 0, fuelReserveNeeded: 34});
+    expect(document.getElementById('fuelReserveLabel')?.textContent).toBe('needs 34');
+  });
+
+  it('raises the fuel banner for a dry tank or a climb it can no longer pay for', () => {
+    render(<MinerApp />);
+    const banner = document.getElementById('fuel-warning') as HTMLElement;
+
+    patchHud({atSurface: false, fuelReserveStatus: 'urgent'});
+    expect(banner.className).toMatch(/show/);
+    expect(banner.textContent).toContain('RETURN FUEL SPENT');
+
+    // A dry tank is the harder stop, so it takes over the wording.
+    patchHud({fuelAlert: true});
+    expect(banner.textContent).toContain('LOW FUEL');
+
+    // A disabled ship is always 'urgent'; the banner is not the place to say so.
+    patchHud({fuelAlert: false, gameOver: true});
+    expect(banner.className).not.toMatch(/show/);
+  });
+
+  it('captions the depth readout with the next landmark', () => {
+    render(<MinerApp />);
+
+    patchHud({depthMeters: 50, depthTarget: 'Silver', depthTargetKind: 'ore', depthTargetRemaining: 550});
+    const target = document.getElementById('depthTarget') as HTMLElement;
+    expect(target.textContent).toBe('↓ 550 m to Silver');
+    expect(target.dataset.kind).toBe('ore');
+
+    patchHud({depthTarget: 'Motherlode core', depthTargetKind: 'motherlode', depthTargetRemaining: 0});
+    expect(target.textContent).toBe('↓ 0 m to Motherlode core');
+    expect(target.dataset.kind).toBe('motherlode');
   });
 
   it('shows the newest toast and fades the expired one out without clearing it', () => {

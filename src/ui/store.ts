@@ -14,8 +14,11 @@
 import { createStore } from 'zustand/vanilla';
 import { useStore } from 'zustand/react';
 import { ECONOMY } from '../core/balance';
+import { getDepthMilestone, type DepthMilestoneKind } from '../core/depth-milestone';
+import { type FuelReserveStatus } from '../core/fuel-reserve';
 import { formatExtractionPresentation } from '../core/extraction-presentation';
 import { formatExpeditionObjective } from '../core/objective';
+import { formatTerrainScanner } from '../core/scanner';
 import { createInitialState } from '../core/state';
 import { formatExpeditionStats, type ExpeditionStatRow } from '../core/stats';
 import type { Ore, Player } from '../core/types';
@@ -51,13 +54,25 @@ export interface HudSnapshot {
   teleportDepthReached: boolean;
   /** The teleport button would do something right now. */
   teleportUsable: boolean;
+  /** Adjacent drill/flight target readout, refreshed when the target changes. */
+  scanner: string;
+  /** Return-fuel forecast for the climb home. */
+  fuelReserveStatus: FuelReserveStatus;
+  fuelReserveNeeded: number;
+  fuelReserveMargin: number;
+  /** Next depth landmark: its name, kind, and how much deeper it is. */
+  depthTarget: string;
+  depthTargetKind: DepthMilestoneKind;
+  depthTargetRemaining: number;
 }
 
 const HUD_KEYS = [
   'cash', 'depthMeters', 'fuel', 'fuelMax', 'hull', 'hullMax', 'cargo', 'cargoMax', 'cargoValue',
   'fuelAlert', 'hullAlert', 'cargoAlert', 'objective', 'extractionHud', 'extractionInfo',
   'atSurface', 'gameOver', 'gunArmed', 'gunOwned', 'bullets', 'dynamite', 'teleporters',
-  'teleportReturn', 'teleportDepthReached', 'teleportUsable'
+  'teleportReturn', 'teleportDepthReached', 'teleportUsable',
+  'scanner', 'fuelReserveStatus', 'fuelReserveNeeded', 'fuelReserveMargin',
+  'depthTarget', 'depthTargetKind', 'depthTargetRemaining'
 ] as const satisfies readonly (keyof HudSnapshot)[];
 
 /** The ship stats the shop and the developer panel price and label their rows from. */
@@ -130,6 +145,7 @@ const initialState = createInitialState();
 
 function initialHud(): HudSnapshot {
   const player = initialState.player;
+  const milestone = getDepthMilestone(player.y);
   return {
     cash: initialState.cash,
     depthMeters: 0,
@@ -166,7 +182,16 @@ function initialHud(): HudSnapshot {
     teleporters: player.teleporters,
     teleportReturn: false,
     teleportDepthReached: false,
-    teleportUsable: false
+    teleportUsable: false,
+    // Nothing has been scanned before the first frame, which is exactly what the
+    // scanner says about terrain it has not mapped yet.
+    scanner: formatTerrainScanner({tile: {type: 'air'}, direction: [0, 1], explored: false}),
+    fuelReserveStatus: 'safe',
+    fuelReserveNeeded: 0,
+    fuelReserveMargin: Math.floor(player.fuel),
+    depthTarget: milestone.target,
+    depthTargetKind: milestone.kind,
+    depthTargetRemaining: milestone.remainingMeters
   };
 }
 

@@ -21,6 +21,31 @@ function Bar({id, label, value, max, text, alert}: BarProps) {
   );
 }
 
+/**
+ * The return-fuel forecast, reading as part of the fuel meter it hangs under.
+ *
+ * It answers a different question than the low-fuel alert next to it: that one
+ * flashes when the tank runs dry, this one warns while there is still fuel but no
+ * longer enough to climb out from this depth. Only the meter and the banner
+ * flash; the forecast stays steady so the two alarms never compete.
+ */
+function FuelReserve() {
+  const status = useUiStore(state => state.hud.fuelReserveStatus);
+  const needed = useUiStore(state => state.hud.fuelReserveNeeded);
+  const margin = useUiStore(state => state.hud.fuelReserveMargin);
+  const atSurface = useUiStore(state => state.hud.atSurface);
+
+  return (
+    <div id="fuelReserve" className={clsx(styles.reserve, styles[status])} data-status={status} hidden={atSurface}>
+      <label>Reserve</label>
+      <span className={styles.reserveStatus}>{status.toUpperCase()}</span>
+      <span id="fuelReserveLabel" className={styles.barValue}>
+        {status === 'urgent' ? `needs ${needed}` : `${margin} after climb`}
+      </span>
+    </div>
+  );
+}
+
 /** Fuel, hull and cargo meters plus the extraction status line. */
 export function BarRow() {
   const fuel = useUiStore(state => state.hud.fuel);
@@ -37,6 +62,7 @@ export function BarRow() {
   return (
     <div className={styles.barRow}>
       <Bar id="fuel" label="Fuel" value={Math.max(0, fuel)} max={fuelMax} text={`${Math.ceil(Math.max(0, fuel))}/${fuelMax}`} alert={fuelAlert} />
+      <FuelReserve />
       <Bar id="hull" label="Hull" value={Math.max(0, hull)} max={hullMax} text={`${Math.ceil(Math.max(0, hull))}/${hullMax}`} alert={hullAlert} />
       <Bar id="cargo" label="Cargo" value={cargo} max={cargoMax} text={`${cargo}/${cargoMax}`} alert={cargoAlert} />
       <div id="extractionStatus" className={styles.extractionStatus} aria-live="polite" hidden={!extraction}>{extraction}</div>
