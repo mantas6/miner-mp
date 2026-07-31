@@ -9,8 +9,6 @@
 // retried with backoff instead of ending the session. The relay needs no join
 // handshake — it replies to every accepted connection with `worldState` followed
 // by `paired` — so reconnecting re-hydrates the world through the normal path.
-//
-// See PLAN.md "Phase 2 - Client net layer".
 
 import ReconnectingWebSocket from 'partysocket/ws';
 import {
@@ -28,7 +26,7 @@ export const DEFAULT_SERVER_URL =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_MP_SERVER_URL) ||
   'ws://localhost:8081';
 
-/** Broadcast rates (Hz) per PLAN. */
+/** Broadcast rates (Hz). */
 export const RATES = Object.freeze({
   playerState: 20,
   enemySnapshot: 15
