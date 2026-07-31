@@ -91,7 +91,7 @@ export function InfoScreen({developerToolsEnabled = false}: {developerToolsEnabl
             onClick={event => { event.stopPropagation(); uiCommands.closeInfo(); }}
           >×</button>
         </div>
-        <nav className={styles.navigation} aria-label="Info sections" role="tablist" aria-orientation="horizontal">
+        <div className={styles.navigation} aria-label="Info sections" role="tablist" aria-orientation="horizontal">
           {sections.map(section => (
             <button
               key={section.id}
@@ -106,7 +106,7 @@ export function InfoScreen({developerToolsEnabled = false}: {developerToolsEnabl
               onKeyDown={event => onTabKeyDown(event, section.id)}
             >{section.label}</button>
           ))}
-        </nav>
+        </div>
 
         <section id="info-objective" role="tabpanel" aria-labelledby="info-tab-objective" tabIndex={-1} hidden={activeTab !== 'info-objective'}>
           <h3 id="cargo-bay-title">Cargo Bay</h3>

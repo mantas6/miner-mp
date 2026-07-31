@@ -75,6 +75,8 @@ const UPGRADE_PRESENTATION: Record<PlayerUpgradeId, Omit<ShopUpgradeEntry, 'id' 
   }
 };
 
+// Built once at module load, so readability beats avoiding the spread.
+// oxlint-disable-next-line oxc/no-map-spread
 export const SHOP_UPGRADES: readonly ShopUpgradeEntry[] = PLAYER_UPGRADES.map(upgrade => ({
   id: upgrade.id,
   label: upgrade.label,

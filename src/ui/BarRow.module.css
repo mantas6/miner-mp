@@ -13,7 +13,7 @@
 /* Return-fuel forecast: same column rhythm as the meters, one notch quieter. */
 .reserve { display: grid; grid-template-columns: 58px auto 1fr; gap: 10px; align-items: center; margin: -4px 0 2px; }
 .reserve[hidden] { display: none; }
-.reserve label { color: var(--muted); font-size: var(--fs-3xs); text-transform: uppercase; letter-spacing: .12em; font-weight: 800; }
+.reserveCaption { color: var(--muted); font-size: var(--fs-3xs); text-transform: uppercase; letter-spacing: .12em; font-weight: 800; }
 .reserveStatus { padding: 2px 7px; border-radius: 999px; font-size: var(--fs-3xs); font-weight: 900; letter-spacing: .1em; border: 1px solid currentColor; }
 .reserve .barValue { font-size: var(--fs-3xs); }
 .safe { color: #a8c7ee; }

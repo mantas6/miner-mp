@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+// `ws` exports the client class as its default export.
+// oxlint-disable-next-line import/no-named-as-default
 import WebSocket from 'ws';
 import { createRelayServer, MAX_MISSED_PINGS } from '../index.js';
 
@@ -57,6 +59,8 @@ test('connections hydrate before pairing; late joins and reset broadcasts use se
   await new Promise(resolve => server.wss.once('listening', resolve));
   const url = `ws://127.0.0.1:${server.wss.address().port}`;
   const first = await connect(url);
+  // Declared up front so the cleanup hook below can close it if the connect fails.
+  // oxlint-disable-next-line prefer-const
   let second;
   t.after(async () => {
     first.socket.terminate();

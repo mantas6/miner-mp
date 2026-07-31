@@ -17,6 +17,7 @@ miner/
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts
+├── .oxlintrc.json
 ├── shared/
 │   ├── constants.ts
 │   ├── exploration-codec.ts
@@ -65,6 +66,7 @@ miner/
 | `src/styles/icons.css` | Global equipment sprite sheet (`icon-*`), addressed by name from the shop catalog. |
 | `src/styles/intro-art.css` | Global intro badge art. |
 | `vite.config.ts` | Vite build config and Vitest test config. |
+| `.oxlintrc.json` | Lint rules for `src/`, `shared/` and `server/` (oxlint), with the reason behind every disabled rule. |
 | `server/index.js` | Co-op multiplayer relay server (Node + `ws`). |
 | `server/world-state.js` | Authoritative shared-mine state and its on-disk persistence. |
 | `soundtrack_source.py` | Editable source generator for the soundtrack. |
@@ -294,7 +296,31 @@ python3 soundtrack_source.py --duration 175 --out-prefix public/assets/soviet-so
 
 ## Development checklist
 
-After making changes:
+After making changes, run the full check sequence — `./test.sh` does all of it
+(lint, unit tests, typecheck, production build, then the relay's own tests):
+
+```bash
+./test.sh
+```
+
+The individual commands, if you want them one at a time:
+
+```bash
+npm run lint        # oxlint over src/, shared/, server/ and vite.config.ts
+npm run lint:fix    # same, applying the safe autofixes
+npm test            # Vitest, co-located *.test.ts / *.test.tsx
+npm run typecheck   # tsc --noEmit
+npm run build       # production build into dist/
+npm --prefix server test   # relay tests (node --test)
+```
+
+Lint rules live in `.oxlintrc.json`: `correctness`, `suspicious` and `perf` are
+errors, plus the React hooks rules for components and JSX a11y checks. Every
+disabled rule carries a comment explaining the pattern it conflicts with; single
+intentional exceptions are suppressed at the call site with
+`// oxlint-disable-next-line <rule>` and a reason instead.
+
+When touching the soundtrack generator:
 
 ```bash
 python3 -m py_compile soundtrack_source.py

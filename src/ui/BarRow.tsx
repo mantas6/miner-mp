@@ -37,7 +37,7 @@ function FuelReserve() {
 
   return (
     <div id="fuelReserve" className={clsx(styles.reserve, styles[status])} data-status={status} hidden={atSurface}>
-      <label>Reserve</label>
+      <span className={styles.reserveCaption}>Reserve</span>
       <span className={styles.reserveStatus}>{status.toUpperCase()}</span>
       <span id="fuelReserveLabel" className={styles.barValue}>
         {status === 'urgent' ? `needs ${needed}` : `${margin} after climb`}

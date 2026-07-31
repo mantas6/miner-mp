@@ -5,7 +5,7 @@ import type { Tile } from '../core/types';
 import { enemyHealth, enemyKindForDepthRoll } from '../core/enemy-types';
 
 /** Deterministic pseudo-random value in [0,1) for a tile coordinate. */
-export function rand(x: number, y: number): number { let n = Math.sin(x*127.1 + y*311.7) * 43758.5453; return n - Math.floor(n); }
+export function rand(x: number, y: number): number { const n = Math.sin(x*127.1 + y*311.7) * 43758.5453; return n - Math.floor(n); }
 
 /** Whether a natural air pocket / cave seam exists at this coordinate. */
 export function naturalAirPocket(x: number, y: number): boolean {

@@ -10,7 +10,6 @@
 import { STARTING } from '../core/balance';
 import { cancelExtraction } from '../core/extraction-phase';
 import { createDefaultStats, respawnPlayer } from '../core/state';
-import { makeTile } from '../world/world';
 import { resetWorldTerrain } from '../world/world-state';
 import type { AudioController, GameState } from '../core/types';
 import type { EnemySim } from './enemies';
@@ -98,7 +97,7 @@ export function createRun(deps: GameRunDeps): GameRun {
   }
 
   function clearWorldRuntime(): void {
-    resetWorldTerrain(state, makeTile);
+    resetWorldTerrain(state);
     session.resetTileDiff();
     deps.enemies().clearExposure();
     state.enemyIdCounter = 1;

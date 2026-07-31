@@ -1,0 +1,65 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react", "jsx-a11y", "import", "promise", "node", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error"
+  },
+  "env": {
+    "browser": true,
+    "es2022": true
+  },
+  "ignorePatterns": ["dist", "public", "server/data"],
+  "rules": {
+    // Style the codebase already follows everywhere, pinned so it stays that way.
+    "eqeqeq": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "typescript/no-explicit-any": "error",
+    // The automatic JSX runtime (`"jsx": "react-jsx"`) means React is never
+    // imported for JSX, and the components rely on that.
+    "react/react-in-jsx-scope": "off",
+    // Overlay screens are divs on purpose: the shop/info overlays are the only
+    // native `<dialog>`s, and the ids/tag names of the rest are a contract the
+    // game runtime and the CSS modules address directly.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // Side-effect imports are how CSS modules and global stylesheets are pulled in.
+    "import/no-unassigned-import": "off",
+    // Factory modules (renderer, session, run, relay) deliberately declare their
+    // helpers inside the closure that owns the state, next to their only caller.
+    "unicorn/consistent-function-scoping": "off",
+    // Nested helpers intentionally re-take the outer name for the same value
+    // (`ctx`, `save`, throwaway `_` destructuring holes).
+    "no-shadow": "off",
+    // `.sort()` is only ever called on freshly built arrays here, and the
+    // suggested `toSorted()` is outside the ES2022 lib this project targets.
+    "unicorn/no-array-sort": "off",
+    // The relay client owns exactly one handler per socket event and detaches
+    // them by assigning `null` on disconnect, which needs the `on*` properties.
+    "unicorn/prefer-add-event-listener": "off",
+    // Sequentially awaiting inside a loop is the point in the relay/polling tests.
+    "no-await-in-loop": "off",
+    // Vitest's `expect(value, message)` takes an assertion label as 2nd argument.
+    "vitest/valid-expect": ["error", { "maxArgs": 2 }],
+    // Tests assert inside loops over generated worlds; that is filtering, not the
+    // "expect inside catch that may never run" anti-pattern this rule targets.
+    "vitest/no-conditional-expect": "off",
+    // Typing every `vi.fn()` is noise in tests that only assert call counts.
+    "vitest/require-mock-type-parameters": "off"
+  },
+  "overrides": [
+    {
+      // Hook rules only where components live: `src/game/` has plain game
+      // functions such as `useFuel()` that are not React hooks.
+      "files": ["src/**/*.tsx"],
+      "rules": {
+        "react-hooks/rules-of-hooks": "error"
+      }
+    },
+    {
+      "files": ["server/**/*.js"],
+      "env": { "browser": false, "node": true }
+    }
+  ]
+}

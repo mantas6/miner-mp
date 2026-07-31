@@ -46,6 +46,8 @@ const DEPTH_BANDS: ReadonlyArray<{minRow: number; weights: ReadonlyArray<readonl
 ];
 
 export function enemyKindForDepthRoll(depth: number, roll: number): EnemyKind {
+  // Not a `find`: the deepest matching band wins, not the first one.
+  // oxlint-disable-next-line unicorn/prefer-array-find
   const band = DEPTH_BANDS.filter(candidate => depth >= candidate.minRow).at(-1) || DEPTH_BANDS[0];
   let target = Math.max(0, Math.min(.999999999, roll));
   for (const [kind, weight] of band.weights) {

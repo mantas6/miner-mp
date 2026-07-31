@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createInitialState } from '../core/state';
 import { confirmWorldStateReset, resetWorldTerrain, WORLD_STATE_RESET_CONFIRMATION } from './world-state';
-import type { Tile } from '../core/types';
 
 describe('world state reset', () => {
   it('requires explicit, world-specific confirmation', () => {
@@ -24,7 +23,7 @@ describe('world state reset', () => {
     const playerBefore = structuredClone(state.player);
     const statsBefore = structuredClone(state.stats);
 
-    resetWorldTerrain(state, (x, y): Tile => (x === 4 && y === 5 ? {type:'air'} : {type:'dirt', hp:2, maxHp:2}));
+    resetWorldTerrain(state);
 
     expect(state.world).toEqual([]);
     expect(state.enemies).toEqual([]);
