@@ -1,0 +1,180 @@
+import { useEffect, useRef, type ReactNode } from 'react';
+import {
+  SHOP_ITEMS,
+  SHOP_SERVICES,
+  SHOP_UPGRADES,
+  ammoRowState,
+  gunRowState,
+  itemRowState,
+  serviceRowState,
+  shopSummary,
+  upgradeRowState,
+  type ShopRowState
+} from '../core/shop-catalog';
+import { uiCommands } from './commands';
+import { useUiStore, type PlayerSnapshot } from './store';
+import styles from './ShopScreen.module.css';
+import '../styles/icons.css';
+
+/** Keyboard hints, per shelf. Markup, so they stay out of the data catalog. */
+const HINTS: Record<string, ReactNode> = {
+  gun: <>Control: <kbd>G</kbd>, then a direction · <kbd>G</kbd>/<kbd>Esc</kbd> cancels</>,
+  dynamite: <>Control: <kbd>E</kbd> or Detonate</>,
+  teleporter: <>Control: <kbd>T</kbd> or Teleport / Return</>,
+  bullets: <>Arm with <kbd>G</kbd>, then a direction key</>
+};
+
+interface ShopItemProps {
+  row: ShopRowState;
+  buttonId: string;
+  hint?: ReactNode;
+  onBuy(): void;
+  /** Marker attributes kept as the stable hooks for tests and tooling. */
+  marker: Record<string, string | boolean>;
+}
+
+function ShopItem({row, buttonId, hint, onBuy, marker}: ShopItemProps) {
+  return (
+    <article className={styles.item} {...marker}>
+      <span className={`equipment-icon icon-${row.icon}`} aria-hidden="true"><i></i></span>
+      <div className={styles.itemCopy}>
+        <h4>{row.title}</h4>
+        <p>{row.copy}</p>
+        <strong data-shop-current>{row.current}</strong>
+        {row.benefit !== undefined && <span data-shop-benefit>{row.benefit}</span>}
+        {hint && <span>{hint}</span>}
+      </div>
+      <span className={styles.state} data-shop-status>{row.status}</span>
+      <button id={buttonId} type="button" disabled={row.buttonDisabled} onClick={onBuy}>{row.buttonLabel}</button>
+    </article>
+  );
+}
+
+/** Depot services, permanent upgrades and consumables, priced from one catalog. */
+export function ShopScreen() {
+  const open = useUiStore(state => state.shopOpen);
+  const cash = useUiStore(state => state.hud.cash);
+  const atSurface = useUiStore(state => state.hud.atSurface);
+  const player = useUiStore(state => state.player);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  // A native close request (Escape reaching the UA, a form submit) must not leave
+  // the store thinking the shop is still open.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const onClose = () => uiCommands.closeShop();
+    dialog.addEventListener('close', onClose);
+    return () => dialog.removeEventListener('close', onClose);
+  }, []);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      dialog.showModal();
+      if (cardRef.current) cardRef.current.scrollTop = 0;
+      closeRef.current?.focus({preventScroll: true});
+    } else if (!open && dialog.open) {
+      dialog.close();
+      document.getElementById('shopBtn')?.focus({preventScroll: true});
+    }
+  }, [open]);
+
+  const summary = shopSummary(cash, atSurface);
+  const rowArgs = [player as PlayerSnapshot, cash, atSurface] as const;
+
+  return (
+    <dialog
+      id="shop-screen"
+      ref={dialogRef}
+      className={styles.screen}
+      aria-labelledby="shop-title"
+      onPointerDown={event => { if (event.target === dialogRef.current) uiCommands.closeShop(); }}
+    >
+      <div id="shop-card" ref={cardRef} className={styles.card}>
+        <div className={styles.header}>
+          <div>
+            <p className={styles.kicker}>Depot supply counter</p>
+            <h2 id="shop-title">Shop &amp; Equipment</h2>
+          </div>
+          <button
+            id="shopCloseBtn"
+            ref={closeRef}
+            className={styles.closeBtn}
+            aria-label="Close shop"
+            onClick={event => { event.stopPropagation(); uiCommands.closeShop(); }}
+          >×</button>
+        </div>
+        <div className={styles.summary} aria-live="polite">
+          <strong data-shop-cash>{summary.cash}</strong>
+          <span data-shop-location>{summary.location}</span>
+        </div>
+
+        <section className={styles.section} aria-labelledby="shop-services-title">
+          <div className={styles.sectionHeading}><h3 id="shop-services-title">Depot Services</h3><span>Pay what you have for a proportional partial service</span></div>
+          <div className={styles.grid}>
+            {SHOP_SERVICES.map(service => (
+              <ShopItem
+                key={service.id}
+                row={serviceRowState(service.id, ...rowArgs)}
+                buttonId={service.id === 'fuel' ? 'fuelBtn' : 'repairBtn'}
+                marker={{'data-shop-service': service.id}}
+                onBuy={() => (service.id === 'fuel' ? uiCommands.refuel() : uiCommands.repair())}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="shop-upgrades-title">
+          <div className={styles.sectionHeading}><h3 id="shop-upgrades-title">Permanent Upgrades</h3><span>Installed permanently · prices rise by level</span></div>
+          <div className={styles.grid}>
+            {SHOP_UPGRADES.map(upgrade => (
+              <ShopItem
+                key={upgrade.id}
+                row={upgradeRowState(upgrade.id, ...rowArgs)}
+                buttonId={`${upgrade.id}Btn`}
+                marker={{'data-shop-upgrade': upgrade.id}}
+                onBuy={() => uiCommands.buyUpgrade(upgrade.id)}
+              />
+            ))}
+          </div>
+          <div className={`${styles.grid} ${styles.gunGrid}`}>
+            <ShopItem
+              row={gunRowState(...rowArgs)}
+              buttonId="shopGunBtn"
+              hint={HINTS.gun}
+              marker={{'data-shop-gun': true}}
+              onBuy={() => uiCommands.buyGun()}
+            />
+          </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="shop-equipment-title">
+          <div className={styles.sectionHeading}><h3 id="shop-equipment-title">Consumable Equipment</h3><span>Each use spends one carried item</span></div>
+          <div className={styles.grid}>
+            {SHOP_ITEMS.map(item => (
+              <ShopItem
+                key={item.id}
+                row={itemRowState(item.id, ...rowArgs)}
+                buttonId={item.id === 'dynamite' ? 'shopDynamiteBtn' : 'shopTeleporterBtn'}
+                hint={HINTS[item.id]}
+                marker={{'data-shop-item': item.id}}
+                onBuy={() => (item.id === 'dynamite' ? uiCommands.buyDynamite() : uiCommands.buyTeleporter())}
+              />
+            ))}
+            <ShopItem
+              row={ammoRowState(...rowArgs)}
+              buttonId="shopBulletsBtn"
+              hint={HINTS.bullets}
+              marker={{'data-shop-item': 'bullets'}}
+              onBuy={() => uiCommands.buyBullets()}
+            />
+          </div>
+        </section>
+      </div>
+    </dialog>
+  );
+}

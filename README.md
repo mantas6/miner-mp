@@ -8,7 +8,7 @@ Underground fog of war is persistent. Movement initially reveals a 3x3 square; e
 
 ## Project structure
 
-Unit tests live next to the code they cover as `*.test.ts` siblings.
+Unit tests live next to the code they cover as `*.test.ts` (or `*.test.tsx` for components) siblings.
 
 ```text
 miner/
@@ -52,16 +52,18 @@ miner/
 | `shared/protocol.ts` | Zod schemas and derived types for every co-op message and the relay envelope. |
 | `shared/world-schema.ts` | Zod schemas and derived types for tiles, enemies, and the persisted world state. |
 | `shared/tile-key.ts` | Canonical `"x,y"` coordinate key used by tile maps on both sides. |
-| `src/main.tsx` | Vite entry point: imports styles, renders the React shell, then starts the game runtime. |
+| `src/main.tsx` | Vite entry point: imports global styles, renders the React app, then starts the game runtime. |
 | `src/persistence.ts` | Local save/load of player progress and explored tiles. |
 | `src/core/` | Pure gameplay rules and types: balance, economy, upgrades, movement, weapon, dynamite, teleporter, enemies, objectives, extraction, stats, danger, developer tools. |
 | `src/world/` | World generation, shared world-state reset, and visible tile range. |
-| `src/game/` | Gameplay orchestration (`game.ts`), DOM/canvas lookups (`dom.ts`), and shop controls. |
+| `src/game/` | Gameplay orchestration (`game.ts`), the per-frame UI store sync, and the canvas handles (`dom.ts`). |
 | `src/net/` | Relay client, wire protocol codec, and multiplayer settings. |
 | `src/render/` | Canvas drawing, terrain cache policy, and partner indicator. |
 | `src/audio/` | Sound effects, music playback, synth fallback, and autoplay permission. |
-| `src/ui/` | React GUI shell and info-panel navigation. |
-| `src/styles/styles.css` | Visual styling, HUD layout, intro art. |
+| `src/ui/` | React components, the zustand UI store (`store.ts`), the command table the buttons dispatch into (`commands.ts`), and co-located CSS modules. |
+| `src/styles/base.css` | Design tokens plus element-level styling (`button`, `ul`, `kbd`, `meter`, `canvas`, `#shell`, `#game-panel`). |
+| `src/styles/icons.css` | Global equipment sprite sheet (`icon-*`), addressed by name from the shop catalog. |
+| `src/styles/intro-art.css` | Global intro badge art. |
 | `vite.config.ts` | Vite build config and Vitest test config. |
 | `server/index.js` | Co-op multiplayer relay server (Node + `ws`). |
 | `server/world-state.js` | Authoritative shared-mine state and its on-disk persistence. |

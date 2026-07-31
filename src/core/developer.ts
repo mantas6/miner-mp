@@ -1,4 +1,5 @@
 import type { Player } from './types';
+import type { DeveloperControl } from './upgrades';
 
 export const DEVELOPER_CASH_GRANT = 1_000;
 
@@ -30,20 +31,19 @@ export function developerRepairHull(player: Pick<Player, 'hull' | 'hullMax'>): b
   return true;
 }
 
-export function updateDeveloperServiceControls(container: HTMLElement, player: Player): void {
-  for (const service of DEVELOPER_SERVICES) {
-    const current = player[service.current];
-    const max = player[service.max];
-    const full = current >= max;
-    const row = container.querySelector<HTMLElement>(`[data-developer-service-row="${service.id}"]`);
-    const status = row?.querySelector<HTMLElement>('[data-developer-service-level]');
-    const button = row?.querySelector<HTMLButtonElement>('[data-developer-service]');
-    if (status) status.textContent = `${service.resourceLabel} ${current}/${max}`;
-    if (button) {
-      button.disabled = full;
-      button.textContent = full
-        ? `Developer: ${service.label} (already full)`
-        : `Developer: ${service.label} · $0`;
-    }
-  }
+export type DeveloperServicePlayer = Pick<Player, 'fuel' | 'fuelMax' | 'hull' | 'hullMax'>;
+
+/** Copy and disabled state for one free developer service. */
+export function formatDeveloperServiceControl(player: DeveloperServicePlayer, id: DeveloperServiceId): DeveloperControl {
+  const service = DEVELOPER_SERVICES.find(entry => entry.id === id)!;
+  const current = player[service.current];
+  const max = player[service.max];
+  const full = current >= max;
+  return {
+    level: `${service.resourceLabel} ${current}/${max}`,
+    buttonLabel: full
+      ? `Developer: ${service.label} (already full)`
+      : `Developer: ${service.label} · $0`,
+    buttonDisabled: full
+  };
 }

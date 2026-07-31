@@ -1,0 +1,29 @@
+/* Equipment sprite sheet, drawn entirely in CSS. Global on purpose: the icon
+   name is data (`ShopRowState.icon`), so the class has to survive unhashed. */
+.equipment-icon { position: relative; grid-row: 1 / 3; width: 50px; height: 50px; display: grid; place-items: center; border: 1px solid rgba(255,216,108,.28); border-radius: var(--r-md); background: radial-gradient(circle at 35% 28%, #6f7d91, #263144 68%); box-shadow: inset 0 0 0 3px rgba(0,0,0,.18), 0 5px 12px rgba(0,0,0,.3); overflow: hidden; }
+.equipment-icon::before, .equipment-icon::after, .equipment-icon i { content: ''; position: absolute; display: block; }
+.icon-cargo::before { width: 28px; height: 21px; border: 3px solid #e3aa42; border-radius: 3px; background: #73502a; box-shadow: inset 0 -7px 0 #49341e; }
+.icon-cargo::after { width: 32px; height: 3px; background: #ffd673; box-shadow: 0 10px 0 #c88d32; }
+.icon-tank::before { width: 21px; height: 32px; border: 3px solid #8dc8dd; border-radius: 10px 10px 6px 6px; background: linear-gradient(90deg, #345a6d, #79b5c9 50%, #345a6d); }
+.icon-tank::after { top: 7px; width: 10px; height: 6px; border-radius: 2px; background: #d6eef4; }
+.icon-hull::before { width: 28px; height: 32px; background: linear-gradient(135deg, #d9e6ee, #607b91); clip-path: polygon(50% 0, 94% 18%, 80% 75%, 50% 100%, 20% 75%, 6% 18%); }
+.icon-hull::after { width: 5px; height: 25px; background: rgba(255,255,255,.6); transform: rotate(22deg); }
+.icon-drill::before { width: 34px; height: 15px; background: #d8a33e; clip-path: polygon(0 25%, 70% 0, 100% 50%, 70% 100%, 0 75%); transform: rotate(-35deg); }
+.icon-drill::after { width: 6px; height: 33px; border-radius: 3px; background: #e7edf4; transform: rotate(55deg); }
+.icon-visibility::before { width: 30px; height: 30px; border: 3px solid #8eeaff; border-radius: 50%; box-shadow: inset 0 0 0 6px rgba(74,190,235,.2), 0 0 9px #4abdeb; }
+.icon-visibility::after { width: 8px; height: 8px; border-radius: 50%; background: #fff3a8; box-shadow: 0 0 8px #fff3a8; }
+.icon-visibility i { width: 36px; height: 3px; background: rgba(142,234,255,.8); transform: rotate(-35deg); }
+.icon-fuel::before { width: 24px; height: 30px; border: 3px solid #e3b34f; border-radius: 3px; background: linear-gradient(#8d672a 55%, #db8d25 56%); }
+.icon-fuel::after { right: 8px; top: 10px; width: 10px; height: 18px; border: 3px solid #e3b34f; border-left: 0; border-radius: 0 7px 7px 0; }
+.icon-repair::before { width: 9px; height: 37px; border-radius: 4px; background: #d7e1e7; transform: rotate(42deg); }
+.icon-repair::after { top: 7px; left: 7px; width: 20px; height: 17px; border: 6px solid #d7e1e7; border-right-color: transparent; border-radius: 50%; transform: rotate(-10deg); }
+.icon-dynamite::before { width: 28px; height: 25px; border-radius: 5px; background: repeating-linear-gradient(90deg, #a72727 0 8px, #d74a35 8px 10px); transform: rotate(-8deg); box-shadow: inset 0 4px 0 #6f1919; }
+.icon-dynamite::after { top: 5px; right: 7px; width: 17px; height: 12px; border-top: 2px solid #f4d37a; border-radius: 50%; transform: rotate(-30deg); }
+.icon-teleporter::before { width: 31px; height: 31px; border: 4px solid #72d9ff; border-radius: 50%; box-shadow: inset 0 0 8px #527aff, 0 0 8px #5cc8ff; }
+.icon-teleporter::after { width: 18px; height: 18px; border: 3px solid #c0eeff; border-radius: 50%; }
+.icon-gun::before { width: 34px; height: 12px; border-radius: 3px; background: linear-gradient(#e8d17c, #80672b); box-shadow: -8px 7px 0 -2px #53422b; }
+.icon-gun::after { right: 5px; width: 13px; height: 5px; border-radius: 2px; background: #ffeaa0; box-shadow: 0 0 8px #ffd35f; }
+.icon-bullets::before { width: 9px; height: 29px; border-radius: 5px 5px 2px 2px; background: linear-gradient(#ffe58e 0 30%, #a66f29 31%); box-shadow: -13px 4px 0 #a66f29, 13px 4px 0 #a66f29; }
+@media (max-width: 760px) {
+  .equipment-icon { width: 42px; height: 42px; }
+}

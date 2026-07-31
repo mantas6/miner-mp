@@ -5,12 +5,15 @@
 // dialog/gun/action key routing. A single window-level capture listener per
 // event type is enough: window is the first node of every capture path, so a
 // handler there sees the key before any dialog or canvas listener.
+//
+// Which overlay is up is read from the UI store rather than from class names, and
+// Tab containment is the modal `<dialog>`'s job now, not ours.
 
 import { gunKeyAction } from '../core/weapon';
 import { activeSprintDirection, keyboardMovementRepeatMs } from '../core/movement';
 import type { Direction, GameState } from '../core/types';
+import { uiStore } from '../ui/store';
 import type { GameActions } from './actions';
-import { ui } from './dom';
 
 /** Grace window (ms) in which a second R press confirms resetting a live run. */
 const RESET_CONFIRM_MS = 3500;
@@ -117,34 +120,22 @@ export function createInput(deps: GameInputDeps): GameInput {
     }
   }
 
-  /** Keep Tab cycling inside an open dialog instead of escaping to the page. */
-  function keepFocusInDialog(event: KeyboardEvent, dialog: HTMLElement): void {
-    const focusable = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), [href], input:not(:disabled), [tabindex]:not([tabindex="-1"])')]
-      .filter(element => !element.hidden && element.getClientRects().length > 0);
-    if (!focusable.length) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) last.focus();
-    else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) first.focus();
-    else return;
-    event.preventDefault();
-  }
-
   function handleKeyDown(e: KeyboardEvent): void {
     // Keyboard movement must work even before the browser grants audio permission.
     // Sound can still be enabled with the Sound button or any pointer/touch input.
     const key = e.key.toLowerCase();
-    if (!ui.shopScreen.classList.contains('hidden')) {
+    const ui = uiStore.getState();
+    if (ui.shopOpen) {
+      // Escape is handled here so the dialog closes through the same path as the
+      // buttons; preventDefault keeps the UA from also firing its close request.
       if (key === 'escape') { deps.closeShopScreen(); e.preventDefault(); e.stopPropagation(); }
-      else if (key === 'tab') keepFocusInDialog(e, ui.shopScreen);
       return;
     }
-    if (!ui.infoScreen.classList.contains('hidden')) {
+    if (ui.infoOpen) {
       if (key === 'escape') { deps.closeInfoScreen(); e.preventDefault(); e.stopPropagation(); }
-      else if (key === 'tab') keepFocusInDialog(e, ui.infoScreen);
       return;
     }
-    if (!ui.lobby.classList.contains('hidden')) return;
+    if (ui.lobbyVisible) return;
     const dir = movementKeys[key];
     if (!state.introStarted) {
       if (key === 'enter' || key === ' ') { deps.startIntro(); e.preventDefault(); }

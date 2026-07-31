@@ -5,11 +5,16 @@
 // `enemies.ts` (enemy simulation), `actions.ts` (player transactions),
 // `move.ts` (one step of the ship), `run.ts` (run lifecycle and death),
 // `input.ts` (keyboard), `world-grid.ts` (tile access). What stays here is the
-// glue those modules share — progress saving, particles, the HUD and screens,
-// and the loop itself.
+// glue those modules share — progress saving, particles, the UI sync, and the
+// loop itself.
+//
+// The UI is React reading `src/ui/store.ts`. This module pushes a snapshot into
+// that store once per frame (`syncUi()`) and exposes a flat command table
+// (`src/ui/commands.ts`) for the buttons to dispatch into; it never reads or
+// writes UI DOM apart from the canvas.
 
 import { START_Y, SURFACE_HEIGHT, WORLD_W } from '../../shared/constants';
-import { canvas, gamePanel, showToast as toast, ui } from './dom';
+import { canvas, gamePanel } from './dom';
 import { viewport } from './viewport';
 import { createAudio } from '../audio/audio';
 import { shouldAttemptAutoAudio } from '../audio/audio-permission';
@@ -22,18 +27,18 @@ import { formatExpeditionObjective } from '../core/objective';
 import { load, save } from '../persistence';
 import { formatExpeditionStats } from '../core/stats';
 import { rand } from '../world/world';
-import { getInfoNavigationSection, getInfoTabFocusTarget } from '../ui/info-navigation';
+import { setUiCommands } from '../ui/commands';
+import { buildCargoRows, pushToast as toast, uiStore, type HudSnapshot, type PlayerSnapshot } from '../ui/store';
 
 import { formatExtractionPresentation } from '../core/extraction-presentation';
 import { interpolateRemotePlayers } from '../net/net-protocol';
-import { loadServerUrl, saveServerUrl } from '../net/multiplayer-settings';
-import { MIN_TELEPORT_DEPTH_METERS, advanceTeleportEffect, canTeleportToSurface, canUseTeleporter } from '../core/teleporter';
-import type { AudioController, Ore } from '../core/types';
-import { applyPlayerUpgrade, updateDeveloperUpgradeControls, type PlayerUpgradeId } from '../core/upgrades';
-import { updateShopControls } from './shop';
+import { saveServerUrl } from '../net/multiplayer-settings';
+import { advanceTeleportEffect, canTeleportToSurface, canUseTeleporter } from '../core/teleporter';
+import type { AudioController } from '../core/types';
+import { applyPlayerUpgrade, type PlayerUpgradeId } from '../core/upgrades';
 import { revealFootprint } from '../../shared/exploration-codec';
 import { confirmPlayerDataReset, resetPlayerData } from '../core/player-data-reset';
-import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDeveloperCash, updateDeveloperServiceControls, type DeveloperServiceId } from '../core/developer';
+import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDeveloperCash, type DeveloperServiceId } from '../core/developer';
 import { confirmWorldStateReset } from '../world/world-state';
 import { createFixedStepper } from '../core/fixed-step';
 import { createWorldGrid, type WorldGrid } from './world-grid';
@@ -122,18 +127,17 @@ function spawnShotTrail(path: {x: number; y: number}[]){
 
 // --- Developer tools ------------------------------------------------------
 function grantDeveloperUpgrade(id: PlayerUpgradeId){
-  if (!developerToolsEnabled || !ui.developerUpgrades) return;
+  if (!developerToolsEnabled) return;
   if (!applyPlayerUpgrade(state.player, id)) return toast('Developer upgrade already at maximum level.');
   if (id === 'visibility') revealAtPlayer();
   saveProgress();
-  updateDeveloperUpgradeControls(ui.developerUpgrades, state.player);
+  syncPlayerSnapshot();
   toast('Developer action: upgrade granted for $0.');
 }
 function grantDeveloperMoney(){
   if (!developerToolsEnabled) return;
   grantDeveloperCash(state);
   saveProgress();
-  ui.cash.textContent = `$${Math.floor(state.cash)}`;
   toast(`Developer action: +$${DEVELOPER_CASH_GRANT.toLocaleString('en-US')} granted.`);
 }
 function runDeveloperService(id: DeveloperServiceId){
@@ -143,177 +147,118 @@ function runDeveloperService(id: DeveloperServiceId){
     : developerRepairHull(state.player);
   if (!changed) return toast(id === 'fuel' ? 'Fuel tank already full.' : 'Hull already at full strength.');
   saveProgress();
-  hud();
+  syncPlayerSnapshot();
   toast(id === 'fuel' ? 'Developer action: refueled for $0.' : 'Developer action: hull repaired for $0.');
 }
 
-// --- Screens and HUD -----------------------------------------------------
-function selectInfoTab(id: string, focusTab=false){
-  const selected = getInfoNavigationSection(id, developerToolsEnabled);
-  if (!selected) return;
-  for (const section of ui.infoScreen.querySelectorAll<HTMLElement>('[role="tabpanel"]')) {
-    section.hidden = section.id !== selected.id;
-  }
-  for (const tab of ui.infoScreen.querySelectorAll<HTMLButtonElement>('[role="tab"]')) {
-    const active = tab.dataset.infoSection === selected.id;
-    tab.setAttribute('aria-selected', String(active));
-    tab.tabIndex = active ? 0 : -1;
-    if (active && focusTab) tab.focus({preventScroll:true});
-  }
-  ui.infoCard.scrollTop = 0;
-}
-function bindButtons(){
-  ui.sell.onclick = () => actions.sell();
-  ui.fuelBtn.onclick = () => actions.refuel();
-  ui.repairBtn.onclick = () => actions.repair();
-  ui.cargoBtn.onclick = () => actions.buyUpgrade('cargo', cargoCost(state.player), 'Cargo bay expanded.');
-  ui.tankBtn.onclick = () => actions.buyUpgrade('tank', tankCost(state.player), 'Fuel tank upgraded.');
-  ui.hullBtn.onclick = () => actions.buyUpgrade('hull', hullCost(state.player), 'Hull reinforced.');
-  ui.drillBtn.onclick = () => actions.buyUpgrade('drill', drillCost(state.player), 'Drill power increased.');
-  ui.visibilityBtn.onclick = () => actions.buyUpgrade('visibility', visibilityCost(state.player), 'Sensor footprint expanded.');
-  ui.dynamiteBtn.onclick = () => actions.detonateDynamite();
-  ui.teleporterBtn.onclick = () => actions.useTeleporter();
-  ui.gunBtn.onclick = () => actions.setGunArmed(!state.input.gunArmed);
-  ui.shopDynamiteBtn.onclick = () => actions.buyDynamite();
-  ui.shopTeleporterBtn.onclick = () => actions.buyTeleporter();
-  ui.shopGunBtn.onclick = () => actions.buyGun();
-  ui.shopBulletsBtn.onclick = () => actions.buyBullets();
-  ui.soundBtn.addEventListener('pointerdown', e => e.stopPropagation());
-  ui.soundBtn.onclick = e => { e.stopPropagation(); audio.toggle(); };
-  ui.infoBtn.onclick = e => { e.stopPropagation(); openInfoScreen(); };
-  ui.infoCloseBtn.onclick = e => { e.stopPropagation(); closeInfoScreen(); };
-  if (developerToolsEnabled && ui.resetPlayerDataBtn) ui.resetPlayerDataBtn.onclick = e => {
-    e.stopPropagation();
-    if (!confirmPlayerDataReset(message => window.confirm(message))) return;
-    explorationSave.cancel();
-    session.resetForPlayerData();
-    gameInput.clearKeys();
-    resetPlayerData(state);
-    revealAtPlayer(false);
-    explorationSave.cancel();
-    saveProgress();
-    session.setConnectionStatus('Solo');
-    closeInfoScreen();
-    toast('Player data reset. Shared mine terrain preserved.');
-  };
-  if (developerToolsEnabled && ui.resetWorldStateBtn) ui.resetWorldStateBtn.onclick = e => {
-    e.stopPropagation();
-    if (!confirmWorldStateReset(message => window.confirm(message))) return;
-    if (!session.requestWorldReset()) {
-      run.clearWorldRuntime();
+// --- Screens and UI sync -------------------------------------------------
+/** Purchase confirmations, paired with the price each upgrade is charged at. */
+const UPGRADE_PURCHASES: Record<PlayerUpgradeId, {cost(): number; message: string}> = {
+  cargo: {cost: () => cargoCost(state.player), message: 'Cargo bay expanded.'},
+  tank: {cost: () => tankCost(state.player), message: 'Fuel tank upgraded.'},
+  hull: {cost: () => hullCost(state.player), message: 'Hull reinforced.'},
+  drill: {cost: () => drillCost(state.player), message: 'Drill power increased.'},
+  visibility: {cost: () => visibilityCost(state.player), message: 'Sensor footprint expanded.'}
+};
+
+/** Register the button/dialog dispatch table the React tree calls into. */
+function registerUiCommands(){
+  setUiCommands({
+    sell: () => actions.sell(),
+    refuel: () => actions.refuel(),
+    repair: () => actions.repair(),
+    buyUpgrade: id => actions.buyUpgrade(id, UPGRADE_PURCHASES[id].cost(), UPGRADE_PURCHASES[id].message),
+    buyDynamite: () => actions.buyDynamite(),
+    buyTeleporter: () => actions.buyTeleporter(),
+    buyGun: () => actions.buyGun(),
+    buyBullets: () => actions.buyBullets(),
+    detonateDynamite: () => actions.detonateDynamite(),
+    useTeleporter: () => actions.useTeleporter(),
+    toggleGunArmed: () => actions.setGunArmed(!state.input.gunArmed),
+    openShop: openShopScreen,
+    closeShop: closeShopScreen,
+    openInfo: openInfoScreen,
+    closeInfo: closeInfoScreen,
+    toggleSound: () => { void audio.toggle(); },
+    startIntro: event => startIntro(event),
+    connect: url => {
+      if (!url) { session.setConnectionStatus('Enter a server URL'); return; }
+      saveServerUrl(url);
+      session.startOnline(url);
+    },
+    playSolo: event => session.playSolo(event),
+    grantDeveloperCash: grantDeveloperMoney,
+    runDeveloperService,
+    grantDeveloperUpgrade,
+    resetPlayerData: () => {
+      if (!developerToolsEnabled) return;
+      if (!confirmPlayerDataReset(message => window.confirm(message))) return;
+      explorationSave.cancel();
+      session.resetForPlayerData();
+      gameInput.clearKeys();
+      resetPlayerData(state);
+      revealAtPlayer(false);
+      explorationSave.cancel();
       saveProgress();
-      toast('World state reset locally. Player progress preserved.');
+      session.setConnectionStatus('Solo');
+      closeInfoScreen();
+      toast('Player data reset. Shared mine terrain preserved.');
+    },
+    resetWorldState: () => {
+      if (!developerToolsEnabled) return;
+      if (!confirmWorldStateReset(message => window.confirm(message))) return;
+      if (!session.requestWorldReset()) {
+        run.clearWorldRuntime();
+        saveProgress();
+        toast('World state reset locally. Player progress preserved.');
+      }
+      closeInfoScreen();
     }
-    closeInfoScreen();
-  };
-  ui.shopBtn.onclick = e => { e.stopPropagation(); openShopScreen(); };
-  ui.shopCloseBtn.onclick = e => { e.stopPropagation(); closeShopScreen(); };
-  ui.shopScreen.addEventListener('pointerdown', e => { if (e.target === ui.shopScreen) closeShopScreen(); });
-  ui.infoScreen.addEventListener('pointerdown', e => { if (e.target === ui.infoScreen) closeInfoScreen(); });
-  ui.infoScreen.addEventListener('click', e => {
-    const target = e.target as Element;
-    const cashButton = developerToolsEnabled && target.closest<HTMLButtonElement>('[data-developer-cash]');
-    if (cashButton) {
-      grantDeveloperMoney();
-      return;
-    }
-    const serviceButton = developerToolsEnabled && target.closest<HTMLButtonElement>('[data-developer-service]');
-    if (serviceButton) {
-      runDeveloperService(serviceButton.dataset.developerService as DeveloperServiceId);
-      return;
-    }
-    const developerButton = developerToolsEnabled && target.closest<HTMLButtonElement>('[data-developer-upgrade]');
-    if (developerButton) {
-      grantDeveloperUpgrade(developerButton.dataset.developerUpgrade as PlayerUpgradeId);
-      return;
-    }
-    const button = target.closest<HTMLButtonElement>('[role="tab"]');
-    if (!button) return;
-    selectInfoTab(button.dataset.infoSection || '', true);
-  });
-  ui.infoScreen.addEventListener('keydown', e => {
-    const tab = (e.target as Element).closest<HTMLButtonElement>('[role="tab"]');
-    if (!tab) return;
-    const key = e.key.toLowerCase();
-    if (key === 'enter' || key === ' ') {
-      selectInfoTab(tab.dataset.infoSection || '', true);
-      e.preventDefault();
-      return;
-    }
-    const target = getInfoTabFocusTarget(tab.dataset.infoSection || '', key, developerToolsEnabled);
-    if (!target) return;
-    const targetTab = document.getElementById(target.tabId) as HTMLButtonElement | null;
-    targetTab?.focus({preventScroll:true});
-    e.preventDefault();
   });
 }
 function openShopScreen(){
   if (!atSurface()) return toast('Shop is at the surface depot.');
-  updateShopControls(ui.shopCard, state.player, state.cash, true);
   state.input.gunArmed = false;
-  ui.shopScreen.classList.remove('hidden');
-  ui.shopCard.scrollTop = 0;
-  ui.shopCloseBtn.focus({preventScroll:true});
+  syncPlayerSnapshot();
+  uiStore.getState().setShopOpen(true);
 }
 function closeShopScreen(){
-  ui.shopScreen.classList.add('hidden');
-  ui.shopBtn.focus({preventScroll:true});
+  uiStore.getState().setShopOpen(false);
 }
 function openInfoScreen(){
-  ui.infoScreen.classList.remove('hidden');
-  renderCargoDetails();
-  renderExpeditionStats();
-  if (developerToolsEnabled && ui.developerUpgrades) {
-    updateDeveloperServiceControls(ui.developerUpgrades, state.player);
-    updateDeveloperUpgradeControls(ui.developerUpgrades, state.player);
-  }
-  selectInfoTab('info-objective');
-  ui.infoCloseBtn.focus({preventScroll:true});
+  syncPlayerSnapshot();
+  syncInfoDetails();
+  uiStore.getState().setInfoOpen(true);
 }
 function closeInfoScreen(){
-  ui.infoScreen.classList.add('hidden');
-  ui.infoBtn.focus({preventScroll:true});
+  uiStore.getState().setInfoOpen(false);
 }
-function renderCargoDetails(){
-  const counts = new Map<string, {ore: Ore; count: number}>();
-  for (const ore of state.player.cargo) {
-    const entry = counts.get(ore.name) || {ore, count: 0};
-    entry.count++;
-    counts.set(ore.name, entry);
-  }
-  ui.cargoList.innerHTML = counts.size ? [...counts.values()].map(({ore, count}) => `
-      <li>
-        <span class="ore-icon" style="background:${ore.color}"></span>
-        <span class="ore-name">${ore.name}</span>
-        <span class="ore-count">× ${count}</span>
-        <span class="ore-value">$${ore.value * count}</span>
-      </li>`).join('') : '<li class="empty-cargo">Cargo bay empty</li>';
+/**
+ * Reused scratch snapshots. The loop fills them every frame and the store copies
+ * them only when a value actually changed, so a steady HUD allocates nothing.
+ */
+const hudScratch: HudSnapshot = {...uiStore.getState().hud};
+const playerScratch: PlayerSnapshot = {...uiStore.getState().player};
+
+function syncPlayerSnapshot(){
+  const p = state.player;
+  playerScratch.fuel = p.fuel;
+  playerScratch.fuelMax = p.fuelMax;
+  playerScratch.hull = p.hull;
+  playerScratch.hullMax = p.hullMax;
+  playerScratch.cargoMax = p.cargoMax;
+  playerScratch.drill = p.drill;
+  playerScratch.visibility = p.visibility;
+  playerScratch.dynamite = p.dynamite;
+  playerScratch.teleporters = p.teleporters;
+  playerScratch.gunOwned = p.gunOwned;
+  playerScratch.bullets = p.bullets;
+  uiStore.getState().syncPlayer(playerScratch);
 }
-function renderExpeditionStats(){
-  ui.expeditionStats.innerHTML = formatExpeditionStats(state.stats).map(row => `
-      <li>
-        <span class="stat-label">${row.label}</span>
-        <strong>${row.value}</strong>
-        <span class="stat-detail">${row.detail}</span>
-      </li>`).join('');
-}
-function updateButtonStates(){
-  const p = state.player, surf = atSurface();
-  ui.sell.hidden = !surf;
-  ui.shopBtn.hidden = !surf;
-  ui.dynamiteBtn.hidden = surf;
-  ui.teleporterBtn.hidden = surf && !state.teleportReturnPosition;
-  ui.gunBtn.hidden = surf || !p.gunOwned;
-  ui.sell.disabled = !surf || currentCargoValue() <= 0;
-  ui.dynamiteBtn.textContent = `Detonate (E) · x${p.dynamite}`;
-  ui.teleporterBtn.textContent = surf ? 'Return (T)' : canTeleportToSurface(p.y) ? `Teleport (T) · x${p.teleporters}` : `Teleport at ${MIN_TELEPORT_DEPTH_METERS} m (T) · x${p.teleporters}`;
-  ui.gunBtn.textContent = state.input.gunArmed ? `AIMING — press direction · x${p.bullets}` : `Arm Gun (G) · x${p.bullets}`;
-  ui.gunBtn.classList.toggle('armed', state.input.gunArmed);
-  ui.gunBtn.setAttribute('aria-pressed', String(state.input.gunArmed));
-  ui.dynamiteBtn.disabled = surf || p.dynamite <= 0 || state.gameOver;
-  ui.teleporterBtn.disabled = state.gameOver || !canUseTeleporter(p, state.teleportReturnPosition);
-  ui.gunBtn.disabled = surf || !p.gunOwned || p.bullets <= 0 || state.gameOver;
-  if (!ui.shopScreen.classList.contains('hidden')) updateShopControls(ui.shopCard, p, state.cash, surf);
+function syncInfoDetails(){
+  const store = uiStore.getState();
+  store.setCargoRows(buildCargoRows(state.player.cargo));
+  store.setStatRows(formatExpeditionStats(state.stats));
 }
 function updateAnimation(){
   const p = state.player;
@@ -332,52 +277,56 @@ function updateAnimation(){
     return pt.life > 0;
   });
 }
-function hud(){
-  const p=state.player;
-  ui.cash.textContent = `$${Math.floor(state.cash)}`;
-  ui.depth.textContent=`${Math.max(0, p.y - START_Y) * 10} m`;
-  ui.fuel.max=p.fuelMax; ui.fuel.value=Math.max(0,p.fuel);
-  ui.hull.max=p.hullMax; ui.hull.value=p.hull;
-  ui.cargo.max=p.cargoMax; ui.cargo.value=cargoUsed();
-  ui.fuelLabel.textContent = `${Math.ceil(Math.max(0, p.fuel))}/${p.fuelMax}`;
-  ui.hullLabel.textContent = `${Math.ceil(Math.max(0, p.hull))}/${p.hullMax}`;
-  ui.cargoLabel.textContent = `${cargoUsed()}/${p.cargoMax}`;
-  const displayedCargoValue = currentCargoValue();
-  const objectiveCopy = formatExpeditionObjective({
-    player: p,
-    cash: state.cash,
-    cargoCount: cargoUsed(),
-    currentCargoValue: displayedCargoValue,
-    atSurface: atSurface(),
-    extractionPhase: state.extractionPhase
-  });
-  ui.objectiveInfoStatus.textContent = objectiveCopy;
-  const extractionPresentation = formatExtractionPresentation({
+/** Publish this frame's UI state. The only place the game talks to the chrome. */
+function syncUi(){
+  const p = state.player;
+  const surf = atSurface();
+  const lowFuel = shouldFuelBarFlash(state);
+  const extraction = formatExtractionPresentation({
     phase: state.extractionPhase,
     motherlodeExtractions: state.stats.motherlodeExtractions,
     reward: ECONOMY.artifactReward
   });
-  ui.extractionStatus.textContent = extractionPresentation.hud || '';
-  ui.extractionStatus.classList.toggle('hidden', !extractionPresentation.hud);
-  ui.extractionInfoStatus.textContent = extractionPresentation.info;
 
-  const lowFuel = shouldFuelBarFlash(state);
-  const lowHull = shouldHullBarFlash(state);
-  const fullCargo = shouldCargoBarFlash(state);
-  ui.fuel.closest('.bar')?.classList.toggle('bar-alert', lowFuel);
-  ui.hull.closest('.bar')?.classList.toggle('bar-alert', lowHull);
-  ui.cargo.closest('.bar')?.classList.toggle('bar-alert', fullCargo);
-  ui.fuelWarning.classList.toggle('show', lowFuel);
-  if (lowFuel && !atSurface() && performance.now() - audio.lastLowFuel > FUEL.lowFuelWarnMs) { audio.lowFuel(); audio.lastLowFuel = performance.now(); }
-  if (!ui.infoScreen.classList.contains('hidden')) {
-    renderCargoDetails();
-    renderExpeditionStats();
-    if (developerToolsEnabled && ui.developerUpgrades) {
-      updateDeveloperServiceControls(ui.developerUpgrades, p);
-      updateDeveloperUpgradeControls(ui.developerUpgrades, p);
-    }
-  }
-  updateButtonStates();
+  hudScratch.cash = state.cash;
+  hudScratch.depthMeters = Math.max(0, p.y - START_Y) * 10;
+  hudScratch.fuel = p.fuel;
+  hudScratch.fuelMax = p.fuelMax;
+  hudScratch.hull = p.hull;
+  hudScratch.hullMax = p.hullMax;
+  hudScratch.cargo = cargoUsed();
+  hudScratch.cargoMax = p.cargoMax;
+  hudScratch.cargoValue = currentCargoValue();
+  hudScratch.fuelAlert = lowFuel;
+  hudScratch.hullAlert = shouldHullBarFlash(state);
+  hudScratch.cargoAlert = shouldCargoBarFlash(state);
+  hudScratch.objective = formatExpeditionObjective({
+    player: p,
+    cash: state.cash,
+    cargoCount: hudScratch.cargo,
+    currentCargoValue: hudScratch.cargoValue,
+    atSurface: surf,
+    extractionPhase: state.extractionPhase
+  });
+  hudScratch.extractionHud = extraction.hud;
+  hudScratch.extractionInfo = extraction.info;
+  hudScratch.atSurface = surf;
+  hudScratch.gameOver = state.gameOver;
+  hudScratch.gunArmed = state.input.gunArmed;
+  hudScratch.gunOwned = p.gunOwned;
+  hudScratch.bullets = p.bullets;
+  hudScratch.dynamite = p.dynamite;
+  hudScratch.teleporters = p.teleporters;
+  hudScratch.teleportReturn = state.teleportReturnPosition !== null;
+  hudScratch.teleportDepthReached = canTeleportToSurface(p.y);
+  hudScratch.teleportUsable = canUseTeleporter(p, state.teleportReturnPosition);
+
+  const store = uiStore.getState();
+  store.syncHud(hudScratch);
+  if (store.shopOpen || store.infoOpen) syncPlayerSnapshot();
+  if (store.infoOpen) syncInfoDetails();
+
+  if (lowFuel && !surf && performance.now() - audio.lastLowFuel > FUEL.lowFuelWarnMs) { audio.lowFuel(); audio.lastLowFuel = performance.now(); }
 }
 // Everything tuned in ticks lives here: `state.tick`, enemy cooldowns, keyboard
 // repeat, and the per-step easing in updateAnimation(). It runs a whole number of
@@ -402,7 +351,7 @@ function loop(now = performance.now()){
   // 60 Hz step is small enough that interpolation buys nothing visible.
   stepper.advance(now);
   renderer?.draw();
-  hud();
+  syncUi();
   requestAnimationFrame(loop);
 }
 function tryAutoAudio(event?: Event, allowLobby=false) {
@@ -422,8 +371,7 @@ function focusGame(){
 function startIntro(event?: Event){
   if (state.introStarted) return;
   state.introStarted = true;
-  ui.intro?.classList.add('hidden');
-  setTimeout(() => { if (ui.intro) ui.intro.style.display = 'none'; }, 320);
+  uiStore.getState().setIntroStarted(true);
   focusGame();
   tryAutoAudio(event, true);
   toast('Drill ready. Mine ore, sell it, and watch your fuel.');
@@ -528,12 +476,11 @@ function wireModules(){
 
 export function initGame(options: { developerToolsEnabled?: boolean } = {}){
   developerToolsEnabled = options.developerToolsEnabled === true;
-  audio = createAudio(ui, toast);
+  audio = createAudio(toast);
   state.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   wireModules();
   renderer = createRenderer({ state, get: (x: number, y: number) => grid.get(x, y), rand });
   loadProgress();
-  ui.serverUrl.value = loadServerUrl(ui.serverUrl.value);
   addEventListener('touchstart', tryAutoAudio, {passive:true});
   gameInput.attach();
   addEventListener('focus', focusGame);
@@ -543,30 +490,6 @@ export function initGame(options: { developerToolsEnabled?: boolean } = {}){
     stepper.reset();
     focusGame();
   });
-  ui.intro?.addEventListener('pointerdown', e => {
-    startIntro(e);
-    e.preventDefault();
-    e.stopPropagation();
-  }, {capture:true});
-  ui.intro?.addEventListener('touchstart', e => {
-    startIntro(e);
-    e.preventDefault();
-    e.stopPropagation();
-  }, {capture:true, passive:false});
-  ui.intro?.addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ' ') { startIntro(); e.preventDefault(); e.stopPropagation(); }
-  });
-  ui.connectBtn.onclick = event => {
-    event.stopPropagation();
-    const url = ui.serverUrl.value.trim();
-    if (!url) { session.setConnectionStatus('Enter a server URL'); return; }
-    saveServerUrl(url);
-    session.startOnline(url);
-  };
-  ui.soloBtn.onclick = event => {
-    event.stopPropagation();
-    session.playSolo(event);
-  };
   addEventListener('pointerdown', tryAutoAudio);
-  bindButtons(); run.generate(); setInterval(saveProgress, 60000); addEventListener('beforeunload', saveProgress); focusGame(); setTimeout(focusGame, 60); loop();
+  registerUiCommands(); run.generate(); setInterval(saveProgress, 60000); addEventListener('beforeunload', saveProgress); focusGame(); setTimeout(focusGame, 60); loop();
 }

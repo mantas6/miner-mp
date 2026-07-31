@@ -6,10 +6,14 @@
 // module cycle (grid → session → run → enemies → move → input) cannot be
 // resolved in one pass. A mistake there is invisible to every other test and
 // fatal in the browser, so this boots the real thing once.
+//
+// The real React tree is mounted too, so the store sync that replaced the old
+// per-frame DOM writes is covered end to end: keypress → simulation → store →
+// rendered HUD.
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { act, render } from '@testing-library/react';
 import { MinerApp } from '../ui/ui';
 
 /** happy-dom has no canvas raster, so drawing calls go into a black hole. */
@@ -26,25 +30,43 @@ let clock = 1000;
 
 /** Run one animation frame, advancing the clock past several fixed steps. */
 function renderFrame(): void {
-  clock += 100;
-  frame?.(clock);
+  act(() => {
+    clock += 100;
+    frame?.(clock);
+  });
 }
 
 function press(key: string): void {
-  window.dispatchEvent(new KeyboardEvent('keydown', {key, bubbles: true, cancelable: true}));
-  window.dispatchEvent(new KeyboardEvent('keyup', {key, bubbles: true, cancelable: true}));
+  act(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', {key, bubbles: true, cancelable: true}));
+    window.dispatchEvent(new KeyboardEvent('keyup', {key, bubbles: true, cancelable: true}));
+  });
+}
+
+function click(id: string): void {
+  act(() => {
+    document.getElementById(id)?.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+  });
+}
+
+function text(id: string): string | undefined {
+  return document.getElementById(id)?.textContent ?? undefined;
+}
+
+function dialogOpen(id: string): boolean {
+  return (document.getElementById(id) as HTMLDialogElement | null)?.open === true;
 }
 
 describe('booting the game', () => {
   beforeAll(async () => {
-    document.body.innerHTML = renderToStaticMarkup(React.createElement(MinerApp));
     stubCanvasContext();
+    render(React.createElement(MinerApp));
     vi.stubGlobal('requestAnimationFrame', (callback: (now: number) => void) => {
       frame = callback;
       return 0;
     });
     const { initGame } = await import('./game');
-    initGame({});
+    await act(async () => { initGame({}); });
   });
 
   afterAll(() => {
@@ -53,46 +75,45 @@ describe('booting the game', () => {
   });
 
   it('deploys a fresh drill at the surface shaft and fills the HUD', () => {
-    expect(document.getElementById('toast')?.textContent).toBe('Fresh drill deployed.');
-    expect(document.getElementById('depth')?.textContent).toBe('0 m');
-    expect(document.getElementById('cash')?.textContent).toBe('$60');
-    expect(document.getElementById('fuelLabel')?.textContent).toBe('100/100');
+    expect(text('toast')).toBe('Fresh drill deployed.');
+    expect(text('depth')).toBe('0 m');
+    expect(text('cash')).toBe('$60');
+    expect(text('fuelLabel')).toBe('100/100');
     // The lobby owns the screen until a mode is chosen.
-    expect(document.getElementById('lobby-screen')?.classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('lobby-screen')?.className).not.toMatch(/hidden/);
   });
 
   it('runs the whole input → move → terrain → HUD chain on a keypress', () => {
-    document.getElementById('soloBtn')?.dispatchEvent(new MouseEvent('click', {bubbles: true}));
-    expect(document.getElementById('lobby-screen')?.classList.contains('hidden')).toBe(true);
+    click('soloBtn');
+    expect(document.getElementById('lobby-screen')?.className).toMatch(/hidden/);
 
     press('s');
     renderFrame();
 
     // The starter shaft below the depot is diggable dirt, so the first press
     // spends fuel drilling; a later one drops the ship into the cleared tile.
-    for (let attempt = 0; attempt < 12 && document.getElementById('depth')?.textContent === '0 m'; attempt++) {
+    for (let attempt = 0; attempt < 12 && text('depth') === '0 m'; attempt++) {
       press('s');
       renderFrame();
     }
 
-    expect(document.getElementById('depth')?.textContent).toBe('10 m');
-    expect(document.getElementById('fuelLabel')?.textContent).not.toBe('100/100');
+    expect(text('depth')).toBe('10 m');
+    expect(text('fuelLabel')).not.toBe('100/100');
   });
 
-  it('opens and closes the info screen through the bound controls', () => {
-    const info = document.getElementById('info-screen');
-    document.getElementById('infoBtn')?.dispatchEvent(new MouseEvent('click', {bubbles: true}));
-    expect(info?.classList.contains('hidden')).toBe(false);
-    expect(document.getElementById('cargoList')?.textContent).toContain('Cargo bay empty');
+  it('opens and closes the info dialog through the bound controls', () => {
+    click('infoBtn');
+    expect(dialogOpen('info-screen')).toBe(true);
+    expect(text('cargoList')).toContain('Cargo bay empty');
 
     press('Escape');
-    expect(info?.classList.contains('hidden')).toBe(true);
+    expect(dialogOpen('info-screen')).toBe(false);
   });
 
   it('routes surface-only actions through the depot check once underground', () => {
-    document.getElementById('shopBtn')?.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    click('shopBtn');
 
-    expect(document.getElementById('shop-screen')?.classList.contains('hidden')).toBe(true);
-    expect(document.getElementById('toast')?.textContent).toBe('Shop is at the surface depot.');
+    expect(dialogOpen('shop-screen')).toBe(false);
+    expect(text('toast')).toBe('Shop is at the surface depot.');
   });
 });

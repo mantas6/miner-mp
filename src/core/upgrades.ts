@@ -11,11 +11,14 @@ export const PLAYER_UPGRADES = [
 
 export type PlayerUpgradeId = typeof PLAYER_UPGRADES[number]['id'];
 
+/** The upgraded maxima; enough to price and label an upgrade without a full Player. */
+export type UpgradeProgressPlayer = Pick<Player, typeof PLAYER_UPGRADES[number]['stat']>;
+
 export function getPlayerUpgrade(id: PlayerUpgradeId) {
   return PLAYER_UPGRADES.find(upgrade => upgrade.id === id)!;
 }
 
-export function getPlayerUpgradeProgress(player: Player, id: PlayerUpgradeId) {
+export function getPlayerUpgradeProgress(player: UpgradeProgressPlayer, id: PlayerUpgradeId) {
   const upgrade = getPlayerUpgrade(id);
   const value = player[upgrade.stat];
   return {
@@ -37,18 +40,22 @@ export function applyPlayerUpgrade(player: Player, id: PlayerUpgradeId): boolean
   return true;
 }
 
-export function updateDeveloperUpgradeControls(container: HTMLElement, player: Player): void {
-  for (const upgrade of PLAYER_UPGRADES) {
-    const progress = getPlayerUpgradeProgress(player, upgrade.id);
-    const row = container.querySelector<HTMLElement>(`[data-upgrade-row="${upgrade.id}"]`);
-    const level = row?.querySelector<HTMLElement>('[data-upgrade-level]');
-    const button = row?.querySelector<HTMLButtonElement>('[data-developer-upgrade]');
-    if (level) level.textContent = `Level ${progress.level}/${progress.maxLevel} · ${progress.value}/${progress.maxValue}`;
-    if (button) {
-      button.disabled = progress.atMax;
-      button.textContent = progress.atMax
-        ? `Developer: ${upgrade.label} at max`
-        : `Developer: Grant ${upgrade.label} +${upgrade.step} · $0`;
-    }
-  }
+export interface DeveloperControl {
+  /** Current level / value readout next to the control. */
+  level: string;
+  buttonLabel: string;
+  buttonDisabled: boolean;
+}
+
+/** Copy and disabled state for one free developer upgrade grant. */
+export function formatDeveloperUpgradeControl(player: UpgradeProgressPlayer, id: PlayerUpgradeId): DeveloperControl {
+  const upgrade = getPlayerUpgrade(id);
+  const progress = getPlayerUpgradeProgress(player, id);
+  return {
+    level: `Level ${progress.level}/${progress.maxLevel} · ${progress.value}/${progress.maxValue}`,
+    buttonLabel: progress.atMax
+      ? `Developer: ${upgrade.label} at max`
+      : `Developer: Grant ${upgrade.label} +${upgrade.step} · $0`,
+    buttonDisabled: progress.atMax
+  };
 }

@@ -4,6 +4,7 @@ import { createInitialState } from '../core/state';
 import type { Enemy, GameState } from '../core/types';
 import type { NetCallbacks, NetClient } from '../net/net';
 import type { EnemySnapshotEntry, NetMessage } from '../net/net-protocol';
+import { uiStore } from '../ui/store';
 import { createSession, type GameSession } from './session';
 import { createWorldGrid, type WorldGrid } from './world-grid';
 import {
@@ -14,14 +15,9 @@ import {
   type EnemySimStub
 } from './test-support';
 
-// The session reaches the DOM only to write connection-status copy, and it owns
-// its NetClient outright — so both are replaced wholesale here.
+// The session publishes connection copy through the UI store (asserted directly)
+// and owns its NetClient outright, so only the socket is replaced here.
 const mocks = vi.hoisted(() => ({
-  ui: {
-    lobby: {classList: {add: vi.fn(), remove: vi.fn()}},
-    connectionStatus: {textContent: '', classList: {toggle: vi.fn()}},
-    lobbyConnectionStatus: {textContent: ''}
-  },
   net: {
     callbacks: null as NetCallbacks | null,
     url: '',
@@ -31,8 +27,6 @@ const mocks = vi.hoisted(() => ({
     disconnectCalls: 0
   }
 }));
-
-vi.mock('./dom', () => ({ui: mocks.ui}));
 
 vi.mock('../net/net', () => ({
   createNet: (options: {url: string; callbacks: NetCallbacks}): NetClient => {
@@ -380,7 +374,7 @@ describe('session lifecycle', () => {
     const h = harness();
 
     mocks.net.callbacks?.onPaired?.('host');
-    expect(mocks.ui.connectionStatus.textContent).toContain('waiting for player');
+    expect(uiStore.getState().connectionStatus).toContain('waiting for player');
     expect(h.startIntro).not.toHaveBeenCalled();
 
     mocks.net.paired = true;
@@ -397,7 +391,7 @@ describe('session lifecycle', () => {
 
     expect(h.state.role).toBe('host');
     expect(h.state.remotePlayers).toEqual([]);
-    expect(mocks.ui.connectionStatus.textContent).toContain('Host');
+    expect(uiStore.getState().connectionStatus).toContain('Host');
   });
 
   it('keeps the room-full reason visible after the socket closes', () => {
@@ -406,7 +400,7 @@ describe('session lifecycle', () => {
     mocks.net.callbacks?.onRoomFull?.();
     mocks.net.callbacks?.onClose?.();
 
-    expect(mocks.ui.connectionStatus.textContent).toBe('Room full');
+    expect(uiStore.getState().connectionStatus).toBe('Room full');
     expect(h.state.connected).toBe(false);
     expect(h.state.role).toBe(null);
   });
@@ -419,7 +413,8 @@ describe('session lifecycle', () => {
 
     expect(mocks.net.disconnectCalls).toBe(1);
     expect(h.state).toMatchObject({connected: false, role: null, remotePlayers: []});
-    expect(mocks.ui.connectionStatus.textContent).toBe('Solo');
+    expect(uiStore.getState().connectionStatus).toBe('Solo');
+    expect(uiStore.getState().lobbyVisible).toBe(false);
     expect(h.startIntro).toHaveBeenCalled();
   });
 

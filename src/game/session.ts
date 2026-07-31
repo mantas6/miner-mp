@@ -25,7 +25,7 @@ import {
   type WorldStateMsg
 } from '../net/net-protocol';
 import type { Tile } from '../core/types';
-import { ui } from './dom';
+import { uiStore } from '../ui/store';
 import type { EnemySim } from './enemies';
 import type { WorldGrid } from './world-grid';
 
@@ -106,9 +106,7 @@ export function createSession(deps: GameSessionDeps): GameSession {
   }
 
   function setConnectionStatus(status: string, showInHud = true): void {
-    ui.lobbyConnectionStatus.textContent = status;
-    ui.connectionStatus.textContent = status;
-    ui.connectionStatus.classList.toggle('hidden', !showInHud);
+    uiStore.getState().setConnection(status, showInHud);
   }
 
   function recordTile(x: number, y: number, tile: Tile, broadcast: boolean): void {
@@ -150,7 +148,7 @@ export function createSession(deps: GameSessionDeps): GameSession {
 
   function startOnlineGame(): void {
     if (!net?.paired) return;
-    ui.lobby.classList.add('hidden');
+    uiStore.getState().setLobbyVisible(false);
     deps.startIntro();
   }
 
@@ -303,7 +301,7 @@ export function createSession(deps: GameSessionDeps): GameSession {
     state.remotePlayers = [];
     connectionIssue = null;
     setConnectionStatus('Solo');
-    ui.lobby.classList.add('hidden');
+    uiStore.getState().setLobbyVisible(false);
     deps.startIntro(event);
   }
 

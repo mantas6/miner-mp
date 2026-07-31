@@ -1,0 +1,7 @@
+.warning { position: absolute; left: 50%; top: 18px; translate: -50% 0; z-index: 5; display: none; padding: 11px 18px; border-radius: 999px; background: linear-gradient(135deg, rgba(124,22,22,.94), rgba(246,99,30,.90)); border: 2px solid rgba(255,235,150,.92); color: #fff6d1; font-size: var(--fs-lg); font-weight: 950; letter-spacing: .04em; text-shadow: 0 2px 0 rgba(0,0,0,.35); box-shadow: 0 0 0 4px rgba(255,65,65,.18), 0 15px 36px rgba(0,0,0,.45); pointer-events: none; animation: lowFuelPulse .85s ease-in-out infinite alternate; }
+.warning.show { display: block; }
+@keyframes lowFuelPulse { from { filter: brightness(.95); scale: 1; } to { filter: brightness(1.25); scale: 1.035; } }
+
+@media (max-width: 760px) {
+  .warning { top: 86px; max-width: 76vw; padding: 8px 11px; font-size: var(--fs-xs); text-align: center; }
+}

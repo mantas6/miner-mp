@@ -1,0 +1,148 @@
+// @vitest-environment happy-dom
+//
+// The shop as a component: does it show the catalog's verdict, and does a click
+// reach the right command? The pricing and copy itself is covered by
+// core/shop-catalog.test.ts.
+
+import { act, cleanup, fireEvent, render } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LIMITS } from '../core/balance';
+import { ShopScreen } from './ShopScreen';
+import { setUiCommands, uiCommands } from './commands';
+import { uiStore, type PlayerSnapshot } from './store';
+
+const pristine = {...uiStore.getState()};
+const pristineCommands = {...uiCommands};
+
+function open(patch: {cash?: number; atSurface?: boolean; player?: Partial<PlayerSnapshot>} = {}): HTMLDialogElement {
+  const rendered = render(<ShopScreen />);
+  act(() => {
+    const store = uiStore.getState();
+    store.syncHud({...store.hud, cash: patch.cash ?? 60, atSurface: patch.atSurface ?? true});
+    store.syncPlayer({...store.player, ...patch.player});
+    store.setShopOpen(true);
+  });
+  return rendered.container.querySelector('dialog')!;
+}
+
+function row(id: string): HTMLElement {
+  return document.querySelector<HTMLElement>(`[data-shop-upgrade="${id}"], [data-shop-item="${id}"], [data-shop-service="${id}"]`)!;
+}
+
+function status(id: string): string | null {
+  return row(id).querySelector('[data-shop-status]')!.textContent;
+}
+
+function button(id: string): HTMLButtonElement {
+  return row(id).querySelector('button')!;
+}
+
+beforeEach(() => {
+  uiStore.setState(pristine);
+});
+
+afterEach(() => {
+  cleanup();
+  setUiCommands(pristineCommands);
+});
+
+describe('shop dialog', () => {
+  it('opens as a modal, focuses the close button and reports the wallet', () => {
+    const dialog = open({cash: 250});
+
+    expect(dialog.open).toBe(true);
+    expect(document.activeElement?.id).toBe('shopCloseBtn');
+    expect(document.querySelector('[data-shop-cash]')?.textContent).toBe('$250 available');
+    expect(document.querySelector('[data-shop-location]')?.textContent).toBe('Surface depot');
+  });
+
+  it('closes when the store flag clears', () => {
+    const dialog = open();
+
+    act(() => { uiStore.getState().setShopOpen(false); });
+
+    expect(dialog.open).toBe(false);
+  });
+
+  it('dispatches close from the close button and from a backdrop press', () => {
+    const closeShop = vi.fn();
+    setUiCommands({closeShop});
+    const dialog = open();
+
+    fireEvent.click(document.getElementById('shopCloseBtn')!);
+    expect(closeShop).toHaveBeenCalledOnce();
+
+    fireEvent.pointerDown(dialog);
+    expect(closeShop).toHaveBeenCalledTimes(2);
+
+    // A press inside the card is not a dismissal.
+    fireEvent.pointerDown(document.getElementById('shop-card')!);
+    expect(closeShop).toHaveBeenCalledTimes(2);
+  });
+
+  it('enables only affordable purchases and says what is missing', () => {
+    open({cash: 130});
+
+    expect(button('cargo').disabled).toBe(false);
+    expect(status('cargo')).toBe('Ready');
+    expect(button('tank').disabled).toBe(true);
+    expect(status('tank')).toBe('Need $20');
+    expect(button('dynamite').disabled).toBe(false);
+    expect(button('teleporter').disabled).toBe(true);
+  });
+
+  it('disables every purchase away from the surface depot', () => {
+    open({cash: 1_000_000, atSurface: false});
+
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>('article button')];
+    expect(buttons.length).toBeGreaterThan(8);
+    expect(buttons.every(item => item.disabled)).toBe(true);
+    expect([...document.querySelectorAll('[data-shop-status]')].every(item => item.textContent === 'Surface depot only')).toBe(true);
+    expect(document.querySelector('[data-shop-location]')?.textContent).toBe('Return to surface');
+  });
+
+  it('routes each purchase to its command', () => {
+    const commands = {
+      buyUpgrade: vi.fn(),
+      refuel: vi.fn(),
+      repair: vi.fn(),
+      buyDynamite: vi.fn(),
+      buyTeleporter: vi.fn(),
+      buyGun: vi.fn(),
+      buyBullets: vi.fn()
+    };
+    setUiCommands(commands);
+    open({cash: 1_000_000, player: {fuel: 10, hull: 10, gunOwned: true}});
+
+    fireEvent.click(button('hull'));
+    expect(commands.buyUpgrade).toHaveBeenCalledWith('hull');
+    fireEvent.click(document.getElementById('visibilityBtn')!);
+    expect(commands.buyUpgrade).toHaveBeenCalledWith('visibility');
+    fireEvent.click(document.getElementById('fuelBtn')!);
+    expect(commands.refuel).toHaveBeenCalledOnce();
+    fireEvent.click(document.getElementById('repairBtn')!);
+    expect(commands.repair).toHaveBeenCalledOnce();
+    fireEvent.click(document.getElementById('shopDynamiteBtn')!);
+    expect(commands.buyDynamite).toHaveBeenCalledOnce();
+    fireEvent.click(document.getElementById('shopTeleporterBtn')!);
+    expect(commands.buyTeleporter).toHaveBeenCalledOnce();
+    fireEvent.click(document.getElementById('shopBulletsBtn')!);
+    expect(commands.buyBullets).toHaveBeenCalledOnce();
+  });
+
+  it('repaints rows when the ship snapshot changes', () => {
+    open({cash: 1_000_000});
+    expect(button('dynamite').disabled).toBe(false);
+    expect(document.querySelector('[data-shop-gun] button')?.textContent).toBe('Buy · $1500');
+
+    act(() => {
+      const store = uiStore.getState();
+      store.syncPlayer({...store.player, dynamite: 4, gunOwned: true, bullets: LIMITS.bullets.max});
+    });
+
+    expect(row('dynamite').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 4');
+    expect(document.querySelector('[data-shop-gun] button')?.textContent).toBe('Installed');
+    expect(document.querySelector<HTMLButtonElement>('[data-shop-item="bullets"] button')?.disabled).toBe(true);
+    expect(document.querySelector('[data-shop-item="bullets"] [data-shop-status]')?.textContent).toBe('Ammo full');
+  });
+});

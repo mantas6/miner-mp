@@ -1,0 +1,6 @@
+.toast { position: absolute; left: 50%; bottom: 112px; translate: -50% 8px; padding: 12px 18px; font-size: var(--fs-lg); border-radius: 999px; background: rgba(8, 12, 20, .78); border: 1px solid var(--hairline-3); color: var(--ink); opacity: 0; transition: .2s; pointer-events: none; box-shadow: 0 12px 35px rgba(0,0,0,.35); }
+.toast.show { opacity: 1; translate: -50% 0; }
+
+@media (max-width: 760px) {
+  .toast { width: max-content; max-width: 88vw; font-size: var(--fs-sm); padding: 9px 12px; text-align: center; }
+}

@@ -1,0 +1,57 @@
+/* Global foundation: design tokens plus the element-level styling every
+   component inherits. Component-specific rules live in the `*.module.css` file
+   next to the component that renders them. */
+:root {
+  color-scheme: dark;
+  --bg: #080b12;
+  --panel: rgba(10, 15, 24, .62);
+  --ink: #eef4ff;
+  --muted: #99a8c3;
+  --gold: #ffc857;
+  --red: #ff5d73;
+  --green: #69db7c;
+  --blue: #5cc8ff;
+  /* radius scale: collapses drifted 9-26px values */
+  --r-sm: 10px;
+  --r-md: 13px;
+  --r-lg: 18px;
+  --r-xl: 22px;
+  /* type scale: collapses drifted 9-25px values */
+  --fs-3xs: 10px;
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 17px;
+  --fs-xl: 22px;
+  --fs-2xl: 25px;
+  /* white hairlines, grouped by intensity */
+  --hairline-1: rgba(255,255,255,.06);
+  --hairline-2: rgba(255,255,255,.09);
+  --hairline-3: rgba(255,255,255,.13);
+  /* shared glassmorphism recipe */
+  --glass-blur: blur(10px);
+  --glass-bg: linear-gradient(135deg, rgba(8,12,20,.74), rgba(19,28,45,.52));
+  --glass-border: 1px solid var(--hairline-3);
+  --glass-shadow: 0 16px 45px rgba(0,0,0,.28), inset 0 1px 0 var(--hairline-2);
+  /* button gradient family */
+  --btn-bg: linear-gradient(#38506f, #22324a);
+  --btn-bg-gold: linear-gradient(#786036, #4b3919);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: radial-gradient(circle at 40% 0%, #243653 0%, var(--bg) 55%); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; overflow-x: hidden; overscroll-behavior: none; }
+#shell { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 14px; }
+#game-panel { position: relative; width: 100%; height: calc(100vh - 28px); height: calc(100dvh - 28px); display: grid; place-items: center; touch-action: none; user-select: none; -webkit-user-select: none; outline: none; }
+canvas:focus, #game-panel:focus { outline: none; }
+canvas { width: 100%; height: 100%; border: 2px solid #344260; border-radius: var(--r-xl); background: #111; box-shadow: 0 28px 80px rgba(0,0,0,.55), inset 0 0 0 1px var(--hairline-1); touch-action: none; }
+meter { width: 100%; height: 18px; }
+button { margin: 0; padding: 11px 10px; border: 0; border-radius: var(--r-md); background: var(--btn-bg); color: var(--ink); font-size: var(--fs-md); font-weight: 850; cursor: pointer; box-shadow: inset 0 1px 0 var(--hairline-3), 0 8px 18px rgba(0,0,0,.2); text-shadow: 0 1px 0 rgba(0,0,0,.45); touch-action: manipulation; }
+button:hover:not(:disabled) { filter: brightness(1.13); transform: translateY(-1px); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { cursor: not-allowed; color: rgba(238,244,255,.38); background: linear-gradient(rgba(44,52,65,.55), rgba(24,30,39,.55)); box-shadow: inset 0 1px 0 var(--hairline-1); opacity: .58; }
+ul { margin: 0; padding: 0; list-style: none; color: #d3def3; font-size: var(--fs-sm); }
+kbd { background: #26364e; border: 1px solid #52617a; border-bottom-width: 3px; border-radius: 6px; padding: 1px 5px; color: #fff; }
+@media (max-width: 760px) {
+  meter { height: 15px; }
+  button { padding: 7px 6px; font-size: var(--fs-2xs); border-radius: var(--r-sm); }
+}

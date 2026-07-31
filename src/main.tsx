@@ -1,4 +1,4 @@
-import './styles/styles.css';
+import './styles/base.css';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { isDeveloperToolsEnabled } from './core/developer';
@@ -13,6 +13,9 @@ const developerToolsEnabled = isDeveloperToolsEnabled(
   import.meta.env.VITE_ENABLE_DEVELOPER_TOOLS
 );
 
+// The game module grabs the canvas and the panel at import time, so the first
+// render has to be committed synchronously before it loads. Everything else the
+// game needs from the UI now goes through the store.
 flushSync(() => {
   root.render(<MinerApp developerToolsEnabled={developerToolsEnabled} />);
 });

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDeveloperCash, isDeveloperToolsEnabled, updateDeveloperServiceControls } from './developer';
+import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, formatDeveloperServiceControl, grantDeveloperCash, isDeveloperToolsEnabled } from './developer';
 import { load, save } from '../persistence';
 import { createInitialState, respawnPlayer } from './state';
 
@@ -97,19 +97,12 @@ describe('developer ship services', () => {
 
   it('is a no-op at full and disables controls with clear full-state copy', () => {
     const state = createInitialState();
-    const container = document.createElement('div');
-    container.innerHTML = `
-      <div data-developer-service-row="fuel"><span data-developer-service-level></span><button data-developer-service="fuel"></button></div>
-      <div data-developer-service-row="hull"><span data-developer-service-level></span><button data-developer-service="hull"></button></div>
-    `;
 
     expect(developerRefuel(state.player)).toBe(false);
     expect(developerRepairHull(state.player)).toBe(false);
-    updateDeveloperServiceControls(container, state.player);
-
-    expect(container.querySelector<HTMLButtonElement>('[data-developer-service="fuel"]')?.disabled).toBe(true);
-    expect(container.querySelector<HTMLButtonElement>('[data-developer-service="fuel"]')?.textContent).toContain('already full');
-    expect(container.querySelector<HTMLButtonElement>('[data-developer-service="hull"]')?.disabled).toBe(true);
+    expect(formatDeveloperServiceControl(state.player, 'fuel')).toMatchObject({buttonDisabled: true});
+    expect(formatDeveloperServiceControl(state.player, 'fuel').buttonLabel).toContain('already full');
+    expect(formatDeveloperServiceControl(state.player, 'hull')).toMatchObject({buttonDisabled: true});
   });
 
   it('updates controls immediately and follows normal persisted upgrade maxima on restart', () => {
@@ -123,19 +116,13 @@ describe('developer ship services', () => {
     state.player.hullMax = 180;
     state.player.fuel = 20;
     state.player.hull = 30;
-    const container = document.createElement('div');
-    container.innerHTML = `
-      <div data-developer-service-row="fuel"><span data-developer-service-level></span><button data-developer-service="fuel"></button></div>
-      <div data-developer-service-row="hull"><span data-developer-service-level></span><button data-developer-service="hull"></button></div>
-    `;
 
     developerRefuel(state.player);
     developerRepairHull(state.player);
     save(state);
-    updateDeveloperServiceControls(container, state.player);
 
-    expect(container.querySelector('[data-developer-service-row="fuel"] span')?.textContent).toBe('Fuel 220/220');
-    expect(container.querySelector<HTMLButtonElement>('[data-developer-service="hull"]')?.disabled).toBe(true);
+    expect(formatDeveloperServiceControl(state.player, 'fuel').level).toBe('Fuel 220/220');
+    expect(formatDeveloperServiceControl(state.player, 'hull').buttonDisabled).toBe(true);
     const restored = createInitialState();
     load(restored);
     respawnPlayer(restored.player);

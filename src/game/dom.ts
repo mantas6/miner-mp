@@ -1,13 +1,13 @@
+// The imperative handles the simulation still needs: the canvas it draws into and
+// the panel that sizes it. Everything else the game used to poke — meters, labels,
+// buttons, overlays, toasts — is now React reading `src/ui/store.ts`.
+
 import { setViewportSize, viewport } from './viewport';
 
 function requireElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
   if (!element) throw new Error(`Missing required game DOM element #${id}`);
   return element as T;
-}
-
-function optionalElement<T extends HTMLElement>(id: string): T | null {
-  return document.getElementById(id) as T | null;
 }
 
 export const canvas = requireElement<HTMLCanvasElement>('game');
@@ -36,85 +36,3 @@ function resizeCanvas(): void {
 
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
-
-export const ui = {
-  cash: requireElement<HTMLElement>('cash'),
-  depth: requireElement<HTMLElement>('depth'),
-  fuel: requireElement<HTMLMeterElement>('fuel'),
-  hull: requireElement<HTMLMeterElement>('hull'),
-  cargo: requireElement<HTMLMeterElement>('cargo'),
-  fuelLabel: requireElement<HTMLElement>('fuelLabel'),
-  hullLabel: requireElement<HTMLElement>('hullLabel'),
-  cargoLabel: requireElement<HTMLElement>('cargoLabel'),
-  extractionStatus: requireElement<HTMLElement>('extractionStatus'),
-  objectiveInfoStatus: requireElement<HTMLElement>('objectiveInfoStatus'),
-  extractionInfoStatus: requireElement<HTMLElement>('extractionInfoStatus'),
-  cargoList: requireElement<HTMLElement>('cargoList'),
-  expeditionStats: requireElement<HTMLElement>('expeditionStats'),
-  developerUpgrades: optionalElement<HTMLElement>('developerUpgrades'),
-  toast: requireElement<HTMLElement>('toast'),
-  fuelWarning: requireElement<HTMLElement>('fuel-warning'),
-  soundBtn: requireElement<HTMLButtonElement>('soundBtn'),
-  connectionStatus: requireElement<HTMLElement>('connectionStatus'),
-  lobby: requireElement<HTMLElement>('lobby-screen'),
-  lobbyConnectionStatus: requireElement<HTMLElement>('lobbyConnectionStatus'),
-  serverUrl: requireElement<HTMLInputElement>('serverUrl'),
-  connectBtn: requireElement<HTMLButtonElement>('connectBtn'),
-  soloBtn: requireElement<HTMLButtonElement>('soloBtn'),
-  intro: requireElement<HTMLElement>('intro'),
-  sell: requireElement<HTMLButtonElement>('sell'),
-  shopBtn: requireElement<HTMLButtonElement>('shopBtn'),
-  fuelBtn: requireElement<HTMLButtonElement>('fuelBtn'),
-  repairBtn: requireElement<HTMLButtonElement>('repairBtn'),
-  cargoBtn: requireElement<HTMLButtonElement>('cargoBtn'),
-  tankBtn: requireElement<HTMLButtonElement>('tankBtn'),
-  hullBtn: requireElement<HTMLButtonElement>('hullBtn'),
-  drillBtn: requireElement<HTMLButtonElement>('drillBtn'),
-  visibilityBtn: requireElement<HTMLButtonElement>('visibilityBtn'),
-  dynamiteBtn: requireElement<HTMLButtonElement>('dynamiteBtn'),
-  teleporterBtn: requireElement<HTMLButtonElement>('teleporterBtn'),
-  gunBtn: requireElement<HTMLButtonElement>('gunBtn'),
-  shopDynamiteBtn: requireElement<HTMLButtonElement>('shopDynamiteBtn'),
-  shopTeleporterBtn: requireElement<HTMLButtonElement>('shopTeleporterBtn'),
-  shopGunBtn: requireElement<HTMLButtonElement>('shopGunBtn'),
-  shopBulletsBtn: requireElement<HTMLButtonElement>('shopBulletsBtn'),
-  shopScreen: requireElement<HTMLElement>('shop-screen'),
-  shopCard: requireElement<HTMLElement>('shop-card'),
-  shopCloseBtn: requireElement<HTMLButtonElement>('shopCloseBtn'),
-  infoBtn: requireElement<HTMLButtonElement>('infoBtn'),
-  infoScreen: requireElement<HTMLElement>('info-screen'),
-  infoCard: requireElement<HTMLElement>('info-card'),
-  infoCloseBtn: requireElement<HTMLButtonElement>('infoCloseBtn'),
-  resetPlayerDataBtn: optionalElement<HTMLButtonElement>('resetPlayerDataBtn'),
-  resetWorldStateBtn: optionalElement<HTMLButtonElement>('resetWorldStateBtn')
-};
-
-export type GameUi = typeof ui;
-
-const TOAST_VISIBLE_MS = 1800;
-let toastTimer = 0;
-
-/** Show a transient status line; a later toast replaces the current one. */
-export function showToast(message: string): void {
-  ui.toast.textContent = message;
-  ui.toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => ui.toast.classList.remove('show'), TOAST_VISIBLE_MS);
-}
-
-export function setSoundIcon(on: boolean): void {
-  ui.soundBtn.textContent = on ? '🔊' : '🔇';
-  ui.soundBtn.setAttribute('aria-label', on ? 'Disable sound' : 'Enable optional sound');
-  ui.soundBtn.title = on ? 'Disable sound' : 'Enable optional sound';
-}
-
-export function setSoundUnavailableStatus(message = 'Sound unavailable in this browser'): void {
-  ui.soundBtn.setAttribute('aria-label', message);
-  ui.soundBtn.title = message;
-}
-
-export function setSoundBlockedStatus(): void {
-  setSoundIcon(false);
-  ui.soundBtn.setAttribute('aria-label', 'Sound blocked — press Sound after a tap/click');
-  ui.soundBtn.title = 'Sound blocked — press Sound after a tap/click';
-}

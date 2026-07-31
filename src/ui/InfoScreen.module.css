@@ -1,0 +1,56 @@
+/* See ShopScreen.module.css for why the modal `<dialog>` is fixed at inset 14px. */
+.screen { position: fixed; inset: 14px; z-index: 16; margin: 0; width: auto; height: auto; max-width: none; max-height: none; border: 0; color: inherit; display: grid; place-items: center; padding: 20px; background: rgba(4,7,12,.72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: auto; overflow: visible; }
+.screen:not([open]) { display: none; }
+.screen::backdrop { background: transparent; }
+
+.card { width: min(720px, 94vw); max-height: min(560px, 88vh); overflow: auto; padding: 20px; border-radius: var(--r-xl); background: linear-gradient(145deg, rgba(12,18,29,.96), rgba(30,40,58,.94)); border: 1px solid var(--hairline-3); box-shadow: 0 30px 90px rgba(0,0,0,.58), inset 0 1px 0 var(--hairline-2); }
+.card [role="tabpanel"] { min-width: 0; }
+.card [role="tabpanel"][hidden] { display: none; }
+.card [role="tabpanel"]:focus { outline: 2px solid rgba(92,200,255,.78); outline-offset: 6px; border-radius: 8px; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.header h2, .card h3 { margin: 0; color: var(--gold); }
+.card h3 { margin-top: 16px; font-size: var(--fs-lg); letter-spacing: .04em; text-transform: uppercase; }
+.closeBtn { composes: closeBtn from './common.module.css'; }
+.navigation { display: flex; gap: 7px; margin: 0 -2px 4px; padding: 2px; overflow-x: auto; scrollbar-width: thin; }
+.navigation button { flex: 1 0 auto; padding: 8px 10px; font-size: var(--fs-xs); line-height: 1.1; }
+.navigation button[aria-selected="true"] { background: var(--btn-bg-gold); color: #fff0bb; box-shadow: inset 0 0 0 1px rgba(255,216,108,.72), 0 5px 14px rgba(0,0,0,.25); }
+.navigation button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.controlList, .cargoList, .prospectingGuide, .expeditionStats, .dangerGuide { display: grid; gap: 8px; margin-top: 10px; }
+.controlList li, .cargoList li, .prospectingGuide li, .expeditionStats li, .dangerGuide li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: var(--r-md); background: rgba(255,255,255,.055); border: 1px solid var(--hairline-2); }
+.prospectingGuide li { grid-template-columns: auto minmax(88px, 1fr) auto auto; }
+.expeditionStats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.expeditionStats li { grid-template-columns: 1fr auto; align-items: start; }
+.expeditionStats strong { color: #eef4ff; font-size: var(--fs-lg); font-variant-numeric: tabular-nums; text-align: right; }
+.statLabel { color: var(--muted); font-size: var(--fs-2xs); font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
+.statDetail { grid-column: 1 / -1; color: #dbe8ff; font-size: var(--fs-xs); line-height: 1.25; }
+.prospectingTip, .objectiveStatus, .extractionStatus { margin: 8px 0 0; padding: 10px 12px; border-radius: var(--r-md); font-size: var(--fs-sm); font-weight: 800; line-height: 1.35; }
+.prospectingTip { background: rgba(255,200,87,.10); border: 1px solid rgba(255,200,87,.22); color: #ffe39a; }
+.objectiveStatus { background: rgba(92,200,255,.12); border: 1px solid rgba(92,200,255,.28); color: #d9f3ff; }
+.extractionStatus { background: rgba(255,200,87,.11); border: 1px solid rgba(255,216,108,.26); color: #fff0bb; }
+.dangerTip { margin: 8px 0 0; padding: 10px 12px; border-radius: var(--r-md); background: rgba(255,93,115,.10); border: 1px solid rgba(255,93,115,.24); color: #ffdce2; font-size: var(--fs-sm); font-weight: 800; line-height: 1.35; }
+.dangerGuide li { grid-template-columns: minmax(132px, .42fr) 1fr; align-items: start; }
+.dangerGuide strong { color: #ffe39a; font-size: var(--fs-xs); letter-spacing: .04em; text-transform: uppercase; }
+.dangerGuide span { color: #dbe8ff; font-size: var(--fs-xs); line-height: 1.35; }
+.controlList li span { color: #dbe8ff; }
+.oreIcon { width: 22px; height: 22px; border-radius: 50% 48% 45% 52%; display: inline-block; box-shadow: inset -4px -5px 0 rgba(0,0,0,.22), inset 3px 3px 0 rgba(255,255,255,.24), 0 0 0 2px rgba(255,255,255,.12); }
+.oreName { font-weight: 900; color: #eef4ff; }
+.oreCount, .oreValue, .oreDepth { color: var(--muted); font-variant-numeric: tabular-nums; }
+.oreDepth { color: #dbe8ff; font-size: var(--fs-xs); font-weight: 850; text-align: right; }
+.emptyCargo { grid-template-columns: 1fr !important; color: var(--muted); text-align: center; }
+
+@media (max-width: 760px) {
+  .screen { padding: 10px; }
+  .card { max-height: 86vh; padding: 14px; border-radius: var(--r-lg); }
+  .navigation { gap: 5px; }
+  .navigation button { padding: 7px 8px; font-size: var(--fs-3xs); }
+  .controlList li, .cargoList li { grid-template-columns: auto 1fr; padding: 8px 9px; }
+  .expeditionStats { grid-template-columns: 1fr; }
+  .expeditionStats li { padding: 8px 9px; gap: 6px; }
+  .expeditionStats strong { font-size: var(--fs-md); }
+  .prospectingGuide li { grid-template-columns: auto 1fr auto; padding: 8px 9px; gap: 8px; }
+  .prospectingTip { font-size: var(--fs-xs); padding: 8px 9px; }
+  .dangerGuide li { grid-template-columns: 1fr; padding: 8px 9px; gap: 4px; }
+  .dangerTip { font-size: var(--fs-xs); padding: 8px 9px; }
+  .oreValue, .oreDepth { grid-column: 2; text-align: left; }
+}

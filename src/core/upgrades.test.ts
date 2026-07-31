@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ECONOMY, LIMITS } from './balance';
 import { load, save } from '../persistence';
 import { createInitialState } from './state';
-import { applyPlayerUpgrade, getPlayerUpgradeProgress, updateDeveloperUpgradeControls } from './upgrades';
+import { applyPlayerUpgrade, formatDeveloperUpgradeControl, getPlayerUpgradeProgress } from './upgrades';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -69,14 +69,12 @@ describe('developer player upgrades', () => {
   it('disables a developer control at max and displays current/max level', () => {
     const state = createInitialState();
     state.player.drill = LIMITS.drill.max;
-    const container = document.createElement('div');
-    container.innerHTML = '<div data-upgrade-row="drill"><span data-upgrade-level></span><button data-developer-upgrade="drill"></button></div>';
 
-    updateDeveloperUpgradeControls(container, state.player);
+    const control = formatDeveloperUpgradeControl(state.player, 'drill');
 
-    expect(container.querySelector('span')?.textContent).toBe('Level 99/99 · 100/100');
-    expect(container.querySelector('button')?.disabled).toBe(true);
-    expect(container.querySelector('button')?.textContent).toContain('at max');
+    expect(control.level).toBe('Level 99/99 · 100/100');
+    expect(control.buttonDisabled).toBe(true);
+    expect(control.buttonLabel).toContain('at max');
   });
 
   it('persists a free upgrade through the regular save path', () => {

@@ -1,10 +1,9 @@
-import { setSoundBlockedStatus, setSoundIcon, setSoundUnavailableStatus } from '../game/dom';
-import type { GameUi } from '../game/dom';
+import { setSoundBlockedStatus, setSoundIcon, setSoundUnavailableStatus } from '../ui/store';
 import type { AudioController } from '../core/types';
 
 type ToastFn = (message: string) => void;
 
-export function createAudio(ui: GameUi, toast: ToastFn): AudioController {
+export function createAudio(toast: ToastFn): AudioController {
   const audio: AudioController = {
     ctx: null,
     enabled: false,
