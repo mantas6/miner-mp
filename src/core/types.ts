@@ -164,7 +164,10 @@ export interface AudioController {
   wantsSound: boolean;
   master: GainNode | null;
   musicGain: GainNode | null;
-  /** Track the soundtrack plays (or will play once its render lands). */
+  musicEl: HTMLAudioElement | null;
+  musicTimer: number | null;
+  step: number;
+  /** Track the soundtrack element is pointed at. */
   currentTrackId: TrackId;
   lastMove: number;
   lastLowFuel: number;
@@ -182,8 +185,11 @@ export interface AudioController {
   enemyWake(): void;
   alarm(): void;
   lowFuel(): void;
-  /** True when a loop actually started; false while the render is still pending. */
-  startMusic(trackId?: TrackId): boolean;
+  /** True when the shipped audio played; false when the synth fallback took over. */
+  startMusic(): Promise<boolean>;
+  startSynthMusic(): void;
+  musicNote(freq: number, dur: number, type: OscillatorType, gain: number, start: number): void;
   stopMusic(): void;
+  /** Point the soundtrack at another shipped track, keeping playback state. */
   setTrack(trackId: TrackId): void;
 }

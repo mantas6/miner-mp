@@ -1,117 +1,16 @@
 import { setSoundBlockedStatus, setSoundIcon, setSoundUnavailableStatus } from '../ui/store';
-import { DEFAULT_TRACK_ID } from './tracks';
-import type { TrackId } from './tracks';
-import type { SoundtrackRenderedMessage, SoundtrackWorkerRequest, SoundtrackWorkerResponse } from './worker-protocol';
+import { DEFAULT_TRACK_ID, TRACKS } from './tracks';
+import type { MusicTrack, TrackId } from './tracks';
 import type { AudioController } from '../core/types';
 
 type ToastFn = (message: string) => void;
 
-/**
- * Music level relative to the master bus. The retired MP3 played through an
- * HTMLAudioElement at volume 0.36, i.e. outside the graph; the rendered buffer
- * goes through `master` (0.55), so 0.36 / 0.55 keeps the same loudness.
- */
-const MUSIC_GAIN = 0.65;
-
-/** Fade applied when a loop starts, long enough to hide the buffer's first sample. */
-const MUSIC_FADE_IN = 0.3;
-
-/** Fade applied before a source is stopped, so pausing does not pop. */
-const MUSIC_FADE_OUT = 0.06;
-
 export function createAudio(toast: ToastFn): AudioController {
-  /** Channels straight from the worker, held until an AudioContext can own them. */
-  const rendered = new Map<TrackId, SoundtrackRenderedMessage>();
-  /** Playable buffers, built lazily on first playback of each track. */
-  const buffers = new Map<TrackId, AudioBuffer>();
-  /** Tracks whose render is in flight, so a track is never requested twice. */
-  const requested = new Set<TrackId>();
-  let worker: Worker | null = null;
-  let workerFailed = false;
-  let warnedUnavailable = false;
-  let source: AudioBufferSourceNode | null = null;
-  /** Per-source fade so a stop and the next start never fight over one gain node. */
-  let sourceFade: GainNode | null = null;
-  /** Playback is wanted but the track has not finished rendering yet. */
-  let pending = false;
-  /** Offset into the loop where the next start resumes from. */
-  let resumeOffset = 0;
-  /** `ctx.currentTime` when the live source started, for the resume arithmetic. */
-  let startedAtCtxTime = 0;
+  /** Which encoding this browser gets; decided once, when the element is made. */
+  let preferMp3 = true;
 
-  function musicUnavailable(): void {
-    if (warnedUnavailable) return;
-    warnedUnavailable = true;
-    toast('Music unavailable in this browser.');
-  }
-
-  /** Music is off for the rest of the session; sound effects carry on regardless. */
-  function failWorker(): void {
-    if (workerFailed) return;
-    workerFailed = true;
-    pending = false;
-    if (worker) {
-      worker.onmessage = null;
-      worker.onerror = null;
-      worker.terminate();
-      worker = null;
-    }
-    // Never at boot: only someone who has sound on gets told music is missing.
-    if (audio.enabled) musicUnavailable();
-  }
-
-  function requestRender(trackId: TrackId): void {
-    if (!worker || workerFailed) return;
-    if (requested.has(trackId) || rendered.has(trackId) || buffers.has(trackId)) return;
-    requested.add(trackId);
-    const request: SoundtrackWorkerRequest = { type: 'render', trackId };
-    // `Worker.postMessage` takes no targetOrigin; the rule matches `Window.postMessage`.
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin
-    worker.postMessage(request);
-  }
-
-  function handleResponse(message: SoundtrackWorkerResponse): void {
-    if (message.type === 'error') {
-      failWorker();
-      return;
-    }
-    requested.delete(message.trackId);
-    rendered.set(message.trackId, message);
-    if (pending && message.trackId === audio.currentTrackId) audio.startMusic(message.trackId);
-  }
-
-  function spawnWorker(): void {
-    if (typeof Worker === 'undefined') {
-      failWorker();
-      return;
-    }
-    try {
-      // `new URL(..., import.meta.url)` is the form Vite compiles into a worker chunk.
-      worker = new Worker(new URL('./soundtrack.worker.ts', import.meta.url), { type: 'module' });
-    } catch {
-      failWorker();
-      return;
-    }
-    worker.onmessage = (event: MessageEvent<SoundtrackWorkerResponse>) => { handleResponse(event.data); };
-    worker.onerror = () => { failWorker(); };
-    requestRender(audio.currentTrackId);
-  }
-
-  /** The AudioBuffer for a rendered track, or null while it is still rendering. */
-  function ensureBuffer(trackId: TrackId): AudioBuffer | null {
-    const cached = buffers.get(trackId);
-    if (cached) return cached;
-    const raw = rendered.get(trackId);
-    const ctx = audio.ctx;
-    if (!raw || !ctx) return null;
-    const buffer = ctx.createBuffer(2, raw.left.length, raw.sampleRate);
-    // `set` rather than `copyToChannel`: the transferred views are typed over
-    // `ArrayBufferLike`, which `copyToChannel` will not accept.
-    buffer.getChannelData(0).set(raw.left);
-    buffer.getChannelData(1).set(raw.right);
-    buffers.set(trackId, buffer);
-    rendered.delete(trackId);
-    return buffer;
+  function trackSrc(track: MusicTrack): string {
+    return preferMp3 ? track.mp3 : track.ogg;
   }
 
   const audio: AudioController = {
@@ -120,6 +19,9 @@ export function createAudio(toast: ToastFn): AudioController {
     wantsSound: true,
     master: null,
     musicGain: null,
+    musicEl: null,
+    musicTimer: null,
+    step: 0,
     currentTrackId: DEFAULT_TRACK_ID,
     lastMove: 0,
     lastLowFuel: 0,
@@ -135,8 +37,14 @@ export function createAudio(toast: ToastFn): AudioController {
       this.master.gain.value = 0.55;
       this.master.connect(this.ctx.destination);
       this.musicGain = this.ctx.createGain();
-      this.musicGain.gain.value = MUSIC_GAIN;
+      this.musicGain.gain.value = 0.065;
       this.musicGain.connect(this.master);
+      this.musicEl = new Audio();
+      preferMp3 = Boolean(this.musicEl.canPlayType && this.musicEl.canPlayType('audio/mpeg'));
+      this.musicEl.src = trackSrc(TRACKS[this.currentTrackId]);
+      this.musicEl.loop = true;
+      this.musicEl.preload = 'auto';
+      this.musicEl.volume = 0.36;
     },
     async enable() {
       this.wantsSound = true;
@@ -146,10 +54,9 @@ export function createAudio(toast: ToastFn): AudioController {
         if (this.ctx.state === 'suspended') await this.ctx.resume();
         this.enabled = true;
         setSoundIcon(true);
-        const music = this.startMusic();
+        await this.startMusic();
         this.blip(720, 0.10, 'square', 0.11);
         toast('Soundtrack on');
-        if (!music && workerFailed) musicUnavailable();
         return true;
       } catch {
         this.enabled = false;
@@ -205,68 +112,63 @@ export function createAudio(toast: ToastFn): AudioController {
     enemyWake() { this.blip(110, 0.10, 'square', 0.12); setTimeout(()=>this.blip(150, 0.12, 'square', 0.10), 85); },
     alarm() { this.blip(180, 0.12, 'square', 0.13); setTimeout(()=>this.blip(130, 0.16, 'square', 0.13), 120); },
     lowFuel() { this.blip(880, 0.09, 'square', 0.10, -120); setTimeout(()=>this.blip(660, 0.13, 'square', 0.10, -90), 120); },
-    startMusic(trackId?: TrackId) {
-      const id = trackId ?? this.currentTrackId;
-      this.currentTrackId = id;
-      pending = false;
-      if (!this.enabled || !this.ctx || !this.musicGain || workerFailed) return false;
-      const buffer = ensureBuffer(id);
-      if (!buffer) {
-        // Silence for now; the worker's `rendered` message starts playback.
-        pending = true;
-        requestRender(id);
-        return false;
-      }
+    async startMusic() {
       this.stopMusic();
-      const ctx = this.ctx;
-      const now = ctx.currentTime;
-      const src = ctx.createBufferSource();
-      const fade = ctx.createGain();
-      src.buffer = buffer;
-      src.loop = true;
-      // The bus already sits at MUSIC_GAIN, so this envelope only rides 0 -> 1.
-      fade.gain.setValueAtTime(0.0001, now);
-      fade.gain.linearRampToValueAtTime(1, now + MUSIC_FADE_IN);
-      src.connect(fade);
-      fade.connect(this.musicGain);
-      src.start(now, resumeOffset % buffer.duration);
-      startedAtCtxTime = now;
-      source = src;
-      sourceFade = fade;
-      return true;
+      if (this.musicEl) {
+        this.musicEl.currentTime = this.musicEl.currentTime || 0;
+        try {
+          await this.musicEl.play();
+          return true;
+        } catch {
+          this.startSynthMusic();
+          return false;
+        }
+      }
+      this.startSynthMusic();
+      return false;
     },
-    stopMusic() {
-      pending = false;
-      const src = source;
-      const fade = sourceFade;
-      if (!src || !fade || !this.ctx) return;
-      source = null;
-      sourceFade = null;
-      const now = this.ctx.currentTime;
-      const duration = src.buffer ? src.buffer.duration : 0;
-      if (duration > 0) resumeOffset = (resumeOffset + Math.max(0, now - startedAtCtxTime)) % duration;
-      const stopAt = now + MUSIC_FADE_OUT;
-      fade.gain.cancelScheduledValues(now);
-      fade.gain.setValueAtTime(fade.gain.value, now);
-      fade.gain.linearRampToValueAtTime(0.0001, stopAt);
-      src.onended = () => { src.disconnect(); fade.disconnect(); };
-      src.stop(stopAt);
+    startSynthMusic() {
+      const bass = [55,55,65.4,55,73.4,65.4,49,49];
+      const lead = [220,0,247,262,0,196,185,0,220,247,294,262,0,196,165,0];
+      this.musicTimer = window.setInterval(() => {
+        if (!this.enabled || !this.ctx) return;
+        const i = this.step++;
+        const now = this.ctx.currentTime;
+        const root = bass[i % bass.length];
+        this.musicNote(root, 0.28, 'sine', 0.026, now);
+        if (i % 2 === 0) {
+          const f = lead[(i/2) % lead.length | 0];
+          if (f) this.musicNote(f, 0.16, 'triangle', 0.018, now + 0.02);
+        }
+      }, 240);
     },
+    musicNote(freq: number, dur: number, type: OscillatorType, gain: number, start: number) {
+      if (!this.ctx || !this.musicGain) return;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      const filt = this.ctx.createBiquadFilter();
+      osc.type = type; osc.frequency.value = freq;
+      filt.type = 'lowpass'; filt.frequency.value = 850;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(gain, start + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      osc.connect(filt); filt.connect(g); g.connect(this.musicGain);
+      osc.start(start); osc.stop(start + dur + 0.05);
+    },
+    stopMusic() { if (this.musicTimer) clearInterval(this.musicTimer); this.musicTimer = null; if (this.musicEl) this.musicEl.pause(); },
     setTrack(trackId: TrackId) {
       if (trackId === this.currentTrackId) return;
-      const wasActive = source !== null || pending;
-      this.stopMusic();
+      // Swapping the source pauses the element, so remember the state first and
+      // pick playback back up on the new track from its own beginning.
+      const wasPlaying = this.musicTimer !== null || (this.musicEl !== null && !this.musicEl.paused);
       this.currentTrackId = trackId;
-      // A different track has no meaningful position to resume from.
-      resumeOffset = 0;
-      if (wasActive) this.startMusic(trackId);
-      else requestRender(trackId);
+      if (this.musicEl) {
+        this.musicEl.src = trackSrc(TRACKS[trackId]);
+        this.musicEl.currentTime = 0;
+      }
+      if (wasPlaying) void this.startMusic();
     }
   };
-
-  // Rendering a loop takes about a second, so it starts during boot rather than
-  // on the first gesture. Music being unavailable never blocks sound effects.
-  spawnWorker();
 
   return audio;
 }

@@ -138,6 +138,9 @@ export function createAudioStub(): AudioStub {
     wantsSound: false,
     master: null,
     musicGain: null,
+    musicEl: null,
+    musicTimer: null,
+    step: 0,
     currentTrackId: DEFAULT_TRACK_ID,
     lastMove: 0,
     lastLowFuel: 0,
@@ -155,7 +158,9 @@ export function createAudioStub(): AudioStub {
     enemyWake: cue('enemyWake'),
     alarm: cue('alarm'),
     lowFuel: cue('lowFuel'),
-    startMusic: () => { played.push('startMusic'); return true; },
+    startMusic: async () => { played.push('startMusic'); return true; },
+    startSynthMusic: cue('startSynthMusic'),
+    musicNote: cue('musicNote'),
     stopMusic: cue('stopMusic'),
     setTrack: cue('setTrack')
   };
