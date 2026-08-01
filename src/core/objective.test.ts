@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STARTING } from './balance';
-import { formatExpeditionObjective, motherlodeDepthMeters, nextOreMilestone } from './objective';
-import { MOTHERLODE_ROW, ORES, START_Y } from '../../shared/constants';
+import { formatExpeditionObjective, nextOreMilestone } from './objective';
+import { ORES, START_Y } from '../../shared/constants';
 
 const player = {
   y: START_Y,
@@ -68,14 +68,19 @@ describe('expedition objective helper', () => {
     })).toBe('Objective: Motherlode core secured — return alive to the surface depot to complete extraction.');
   });
 
-  it('uses Motherlode progress once all ore bands are unlocked', () => {
-    expect(motherlodeDepthMeters(MOTHERLODE_ROW, START_Y)).toBe(10000);
-    expect(formatExpeditionObjective({
+  it('keeps hauling the richest seam once every ore band is unlocked', () => {
+    expect(nextOreMilestone(8600)).toBeNull();
+    // The mine has no bottom, so the deep-run objective must never name a final
+    // target such as the old Motherlode-core-at-10,000 m goal.
+    const objective = formatExpeditionObjective({
       player: { ...player, y: START_Y + 860 },
       cash: 200,
       cargoCount: 0,
       currentCargoValue: 0,
       atSurface: false
-    })).toBe('Objective: push toward the Motherlode core at 10000 m (1400 m deeper).');
+    });
+
+    expect(objective).toBe('Objective: work the Core Shard depths, fill the bay, and get home alive.');
+    expect(objective).not.toContain('Motherlode');
   });
 });

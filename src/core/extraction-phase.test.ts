@@ -42,10 +42,11 @@ describe('Motherlode extraction presentation', () => {
     expect(many.hud).toContain('2 Motherlode extractions banked');
   });
 
-  it('hides the HUD line before the first core is claimed', () => {
+  it('hides the HUD line before the first core is claimed and offers the core as a bonus, not the goal', () => {
     const presentation = formatExtractionPresentation({ phase: 'none', motherlodeExtractions: 0, reward: REWARD });
 
     expect(presentation.hud).toBeNull();
-    expect(presentation.info).toContain('10,000 m');
+    expect(presentation.info).toContain('$5,000');
+    expect(presentation.info).not.toContain('10,000 m');
   });
 });

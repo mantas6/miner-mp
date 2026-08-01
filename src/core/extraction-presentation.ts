@@ -48,8 +48,10 @@ export function formatExtractionPresentation({
     };
   }
 
+  // The mine has no bottom and the core is a one-off bonus rather than the end
+  // of the run, so this reads as an opportunity instead of the run's objective.
   return {
     hud: null,
-    info: 'Crack the Motherlode core at 10,000 m, then return alive to the surface depot to complete extraction.'
+    info: `No Motherlode core banked yet — cracking one deep in the mine pays ${formattedReward} on the spot, and carrying it to the depot alive banks the extraction.`
   };
 }

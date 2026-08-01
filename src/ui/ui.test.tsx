@@ -332,9 +332,14 @@ describe('store-driven HUD', () => {
     expect(target.textContent).toBe('↓ 550 m to Silver');
     expect(target.dataset.kind).toBe('ore');
 
-    patchHud({depthTarget: 'Motherlode core', depthTargetKind: 'motherlode', depthTargetRemaining: 0});
-    expect(target.textContent).toBe('↓ 0 m to Motherlode core');
+    patchHud({depthTarget: 'Motherlode core', depthTargetKind: 'motherlode', depthTargetRemaining: 1400});
+    expect(target.textContent).toBe('↓ 1400 m to Motherlode core');
     expect(target.dataset.kind).toBe('motherlode');
+
+    // Below the core the ladder keeps rolling, so the caption must too.
+    patchHud({depthTarget: '12000 m depth record', depthTargetKind: 'deep', depthTargetRemaining: 800});
+    expect(target.textContent).toBe('↓ 800 m to 12000 m depth record');
+    expect(target.dataset.kind).toBe('deep');
   });
 
   it('mutes music and sound effects from separate buttons', () => {

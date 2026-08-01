@@ -22,15 +22,26 @@ describe('expedition depth milestone helper', () => {
     });
   });
 
-  it('uses the Motherlode after the last ore band and never reports negative distance', () => {
-    const coreRow = MOTHERLODE_ROW;
+  it('uses the Motherlode as the last named landmark after the final ore band', () => {
     expect(getDepthMilestone(START_Y + 860, ORES, START_Y, MOTHERLODE_ROW)).toMatchObject({
       kind: 'motherlode',
       target: 'Motherlode core',
       depthMeters: 10000,
       remainingMeters: 1400
     });
-    expect(formatDepthMilestone(coreRow + 20)).toBe('Depth target: Motherlode core — 0 m deeper.');
+  });
+
+  it('rolls on past the core instead of freezing on a cleared target', () => {
+    // The world generates indefinitely below the core, so the readout keeps
+    // handing out fresh depth records rather than reporting "0 m deeper" forever.
+    expect(getDepthMilestone(MOTHERLODE_ROW, ORES, START_Y, MOTHERLODE_ROW)).toEqual({
+      kind: 'deep',
+      target: '11000 m depth record',
+      depthMeters: 11000,
+      remainingMeters: 1000
+    });
+    expect(formatDepthMilestone(MOTHERLODE_ROW + 20)).toBe('Depth target: 11000 m depth record — 800 m deeper.');
+    expect(formatDepthMilestone(MOTHERLODE_ROW + 120)).toBe('Depth target: 12000 m depth record — 800 m deeper.');
   });
 
   it('announces a cleared landmark by depth, naming what the seam holds', () => {
@@ -44,5 +55,8 @@ describe('expedition depth milestone helper', () => {
 
     expect(formatDepthMilestoneReached(getDepthMilestone(START_Y + 860)))
       .toContain('Depth 10000 m — Motherlode core');
+
+    expect(formatDepthMilestoneReached(getDepthMilestone(MOTHERLODE_ROW)))
+      .toBe('Depth 11000 m — new depth record. The mine keeps going; keep fuel for the climb home.');
   });
 });

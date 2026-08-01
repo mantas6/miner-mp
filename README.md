@@ -4,7 +4,7 @@
 <https://mantas6.github.io/miner-mp/>; run it locally with Vite (`npm run dev`)
 or build with `npm run build`.
 
-A small browser-based Motherload-style mining game. Mine ore, return to the surface depot, sell cargo, upgrade the ship, and survive deeper hazards/enemies until you reach the Motherlode core.
+A small browser-based Motherload-style mining game. Mine ore, return to the surface depot, sell cargo, upgrade the ship, and survive deeper hazards/enemies as the mine keeps going down.
 
 The client is React + TypeScript around a canvas: React paints the chrome from a
 zustand store, the canvas renders the mine, and the simulation runs in fixed
@@ -298,8 +298,9 @@ zooming the camera with the wheel or a trackpad.
 - Rock, magma pockets, depth, and enemies make deeper mining more dangerous:
   Tunnel Fiends first, then Skitterlings, Ironbacks, and Abyss Stalkers.
 - Enemies wake when exposed nearby; drill them before they chew through the hull.
-- The goal is the Motherlode core at 10,000 m: crack it, then return alive to the
-  depot to bank the extraction. The mine continues below it.
+- The mine has no bottom: the run's goal is to keep hauling richer loads up alive,
+  upgrading, and setting depth records. A Motherlode core sits at 10,000 m as a
+  bonus landmark — crack it, then return alive to the depot to bank the extraction.
 - Progress (cash, upgrades, stats, explored tiles, and the mine you dug) is saved
   locally; death keeps all of it and costs you the cargo and your position.
 

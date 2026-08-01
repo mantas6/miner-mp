@@ -1,5 +1,5 @@
-import { ECONOMY, FUEL } from './balance';
-import { MOTHERLODE_ROW, ORES, START_Y } from '../../shared/constants';
+import { FUEL } from './balance';
+import { ORES, START_Y } from '../../shared/constants';
 import { cheapestUpgrade } from './economy';
 import { oreMinimumDepthMeters } from './prospecting';
 import type { Ore, Player } from './types';
@@ -16,15 +16,10 @@ export interface ObjectiveInput {
   extractionPhase?: ExtractionPhase;
   ores?: Ore[];
   startY?: number;
-  motherlodeRow?: number;
 }
 
 export function currentDepthMeters(playerY: number, startY = START_Y): number {
   return Math.max(0, playerY - startY) * 10;
-}
-
-export function motherlodeDepthMeters(motherlodeRow = MOTHERLODE_ROW, startY = START_Y): number {
-  return Math.max(0, motherlodeRow - startY) * 10;
 }
 
 export function nextOreMilestone(depthMeters: number, ores: Ore[] = ORES, startY = START_Y): { name: string; depthMeters: number } | null {
@@ -41,8 +36,7 @@ export function formatExpeditionObjective({
   atSurface,
   extractionPhase = 'none',
   ores = ORES,
-  startY = START_Y,
-  motherlodeRow = MOTHERLODE_ROW
+  startY = START_Y
 }: ObjectiveInput): string {
   if (extractionPhase === 'returning') {
     return 'Objective: Motherlode core secured — return alive to the surface depot to complete extraction.';
@@ -86,11 +80,12 @@ export function formatExpeditionObjective({
     return `Objective: dig toward ${nextOre.name} around ${nextOre.depthMeters} m while keeping fuel for the trip home.`;
   }
 
-  const coreDepth = motherlodeDepthMeters(motherlodeRow, startY);
-  const remaining = Math.max(0, coreDepth - depth);
-  if (remaining > 0) {
-    return `Objective: push toward the Motherlode core at ${coreDepth} m (${remaining} m deeper).`;
+  // Past the last ore band the mine keeps going, so there is no final target to
+  // name: the run's goal stays "haul richer loads up alive and keep upgrading".
+  const richestOre = ores[ores.length - 1];
+  if (richestOre) {
+    return `Objective: work the ${richestOre.name} depths, fill the bay, and get home alive.`;
   }
 
-  return `Objective: crack the Motherlode core, claim $${ECONOMY.artifactReward}, and get home alive.`;
+  return 'Objective: dig deeper, fill the bay, and get home alive.';
 }
