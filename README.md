@@ -280,7 +280,7 @@ only (menus, buttons, modals, starting the run, restarting, audio unlock).
 ## Soundtrack
 
 The music is a pair of ordinary audio files shipped in the repo —
-`public/assets/music/golden-signal.mp3` (~3.5 MB) and `.ogg` (~2.3 MB) — served
+`public/assets/music/golden-signal.mp3` (~3.5 MB) and `.ogg` (~2.0 MB) — served
 as static assets, so the browser only downloads and loops them. They are build
 products: the source of truth is the `soundtrack/` Python package, which
 synthesizes the audio from scratch (stdlib only) and encodes it with ffmpeg.
