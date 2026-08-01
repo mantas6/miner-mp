@@ -21,6 +21,7 @@ Unit tests live next to the code they cover as `*.test.ts` (or `*.test.tsx` for 
 ```text
 miner-mp/
 ├── README.md
+├── AGENTS.md
 ├── index.html
 ├── package.json
 ├── tsconfig.json
@@ -81,6 +82,7 @@ miner-mp/
 
 | Path | Purpose |
 |---|---|
+| `AGENTS.md` | Working agreements for anyone changing the code: avoid UI clutter, keep the rules pure, verify with `./test.sh`. |
 | `index.html` | Main game page and root mount node; loaded by Vite. |
 | `shared/constants.ts` | World constants, camera scale (36px tiles), protocol limits, ore and artifact tables. Consumed by both the client and the relay server. |
 | `shared/exploration-codec.ts` | Fog-of-war index math and the run-length encoding shared with persistence and the relay. |

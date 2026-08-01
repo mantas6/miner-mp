@@ -132,9 +132,8 @@ describe('booting the game', () => {
 
   // Kept last: this one digs far enough to change cargo and depth for good.
   it('feeds the scanner, the return-fuel forecast and the milestone toast from one dive', () => {
-    // Underground there is a climb to pay for, so the forecast is on screen.
-    expect((document.getElementById('fuelReserve') as HTMLElement).hidden).toBe(false);
-    expect(document.getElementById('fuelReserveLabel')?.textContent).toContain('after climb');
+    // Underground there is a climb to pay for, so the fuel gauge splits for it.
+    expect(document.getElementById('fuel')?.getAttribute('aria-label')).toContain('after climbing home');
     expect(text('scanner')).toMatch(/^Scanner/);
     expect(text('depthTarget')).toContain('starter Coal/Copper seam');
 
@@ -147,6 +146,8 @@ describe('booting the game', () => {
     expect(text('depth')).toBe('50 m');
     expect(text('toast')).toContain('Depth 50 m');
     expect(text('depthTarget')).toBe('↓ 550 m to Silver');
+    // 50 m down, the climb home now owns a visible slice of the fuel gauge.
+    expect((document.getElementById('fuelReturn') as HTMLElement).style.width).not.toBe('0%');
 
     // Crossing announces once: the next frame leaves the toast alone.
     act(() => { uiStore.getState().pushToast('Cleared.'); });

@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { getFuelGaugeSegments } from '../core/fuel-reserve';
 import { useUiStore } from './store';
 import styles from './BarRow.module.css';
 
@@ -22,35 +23,60 @@ function Bar({id, label, value, max, text, alert}: BarProps) {
 }
 
 /**
- * The return-fuel forecast, reading as part of the fuel meter it hangs under.
+ * The fuel meter, split where the climb home ends: the first slice is fuel the
+ * return trip will burn, the second is what would still be aboard at the depot.
  *
- * It answers a different question than the low-fuel alert next to it: that one
- * flashes when the tank runs dry, this one warns while there is still fuel but no
- * longer enough to climb out from this depth. Only the meter and the banner
- * flash; the forecast stays steady so the two alarms never compete.
+ * The forecast used to be its own widget under the meter, which said the same
+ * thing twice in two places. Now the gauge is the forecast — a shrinking bright
+ * slice means the surplus is running out, and once the climb costs more than the
+ * tank holds the bright slice is gone and the whole fill reads urgent. The
+ * numbers behind it stay in the accessible name, so nothing new competes for
+ * screen space with the low-fuel banner.
  */
-function FuelReserve() {
+function FuelBar() {
+  const fuel = useUiStore(state => state.hud.fuel);
+  const fuelMax = useUiStore(state => state.hud.fuelMax);
+  const alert = useUiStore(state => state.hud.fuelAlert);
   const status = useUiStore(state => state.hud.fuelReserveStatus);
   const needed = useUiStore(state => state.hud.fuelReserveNeeded);
   const margin = useUiStore(state => state.hud.fuelReserveMargin);
   const atSurface = useUiStore(state => state.hud.atSurface);
 
+  const value = Math.max(0, fuel);
+  const text = `${Math.ceil(value)}/${fuelMax}`;
+  const {returnFraction, surplusFraction} = getFuelGaugeSegments(value, fuelMax, needed);
+  const label = atSurface
+    ? `Fuel ${text}`
+    : status === 'urgent'
+      ? `Fuel ${text} — climb home needs ${needed}`
+      : `Fuel ${text} — ${margin} left after climbing home`;
+
   return (
-    <div id="fuelReserve" className={clsx(styles.reserve, styles[status])} data-status={status} hidden={atSurface}>
-      <span className={styles.reserveCaption}>Reserve</span>
-      <span className={styles.reserveStatus}>{status.toUpperCase()}</span>
-      <span id="fuelReserveLabel" className={styles.barValue}>
-        {status === 'urgent' ? `needs ${needed}` : `${margin} after climb`}
-      </span>
+    <div className={clsx(styles.bar, alert && styles.alert)}>
+      {/* A plain caption, not a <label>: the gauge is a div, so there is no
+          labelable control to point a `for` at — its name lives in aria-label. */}
+      <span className={styles.barCaption}>Fuel</span>
+      <div
+        id="fuel"
+        className={clsx(styles.gauge, styles[status])}
+        data-status={status}
+        role="meter"
+        aria-valuemin={0}
+        aria-valuemax={fuelMax}
+        aria-valuenow={value}
+        aria-label={label}
+        title={label}
+      >
+        <span id="fuelReturn" className={styles.gaugeReturn} style={{width: `${returnFraction * 100}%`}} />
+        <span id="fuelSurplus" className={styles.gaugeSurplus} style={{width: `${surplusFraction * 100}%`}} />
+      </div>
+      <span id="fuelLabel" className={styles.barValue}>{text}</span>
     </div>
   );
 }
 
 /** Fuel, hull and cargo meters plus the extraction status line. */
 export function BarRow() {
-  const fuel = useUiStore(state => state.hud.fuel);
-  const fuelMax = useUiStore(state => state.hud.fuelMax);
-  const fuelAlert = useUiStore(state => state.hud.fuelAlert);
   const hull = useUiStore(state => state.hud.hull);
   const hullMax = useUiStore(state => state.hud.hullMax);
   const hullAlert = useUiStore(state => state.hud.hullAlert);
@@ -61,8 +87,7 @@ export function BarRow() {
 
   return (
     <div className={styles.barRow}>
-      <Bar id="fuel" label="Fuel" value={Math.max(0, fuel)} max={fuelMax} text={`${Math.ceil(Math.max(0, fuel))}/${fuelMax}`} alert={fuelAlert} />
-      <FuelReserve />
+      <FuelBar />
       <Bar id="hull" label="Hull" value={Math.max(0, hull)} max={hullMax} text={`${Math.ceil(Math.max(0, hull))}/${hullMax}`} alert={hullAlert} />
       <Bar id="cargo" label="Cargo" value={cargo} max={cargoMax} text={`${cargo}/${cargoMax}`} alert={cargoAlert} />
       <div id="extractionStatus" className={styles.extractionStatus} aria-live="polite" hidden={!extraction}>{extraction}</div>

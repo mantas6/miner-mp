@@ -15,7 +15,7 @@ import { MinerApp } from './ui';
 const DOM_CONTRACT = [
   'shell', 'game-panel', 'game',
   'hud', 'musicBtn', 'sfxBtn', 'connectionStatus', 'cash', 'depth', 'depthTarget', 'scanner',
-  'fuel', 'fuelLabel', 'fuelReserve', 'fuelReserveLabel', 'hull', 'hullLabel', 'cargo', 'cargoLabel', 'extractionStatus',
+  'fuel', 'fuelLabel', 'fuelReturn', 'fuelSurplus', 'hull', 'hullLabel', 'cargo', 'cargoLabel', 'extractionStatus',
   'sell', 'shopBtn', 'dynamiteBtn', 'teleporterBtn', 'gunBtn', 'infoBtn',
   'shop-screen', 'shop-card', 'shopCloseBtn',
   'fuelBtn', 'repairBtn', 'cargoBtn', 'tankBtn', 'hullBtn', 'drillBtn', 'visibilityBtn',
@@ -230,7 +230,7 @@ describe('store-driven HUD', () => {
     expect(document.getElementById('cash')?.textContent).toBe('$1234');
     expect(document.getElementById('depth')?.textContent).toBe('420 m');
     expect(document.getElementById('fuelLabel')?.textContent).toBe('13/200');
-    expect(document.getElementById('fuel')?.getAttribute('value')).toBe('12.2');
+    expect(document.getElementById('fuel')?.getAttribute('aria-valuenow')).toBe('12.2');
     expect(document.getElementById('cargoLabel')?.textContent).toBe('10/10');
     expect(document.getElementById('fuel')?.parentElement?.className).toMatch(/alert/);
     expect(document.getElementById('cargo')?.parentElement?.className).toMatch(/alert/);
@@ -279,22 +279,32 @@ describe('store-driven HUD', () => {
     expect(scanner.hidden).toBe(true);
   });
 
-  it('shows the return-fuel forecast underground only, with its status decision', () => {
+  it('paints the return-fuel forecast as the two slices of the fuel gauge', () => {
     render(<MinerApp />);
-    const reserve = document.getElementById('fuelReserve') as HTMLElement;
+    const gauge = document.getElementById('fuel') as HTMLElement;
+    const owed = document.getElementById('fuelReturn') as HTMLElement;
+    const surplus = document.getElementById('fuelSurplus') as HTMLElement;
 
-    // At the depot there is no climb to reserve fuel for.
-    expect(reserve.hidden).toBe(true);
+    // At the depot there is no climb to pay for, so the whole fill is surplus.
+    patchHud({fuel: 100, fuelMax: 200, fuelReserveNeeded: 0, fuelReserveMargin: 100});
+    expect(owed.style.width).toBe('0%');
+    expect(surplus.style.width).toBe('50%');
+    expect(gauge.getAttribute('aria-label')).toBe('Fuel 100/200');
 
-    patchHud({atSurface: false, fuelReserveStatus: 'caution', fuelReserveMargin: 7, fuelReserveNeeded: 34});
-    expect(reserve.hidden).toBe(false);
-    expect(reserve.dataset.status).toBe('caution');
-    expect(reserve.className).toMatch(/caution/);
-    expect(document.getElementById('fuelReserveLabel')?.textContent).toBe('7 after climb');
+    // Underground the climb home claims its share of the fill.
+    patchHud({atSurface: false, fuelReserveStatus: 'caution', fuelReserveNeeded: 34, fuelReserveMargin: 66});
+    expect(gauge.dataset.status).toBe('caution');
+    expect(gauge.className).toMatch(/caution/);
+    expect(owed.style.width).toBe('17%');
+    expect(surplus.style.width).toBe('33%');
+    expect(gauge.getAttribute('aria-label')).toBe('Fuel 100/200 — 66 left after climbing home');
 
-    // Urgent stops reporting a margin and reports the shortfall instead.
-    patchHud({fuelReserveStatus: 'urgent', fuelReserveMargin: 0, fuelReserveNeeded: 34});
-    expect(document.getElementById('fuelReserveLabel')?.textContent).toBe('needs 34');
+    // A climb it can no longer pay for leaves no surplus slice at all.
+    patchHud({fuel: 20, fuelReserveStatus: 'urgent', fuelReserveNeeded: 34, fuelReserveMargin: 0});
+    expect(owed.style.width).toBe('10%');
+    expect(surplus.style.width).toBe('0%');
+    expect(gauge.className).toMatch(/urgent/);
+    expect(gauge.getAttribute('aria-label')).toBe('Fuel 20/200 — climb home needs 34');
   });
 
   it('raises the fuel banner for a dry tank or a climb it can no longer pay for', () => {
