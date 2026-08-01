@@ -587,6 +587,10 @@ export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
     ctx.fillStyle = haze;
     ctx.fillRect(0, skyTop, viewport.worldWidthPx, Math.max(0, groundY - skyTop));
 
+    // Background treelines go first so poles and buildings stay in front of the foliage.
+    drawDistantTreeline(groundY);
+    drawParallaxTreeShapes(camX, groundY);
+
     // Ground cap now sits below the 3-tile-tall surface space.
     ctx.fillStyle = '#1b623f'; ctx.fillRect(0, groundY - TILE*.12, viewport.worldWidthPx, TILE*.18);
     ctx.fillStyle = '#74451e'; ctx.fillRect(0, groundY + TILE*.06, viewport.worldWidthPx, TILE*.18);
@@ -629,9 +633,6 @@ export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
     building(bx + TILE*5.7, TILE*2.0, '#39506f', '#26384d');
     windows(bx + TILE*5.7, TILE*2.0, '#bfe0ff');
     ['#9b5f2b','#6b8f40','#b77934','#455d85'].forEach((c,i)=>{ ctx.fillStyle=c; ctx.fillRect(bx+TILE*(8.05+(i%2)*.4), groundY-TILE*(.24+Math.floor(i/2)*.22), TILE*.34, TILE*.20); });
-
-    drawDistantTreeline(groundY);
-    drawParallaxTreeShapes(camX, groundY);
   }
 
   function drawDistantTreeline(groundY: number) {
