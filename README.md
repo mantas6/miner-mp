@@ -45,13 +45,16 @@ miner-mp/
 │   ├── net/
 │   ├── render/
 │   ├── audio/
+│   │   ├── audio.ts
+│   │   ├── audio-permission.ts
+│   │   ├── music-engine.ts
+│   │   ├── soundtrack.worker.ts
+│   │   ├── worker-protocol.ts
+│   │   └── tracks/
+│   │       ├── golden-signal.ts
+│   │       └── index.ts
 │   ├── ui/
 │   └── styles/
-├── soundtrack_source.py
-├── public/
-│   └── assets/
-│       ├── soviet-soundtrack.mp3
-│       └── soviet-soundtrack.ogg
 ├── server/
 │   ├── index.js
 │   ├── world-state.js
@@ -78,7 +81,12 @@ miner-mp/
 | `src/game/` | Gameplay orchestration (`game.ts`) plus its feature modules — `session.ts` (relay session), `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `readouts.ts` — and the canvas handles (`dom.ts`). |
 | `src/net/` | Relay client (partysocket, auto-reconnect), wire protocol codec, and multiplayer settings. |
 | `src/render/` | Canvas drawing, terrain/fog chunk cache policy, and partner indicator. |
-| `src/audio/` | Sound effects, music playback, synth fallback, and autoplay permission. |
+| `src/audio/` | Web Audio graph, sound effects, soundtrack playback, and autoplay permission. |
+| `src/audio/music-engine.ts` | Track-agnostic synth engine: oscillators, envelope, seeded PRNG, event sequencing, stereo mix, bus saturation, seamless loop wrap. `renderTrack()` returns stereo PCM at 44.1 kHz. |
+| `src/audio/tracks/golden-signal.ts` | "Golden Signal", the built-in Soviet/industrial mining march: patterns, voices, tempo, seed. |
+| `src/audio/tracks/index.ts` | Track registry: the `TrackId` union, `TRACKS`, `DEFAULT_TRACK_ID`, `getTrack`, `isTrackId`. |
+| `src/audio/soundtrack.worker.ts` | Module Web Worker that renders a track off the main thread and transfers the channels back. |
+| `src/audio/worker-protocol.ts` | Request/response message shapes shared by the worker and `audio.ts`. |
 | `src/ui/` | React components, the zustand UI store (`store.ts`), the command table the buttons dispatch into (`commands.ts`), and co-located CSS modules. |
 | `src/styles/base.css` | Design tokens plus element-level styling (`button`, `ul`, `kbd`, `meter`, `canvas`, `#shell`, `#game-panel`). |
 | `src/styles/icons.css` | Global equipment sprite sheet (`icon-*`), addressed by name from the shop catalog. |
@@ -93,9 +101,6 @@ miner-mp/
 | `server/test/` | Relay tests (`node --test`): protocol parity with the client, relay behaviour, world-state persistence. |
 | `.github/workflows/build.yml` | CI: lint and production build on pushes to `main` and pull requests. |
 | `.github/workflows/deploy-pages.yml` | Scheduled/manual GitHub Pages deployment of `dist/`. |
-| `soundtrack_source.py` | Editable source generator for the soundtrack. |
-| `public/assets/soviet-soundtrack.mp3` | Browser music asset used when MP3 is supported. |
-| `public/assets/soviet-soundtrack.ogg` | Browser music fallback asset. |
 
 ## Run locally
 
@@ -267,92 +272,66 @@ only (menus, buttons, modals, starting the run, restarting, audio unlock).
 
 ## Soundtrack
 
-The game currently plays:
+No audio file is shipped. The soundtrack is synthesized in TypeScript at
+runtime, so the repository carries no music assets and the build downloads none.
 
-```text
-public/assets/soviet-soundtrack.mp3
-public/assets/soviet-soundtrack.ogg
-```
+The built-in track is **Golden Signal** (id `golden-signal`): an A-minor
+Soviet/industrial mining march at 125 BPM — bassline, lead, chord stabs, kick,
+snare and hats, all seeded from `1917`, so every render is byte-for-byte the
+same.
 
-`src/audio/audio.ts` chooses MP3 when the browser supports it, otherwise it falls back to OGG:
+### Architecture
 
-```js
-this.musicEl.src = canMp3 ? 'assets/soviet-soundtrack.mp3' : 'assets/soviet-soundtrack.ogg';
-```
-
-### Editable source
-
-The soundtrack source is:
-
-```text
-soundtrack_source.py
-```
-
-It is a deterministic Python synthesizer for a looping Soviet/industrial mining theme. It renders WAV using the Python standard library, then uses `ffmpeg` when available to encode browser-friendly MP3 and OGG files.
-
-Important editable constants near the top:
-
-| Constant | Meaning |
+| Module | Role |
 |---|---|
-| `SAMPLE_RATE` | Render sample rate, currently `44100`. |
-| `BPM` | Track tempo, currently `125`. |
-| `SEED` | Random seed for repeatable percussion/noise. |
-| `BASS` | Bassline note pattern. |
-| `LEAD` | Lead melody pattern. |
-| `CHORDS` | Chord stab progression. |
+| `src/audio/music-engine.ts` | Track-agnostic renderer: oscillators (`sine`/`saw`/`tri`/`square`), the attack/sustain/release envelope, a seeded mulberry32 PRNG for the noise voices, event bucketing, stereo panning and `tanh` bus saturation. `renderTrack(track)` returns stereo `Float32Array` PCM at 44.1 kHz. It is DOM-free, so it runs in a worker, on the main thread, or under Vitest in Node. |
+| `src/audio/tracks/golden-signal.ts` | The music itself — patterns, note choices and per-voice timbres — exported as a `TrackDefinition`. |
+| `src/audio/tracks/index.ts` | Registry: the `TrackId` union, `TRACKS`, `DEFAULT_TRACK_ID`, `getTrack`, `isTrackId`. |
+| `src/audio/soundtrack.worker.ts` | Module Web Worker that runs `renderTrack` off the main thread and posts the channels back as transferables. |
+| `src/audio/worker-protocol.ts` | The `{type: 'render', trackId}` request and the `rendered`/`error` responses. Kept apart from the worker entry point so importing the types does not drag the worker's `onmessage` registration into the main bundle. |
+| `src/audio/audio.ts` | Everything browser-facing: the Web Audio graph, sound effects, the sound toggle, and looping the rendered buffer. |
 
-### Smoke-test the soundtrack generator
+### Playback
 
-Use a short render before replacing the real game assets:
+`createAudio()` spawns the worker at boot and immediately asks it for the default
+track. One loop is ~2.7 M stereo frames (about 0.9 s of synthesis and 22 MB
+decoded), so the render happens in the background and the game never waits on it.
 
-```bash
-python3 soundtrack_source.py --duration 8 --out-prefix public/assets/soviet-soundtrack-test --keep-wav
-```
+Music plays as a looping `AudioBufferSourceNode` at a constant music gain of 0.65
+under the 0.55 master. Enabling sound before the render lands is simply silent;
+playback auto-starts with a 0.3 s fade-in the moment the buffer arrives. Toggling
+sound off and on again resumes from where it stopped, and `setTrack(trackId)`
+switches tracks, rendering the new one on demand.
 
-Expected outputs:
+The rendered buffer is a whole number of musical cycles — four 64-step cycles,
+61.44 s — and the engine folds the previous pass's decaying note tails across the
+seam, so the loop repeats seamlessly with no fade in or out.
 
-```text
-public/assets/soviet-soundtrack-test.wav
-public/assets/soviet-soundtrack-test.mp3
-public/assets/soviet-soundtrack-test.ogg
-```
+If Workers are unavailable or a render fails, music is dropped for the session
+with a single "Music unavailable in this browser." toast. Sound effects keep
+working.
 
-Clean up the test files when done:
+### Adding a new track
 
-```bash
-rm public/assets/soviet-soundtrack-test.wav \
-   public/assets/soviet-soundtrack-test.mp3 \
-   public/assets/soviet-soundtrack-test.ogg
-```
+1. Create `src/audio/tracks/<id>.ts` exporting a `TrackDefinition`: `id`,
+   `title`, `bpm`, `seed`, `cycleSteps`, `renderCycles`, plus `buildEvents()` and
+   `renderEvent()`.
+2. Register it in `src/audio/tracks/index.ts` and add its id to the `TrackId`
+   union — `TRACKS` is a `Record<TrackId, TrackDefinition>`, so it will not
+   compile until every id has a definition.
+3. Add `src/audio/tracks/<id>.test.ts` next to it, in the style of
+   `golden-signal.test.ts`.
 
-### Re-render the in-game soundtrack assets
-
-This overwrites the files the game uses:
-
-```bash
-python3 soundtrack_source.py --duration 175 --out-prefix public/assets/soviet-soundtrack
-```
-
-Outputs:
-
-```text
-public/assets/soviet-soundtrack.mp3
-public/assets/soviet-soundtrack.ogg
-```
-
-`--keep-wav` can be added if you also want the intermediate WAV:
-
-```bash
-python3 soundtrack_source.py --duration 175 --out-prefix public/assets/soviet-soundtrack --keep-wav
-```
+Keep note durations well under two seconds: the loop wrap only carries tails that
+short across the seam.
 
 ## Audio/browser notes
 
-- Browsers usually require a user gesture before music can play.
+- Browsers usually require a user gesture before audio can start.
 - The game exposes a sound toggle button for explicit activation.
-- Pointer/touch input can also trigger audio startup.
-- If the MP3/OGG assets are missing, `src/audio/audio.ts` falls back to procedural WebAudio notes.
-- If you change the audio file names, update the `musicEl.src` line in `src/audio/audio.ts`.
+- Pointer/touch input can also trigger audio startup; a key press cannot.
+- Sound effects and the soundtrack are independent: music can be unavailable
+  (no Worker support, failed render) while effects still play.
 
 ## Development checklist
 
@@ -382,14 +361,12 @@ disabled rule carries a comment explaining the pattern it conflicts with; single
 intentional exceptions are suppressed at the call site with
 `// oxlint-disable-next-line <rule>` and a reason instead.
 
-When touching the soundtrack generator:
+When touching the music engine or a track:
 
 ```bash
-python3 -m py_compile soundtrack_source.py
-python3 soundtrack_source.py --duration 3 --out-prefix public/assets/soviet-soundtrack-smoke --keep-wav
-rm public/assets/soviet-soundtrack-smoke.wav \
-   public/assets/soviet-soundtrack-smoke.mp3 \
-   public/assets/soviet-soundtrack-smoke.ogg
+npx vitest run src/audio
+npx tsc --noEmit
+npx oxlint
 ```
 
 For browser smoke testing, build and preview the Vite app:
@@ -400,13 +377,8 @@ npm run preview
 # open the local URL printed by Vite
 ```
 
-If URLs or asset names are changed, also check that these load successfully from the preview server:
-
-```text
-/
-/assets/soviet-soundtrack.mp3
-/assets/soviet-soundtrack.ogg
-```
+In the browser, press Sound and confirm the soundtrack starts — it can stay
+silent for the first second or so while the worker finishes rendering the loop.
 
 ## Deployment
 
