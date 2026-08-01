@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { TILE } from '../../shared/constants';
-import { setViewportSize, viewport } from './viewport';
+import { TILE, WORLD_W } from '../../shared/constants';
+import { getVisibleTileRange } from '../world/visible-tile-range';
+import { advanceViewportZoom, requestViewportZoom, setViewportSize, setViewportZoom, viewport } from './viewport';
+import { MAX_ZOOM, MIN_ZOOM } from './zoom';
 
 afterEach(() => {
+  setViewportZoom(1);
   setViewportSize(960, 640);
 });
 
@@ -31,5 +34,70 @@ describe('viewport sizing', () => {
     setViewportSize(480, 320);
 
     expect(observed.tilesX).toBe(Math.floor(480 / TILE));
+  });
+});
+
+describe('viewport zoom', () => {
+  it('trades screen pixels for tiles: zooming out shows more of the mine', () => {
+    setViewportZoom(0.5);
+
+    expect(viewport.worldWidthPx).toBe(1920);
+    expect(viewport.tilesX).toBe(Math.floor(1920 / TILE));
+    expect(viewport.tilesY).toBe(Math.floor(1280 / TILE));
+
+    setViewportZoom(2);
+
+    expect(viewport.worldWidthPx).toBe(480);
+    expect(viewport.tilesX).toBe(Math.floor(480 / TILE));
+  });
+
+  it('refuses levels outside the supported range', () => {
+    setViewportZoom(50);
+    expect(viewport.zoom).toBe(MAX_ZOOM);
+
+    setViewportZoom(0);
+    expect(viewport.zoom).toBe(MIN_ZOOM);
+  });
+
+  it('keeps a resize honest about the zoom in force', () => {
+    setViewportZoom(2);
+    setViewportSize(1280, 720);
+
+    expect(viewport.worldWidthPx).toBe(640);
+    expect(viewport.tilesX).toBe(Math.floor(640 / TILE));
+  });
+
+  it('eases toward a requested level and reports when it has arrived', () => {
+    requestViewportZoom(2);
+
+    expect(viewport.zoom).toBe(1);
+    expect(advanceViewportZoom()).toBe(true);
+    expect(viewport.zoom).toBeGreaterThan(1);
+    expect(viewport.zoom).toBeLessThan(2);
+
+    for (let step = 0; step < 200 && advanceViewportZoom(); step++) { /* settle */ }
+
+    expect(viewport.zoom).toBe(2);
+    expect(advanceViewportZoom()).toBe(false);
+  });
+
+  it('widens the range the renderer walks, so a zoomed-out view is not cropped', () => {
+    setViewportZoom(1);
+    const unzoomed = getVisibleTileRange(20, 30, viewport.tilesX, viewport.tilesY, WORLD_W);
+
+    setViewportZoom(0.5);
+    const zoomedOut = getVisibleTileRange(20, 30, viewport.tilesX, viewport.tilesY, WORLD_W);
+
+    // The doubled tile span plus one overscan row either side, still clamped to the world.
+    expect(zoomedOut.endY - zoomedOut.startY).toBe(viewport.tilesY + 2);
+    expect(zoomedOut.endX - zoomedOut.startX).toBe(viewport.tilesX + 2);
+    expect(zoomedOut.endY).toBeGreaterThan(unzoomed.endY);
+    expect(zoomedOut.endX).toBeGreaterThan(unzoomed.endX);
+  });
+
+  it('clamps the requested level too, so a runaway wheel cannot escape the range', () => {
+    requestViewportZoom(-4);
+
+    expect(viewport.targetZoom).toBe(MIN_ZOOM);
   });
 });

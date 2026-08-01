@@ -1,4 +1,4 @@
-// Keyboard and restart-pointer handling.
+// Keyboard, wheel-zoom, and restart-pointer handling.
 //
 // Owns the held-key set (input state, deliberately not part of the DOM layer),
 // the impulse/auto-repeat rules that turn key presses into moves, and the
@@ -15,10 +15,16 @@ import { gunKeyAction } from '../core/weapon';
 import { activeSprintDirection, keyboardMovementRepeatMs } from '../core/movement';
 import type { Direction, GameState } from '../core/types';
 import { uiStore } from '../ui/store';
+import { requestViewportZoom, viewport } from './viewport';
+import { zoomAfterWheel } from './zoom';
 import type { GameActions } from './actions';
 
 /** Grace window (ms) in which a second R press confirms resetting a live run. */
 const RESET_CONFIRM_MS = 3500;
+
+/** The mine is the only surface that scrolls; the dialogs above it keep their own. */
+const ZOOM_SURFACE = '#game-panel';
+const DIALOG_SURFACES = '#shop-screen, #info-screen';
 
 const movementKeys: Record<string, Direction> = {
   arrowleft: [-1, 0], a: [-1, 0],
@@ -170,6 +176,23 @@ export function createInput(deps: GameInputDeps): GameInput {
     if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); }
   }
 
+  /**
+   * Wheel and trackpad pinch both zoom the mine. Nothing on the game surface
+   * scrolls, so the default is always cancelled — which is also what stops a
+   * ctrl-held pinch from zooming the whole browser page instead.
+   */
+  function handleWheel(e: WheelEvent): void {
+    if (!isPlaying()) return;
+    const ui = uiStore.getState();
+    if (ui.shopOpen || ui.infoOpen) return;
+    const target = e.target as Element | null;
+    if (!target?.closest || target.closest(DIALOG_SURFACES) || !target.closest(ZOOM_SURFACE)) return;
+    e.preventDefault();
+    // Accumulate against the requested level, not the easing one, so a fast
+    // scroll is not swallowed by the frames it takes the view to settle.
+    requestViewportZoom(zoomAfterWheel(viewport.targetZoom, e));
+  }
+
   /** Tap/click anywhere outside the dialogs to deploy a replacement ship. */
   function handleRestartPointer(e: Event): void {
     if (!isPlaying() || !state.gameOver) return;
@@ -185,6 +208,8 @@ export function createInput(deps: GameInputDeps): GameInput {
     addEventListener('keydown', handleKeyDown, {capture: true});
     addEventListener('keyup', handleKeyUp, {capture: true});
     addEventListener('pointerdown', handleRestartPointer, {capture: true});
+    // Active listener: a passive one may not cancel the browser's page zoom.
+    addEventListener('wheel', handleWheel, {capture: true, passive: false});
     // Touch needs an active listener so the synthetic click can be suppressed.
     addEventListener('touchstart', handleRestartPointer, {capture: true, passive: false});
   }

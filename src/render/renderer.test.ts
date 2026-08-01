@@ -37,6 +37,12 @@ const mocks = vi.hoisted(() => {
     mainContext: createContext(),
     terrainContext: createContext(),
     canvas: {width: 1920, height: 1280},
+    viewport: {
+      widthPx: 960, heightPx: 640,
+      zoom: 1, targetZoom: 1,
+      worldWidthPx: 960, worldHeightPx: 640,
+      tilesX: 15, tilesY: 10
+    },
     terrainCanvases: [] as Array<{width: number; height: number}>
   };
 });
@@ -47,14 +53,27 @@ vi.mock('../game/dom', () => ({
 }));
 
 vi.mock('../game/viewport', () => ({
-  viewport: {widthPx: 960, heightPx: 640, tilesX: 15, tilesY: 10}
+  viewport: mocks.viewport
 }));
+
+/** Mirror `setViewportZoom` on the mocked viewport singleton. */
+function zoomViewport(zoom: number): void {
+  Object.assign(mocks.viewport, {
+    zoom,
+    targetZoom: zoom,
+    worldWidthPx: mocks.viewport.widthPx / zoom,
+    worldHeightPx: mocks.viewport.heightPx / zoom,
+    tilesX: Math.floor(mocks.viewport.widthPx / zoom / TILE),
+    tilesY: Math.floor(mocks.viewport.heightPx / zoom / TILE)
+  });
+}
 
 import { createRenderer } from './renderer';
 
 describe('terrain cache lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    zoomViewport(1);
     mocks.terrainCanvases.length = 0;
     vi.stubGlobal('document', {
       createElement: vi.fn(() => {
@@ -335,5 +354,80 @@ describe('terrain cache lifecycle', () => {
 
     expect(firstFrame).not.toHaveLength(0);
     expect(firstFrame).toEqual(secondFrame);
+  });
+});
+
+describe('camera zoom', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    zoomViewport(1);
+    mocks.terrainCanvases.length = 0;
+    vi.stubGlobal('document', {
+      createElement: vi.fn(() => {
+        const terrainCanvas = {width: 0, height: 0, getContext: vi.fn(() => mocks.terrainContext)};
+        mocks.terrainCanvases.push(terrainCanvas);
+        return terrainCanvas;
+      })
+    });
+  });
+
+  function zoomState() {
+    return {
+      world: [], camX: 10, camY: 20, tick: 0, gameOver: true,
+      particles: [], enemies: [], remotePlayers: [], teleportEffect: null,
+      player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+  }
+
+  it('scales the world once and paints the sky across the zoomed-out world size', () => {
+    const renderer = createRenderer({state: zoomState(), get: () => ({type:'air'}), rand: () => 0});
+    zoomViewport(0.5);
+
+    renderer.draw();
+
+    expect(mocks.mainContext.scale).toHaveBeenCalledWith(0.5, 0.5);
+    expect(mocks.mainContext.fillRect).toHaveBeenCalledWith(0, 0, 1920, 1280);
+  });
+
+  it('keeps the game-over overlay in screen pixels, outside the zoom transform', () => {
+    const renderer = createRenderer({state: zoomState(), get: () => ({type:'air'}), rand: () => 0});
+    zoomViewport(2);
+
+    renderer.draw();
+
+    // The overlay is painted after `restore()`, so it still covers the CSS canvas.
+    expect(mocks.mainContext.fillRect).toHaveBeenCalledWith(0, 0, 960, 640);
+    expect(mocks.mainContext.fillText).toHaveBeenCalledWith('GAME OVER', 480, 295);
+  });
+
+  it('cuts terrain chunks at the magnified resolution so zooming in stays crisp', () => {
+    const renderer = createRenderer({state: zoomState(), get: () => ({type:'dirt', hp:1, maxHp:1}), rand: () => 0});
+    zoomViewport(2);
+
+    renderer.draw();
+
+    const chunkPixels = (4 * TILE + 2 * 52) * 2;
+    expect(Math.max(...mocks.terrainCanvases.map(canvas => canvas.width))).toBe(chunkPixels);
+    expect(mocks.terrainContext.setTransform).toHaveBeenCalledWith(2, 0, 0, 2, 0, 0);
+  });
+
+  it('reuses cached chunks while the zoom eases within one resolution step', () => {
+    const renderer = createRenderer({state: zoomState(), get: () => ({type:'dirt', hp:1, maxHp:1}), rand: () => 0});
+    zoomViewport(1.2);
+
+    renderer.draw();
+    const builtAtBaseline = mocks.terrainCanvases.length;
+    expect(mocks.terrainContext.setTransform).toHaveBeenLastCalledWith(1.5, 0, 0, 1.5, 0, 0);
+
+    // 1.2 and 1.4 share the 1.5 cache step, and the tighter view exposes nothing new.
+    zoomViewport(1.4);
+    renderer.draw();
+    expect(mocks.terrainCanvases.length).toBe(builtAtBaseline);
+
+    // Crossing a step rebuilds once, at the higher resolution.
+    zoomViewport(2);
+    renderer.draw();
+    expect(mocks.terrainCanvases.length).toBeGreaterThan(builtAtBaseline);
+    expect(mocks.terrainContext.setTransform).toHaveBeenLastCalledWith(2, 0, 0, 2, 0, 0);
   });
 });

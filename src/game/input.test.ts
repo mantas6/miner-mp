@@ -14,6 +14,8 @@ import type { GameState } from '../core/types';
 import { uiStore } from '../ui/store';
 import type { GameActions } from './actions';
 import { createInput, type GameInput } from './input';
+import { setViewportZoom, viewport } from './viewport';
+import { MAX_ZOOM, MIN_ZOOM } from './zoom';
 
 function createActionsSpy() {
   return {
@@ -197,6 +199,89 @@ describe('restarting after a death', () => {
     h.input.reset();
     press('r');
     expect(h.restartGame).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('wheel zoom', () => {
+  /**
+   * Every harness in this file leaves its wheel listener attached, so one event
+   * can be handled several times over. Only the direction of the change and the
+   * cancellation are asserted, never the size of a single notch.
+   */
+  function gameSurface(): HTMLElement {
+    document.body.innerHTML = '<section id="game-panel"><canvas id="game"></canvas>'
+      + '<dialog id="shop-screen"><div id="shopBody">Buy</div></dialog></section>';
+    return document.getElementById('game')!;
+  }
+
+  function wheel(target: EventTarget, init: {deltaY: number; ctrlKey?: boolean}): Event {
+    const event = new WheelEvent('wheel', {...init, bubbles: true, cancelable: true});
+    target.dispatchEvent(event);
+    return event;
+  }
+
+  beforeEach(() => {
+    setViewportZoom(1);
+  });
+
+  it('zooms in on scroll up and out on scroll down, and swallows the scroll', () => {
+    harness();
+    uiStore.getState().setPhase('playing');
+    const canvas = gameSurface();
+
+    const zoomIn = wheel(canvas, {deltaY: -120});
+    expect(viewport.targetZoom).toBeGreaterThan(1);
+    expect(zoomIn.defaultPrevented).toBe(true);
+
+    setViewportZoom(1);
+    wheel(canvas, {deltaY: 120});
+    expect(viewport.targetZoom).toBeLessThan(1);
+  });
+
+  it('treats a trackpad pinch as zoom, so the browser never zooms the page', () => {
+    harness();
+    uiStore.getState().setPhase('playing');
+    const canvas = gameSurface();
+
+    const pinch = wheel(canvas, {deltaY: -8, ctrlKey: true});
+
+    expect(pinch.defaultPrevented).toBe(true);
+    expect(viewport.targetZoom).toBeGreaterThan(1);
+  });
+
+  it('stays inside the supported range however hard the wheel is spun', () => {
+    harness();
+    uiStore.getState().setPhase('playing');
+    const canvas = gameSurface();
+
+    for (let i = 0; i < 60; i++) wheel(canvas, {deltaY: -240});
+    expect(viewport.targetZoom).toBe(MAX_ZOOM);
+
+    for (let i = 0; i < 60; i++) wheel(canvas, {deltaY: 240});
+    expect(viewport.targetZoom).toBe(MIN_ZOOM);
+  });
+
+  it('leaves scrolling alone before the run, in the dialogs, and off the game surface', () => {
+    const h = harness();
+    const canvas = gameSurface();
+
+    const beforeRun = wheel(canvas, {deltaY: -120});
+    expect(beforeRun.defaultPrevented).toBe(false);
+    expect(viewport.targetZoom).toBe(1);
+
+    uiStore.getState().setPhase('playing');
+    uiStore.getState().setShopOpen(true);
+    wheel(document.getElementById('shopBody')!, {deltaY: -120});
+    expect(viewport.targetZoom).toBe(1);
+
+    uiStore.getState().setShopOpen(false);
+    wheel(document.body, {deltaY: -120});
+    expect(viewport.targetZoom).toBe(1);
+
+    // …and the surface itself still zooms, so the gates above are not vacuous.
+    wheel(canvas, {deltaY: -120});
+    expect(viewport.targetZoom).toBeGreaterThan(1);
+    expect(h.move).not.toHaveBeenCalled();
   });
 });
 

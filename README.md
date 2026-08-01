@@ -84,7 +84,7 @@ miner-mp/
 | `src/persistence.ts` | Local save/load of player progress and explored tiles (`localStorage`). |
 | `src/core/` | Pure gameplay rules and types: balance, economy, upgrades, shop catalog, movement, weapon, dynamite, teleporter, enemies, objectives, extraction, scanner, fuel reserve, depth milestones, stats, danger, fixed-step clock, developer tools. |
 | `src/world/` | World generation, shared world-state reset, and visible tile range. |
-| `src/game/` | Gameplay orchestration (`game.ts`) plus its feature modules — `session.ts` (relay session), `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `readouts.ts` — and the canvas handles (`dom.ts`). |
+| `src/game/` | Gameplay orchestration (`game.ts`) plus its feature modules — `session.ts` (relay session), `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `zoom.ts` (wheel/pinch camera zoom maths), `readouts.ts` — and the canvas handles (`dom.ts`). |
 | `src/net/` | Relay client (partysocket, auto-reconnect), wire protocol codec, and multiplayer settings. |
 | `src/render/` | Canvas drawing, terrain/fog chunk cache policy, and partner indicator. |
 | `src/audio/` | Web Audio graph, sound effects, soundtrack playback, and autoplay permission. |
@@ -232,7 +232,8 @@ VITE_MP_SERVER_URL=ws://localhost:9000 npm run dev
 ## Controls
 
 Ship movement and aiming are keyboard-only. Pointer/touch input is used for UI
-only (menus, buttons, modals, starting the run, restarting, audio unlock).
+only (menus, buttons, modals, starting the run, restarting, audio unlock) plus
+zooming the camera with the wheel or a trackpad.
 
 | Action | Keyboard | UI (click/tap) |
 |---|---|---|
@@ -240,6 +241,7 @@ only (menus, buttons, modals, starting the run, restarting, audio unlock).
 | Pick solo or co-op | — | Lobby: Play solo / Connect |
 | Move / fly / dig | `WASD` or arrow keys | — |
 | Sprint through open space | Hold `Shift` + direction | — |
+| Zoom the camera (0.5x–2x) | — | Wheel scroll or trackpad pinch over the mine |
 | Sell cargo at the depot | `Enter` | Sell button |
 | Depot service | `Space` (sells cargo first, then refuels, then repairs) | Shop & Equipment -> Refuel / Repair |
 | Detonate dynamite | `E` | Detonate button |

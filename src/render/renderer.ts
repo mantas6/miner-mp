@@ -5,7 +5,7 @@ import { getPartnerIndicator } from './partner-indicator';
 import { getVisibleTileRange } from '../world/visible-tile-range';
 import { isTileExplored } from '../../shared/exploration-codec';
 import { getEnemyType } from '../core/enemy-types';
-import { TERRAIN_CHUNK_TILES, terrainChunkCoordinate, terrainChunkKeyForTile } from './terrain-cache-policy';
+import { TERRAIN_CHUNK_TILES, terrainCacheScale, terrainChunkCoordinate, terrainChunkKeyForTile } from './terrain-cache-policy';
 import type {
   Direction,
   Enemy,
@@ -152,8 +152,9 @@ export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
       },
       draw(camX: number, camY: number){
         const range = getVisibleTileRange(camX, camY, viewport.tilesX, viewport.tilesY, WORLD_W);
-        // Cache at CSS-pixel resolution so high-DPI screens do not multiply generation cost.
-        const scale = Math.min(1, canvas.width / viewport.widthPx);
+        // Cache at CSS-pixel resolution (times the zoom, quantised) so high-DPI
+        // screens do not multiply generation cost.
+        const scale = terrainCacheScale(viewport.zoom, canvas.width / viewport.widthPx);
         const currentSource = source();
         if (cachedScale !== scale || cachedSource !== currentSource) {
           chunks.clear();
@@ -206,9 +207,14 @@ export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
     const p = state.player;
     const camX = Math.max(0, Math.min(WORLD_W-viewport.tilesX, state.camX));
     const camY = Math.max(0, state.camY);
-    const sky = ctx.createLinearGradient(0,0,0,viewport.heightPx);
+    // Everything below is world space: one unit is one unzoomed CSS pixel, and the
+    // canvas covers `worldWidthPx` x `worldHeightPx` of it. Only the game-over
+    // overlay, painted after the transform is popped, works in screen pixels.
+    ctx.save();
+    ctx.scale(viewport.zoom, viewport.zoom);
+    const sky = ctx.createLinearGradient(0,0,0,viewport.worldHeightPx);
     sky.addColorStop(0,'#163762'); sky.addColorStop(.25,'#0e1d31'); sky.addColorStop(.26,'#2a1a11'); sky.addColorStop(1,'#050301');
-    ctx.fillStyle = sky; ctx.fillRect(0,0,viewport.widthPx,viewport.heightPx);
+    ctx.fillStyle = sky; ctx.fillRect(0,0,viewport.worldWidthPx,viewport.worldHeightPx);
     terrainLayer.draw(camX, camY);
     drawTerrainDamage(camX, camY);
     drawTerrainBlendOverlay(camY);
@@ -235,6 +241,7 @@ export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
     ctx.restore();
     drawTeleportEffect(camX, camY, true);
     drawPartnerIndicators(camX, camY, sx + TILE*.5, sy + TILE*.5);
+    ctx.restore();
     if(state.gameOver){
       ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,0,viewport.widthPx,viewport.heightPx);
       ctx.fillStyle='#fff'; ctx.textAlign='center';
@@ -327,7 +334,7 @@ export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
     for (const remote of state.remotePlayers) {
       if (!isExplored(Math.round(remote.x), Math.round(remote.y))) continue;
       const sx = (remote.drawX - camX) * TILE, sy = (remote.drawY - camY) * TILE;
-      if (sx < -TILE || sy < -TILE || sx > viewport.widthPx + TILE || sy > viewport.heightPx + TILE) continue;
+      if (sx < -TILE || sy < -TILE || sx > viewport.worldWidthPx + TILE || sy > viewport.worldHeightPx + TILE) continue;
       ctx.save();
       ctx.globalAlpha = 0.56;
       ctx.translate(sx + TILE*.5, sy + TILE*.5 + Math.sin(state.tick*.45)*remote.bob*TILE*.08);
@@ -350,7 +357,7 @@ export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
       const targetY = (remote.drawY - camY + .5) * TILE;
       const indicator = getPartnerIndicator(
         playerX, playerY, targetX, targetY,
-        viewport.widthPx, viewport.heightPx, TILE*.65, 64
+        viewport.worldWidthPx, viewport.worldHeightPx, TILE*.65, 64
       );
       if (!indicator) continue;
 
@@ -373,7 +380,7 @@ export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
       if (!e.alive) continue;
       if (!isExplored(Math.round(e.x), Math.round(e.y))) continue;
       const sx = (e.drawX - camX) * TILE, sy = (e.drawY - camY) * TILE;
-      if (sx < -TILE || sy < -TILE || sx > viewport.widthPx + TILE || sy > viewport.heightPx + TILE) continue;
+      if (sx < -TILE || sy < -TILE || sx > viewport.worldWidthPx + TILE || sy > viewport.worldHeightPx + TILE) continue;
       drawEnemyBody(sx, sy, e.kind, e.hp / e.maxHp, e.flash);
     }
   }
@@ -541,19 +548,19 @@ export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
   function drawTerrainBlendOverlay(camY: number) {
     if (camY < SURFACE_HEIGHT + .2) {
       const gy = (SURFACE_HEIGHT - camY) * TILE;
-      const grad = ctx.createLinearGradient(0, gy, 0, viewport.heightPx);
+      const grad = ctx.createLinearGradient(0, gy, 0, viewport.worldHeightPx);
       grad.addColorStop(0, 'rgba(100,58,28,.10)');
       grad.addColorStop(.55, 'rgba(58,31,16,.09)');
       grad.addColorStop(1, 'rgba(22,10,5,.16)');
-      ctx.fillStyle = grad; ctx.fillRect(0, Math.max(0, gy), viewport.widthPx, viewport.heightPx);
+      ctx.fillStyle = grad; ctx.fillRect(0, Math.max(0, gy), viewport.worldWidthPx, viewport.worldHeightPx);
     } else {
-      ctx.fillStyle = 'rgba(45,24,13,.075)'; ctx.fillRect(0,0,viewport.widthPx,viewport.heightPx);
+      ctx.fillStyle = 'rgba(45,24,13,.075)'; ctx.fillRect(0,0,viewport.worldWidthPx,viewport.worldHeightPx);
     }
     ctx.save(); ctx.globalCompositeOperation = 'soft-light';
     for (let i=0;i<10;i++) {
       ctx.fillStyle = i%2 ? 'rgba(255,182,96,.035)' : 'rgba(0,0,0,.045)';
       ctx.beginPath();
-      ctx.ellipse((i*.137%1)*viewport.widthPx, (i*.293%1)*viewport.heightPx, viewport.widthPx*(.10+.025*(i%3)), viewport.heightPx*(.06+.015*(i%4)), (i*.7)%Math.PI, 0, Math.PI*2);
+      ctx.ellipse((i*.137%1)*viewport.worldWidthPx, (i*.293%1)*viewport.worldHeightPx, viewport.worldWidthPx*(.10+.025*(i%3)), viewport.worldHeightPx*(.06+.015*(i%4)), (i*.7)%Math.PI, 0, Math.PI*2);
       ctx.fill();
     }
     ctx.restore();
@@ -578,11 +585,11 @@ export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
     haze.addColorStop(.65, 'rgba(248,188,106,.10)');
     haze.addColorStop(1, 'rgba(48,92,66,.16)');
     ctx.fillStyle = haze;
-    ctx.fillRect(0, skyTop, viewport.widthPx, Math.max(0, groundY - skyTop));
+    ctx.fillRect(0, skyTop, viewport.worldWidthPx, Math.max(0, groundY - skyTop));
 
     // Ground cap now sits below the 3-tile-tall surface space.
-    ctx.fillStyle = '#1b623f'; ctx.fillRect(0, groundY - TILE*.12, viewport.widthPx, TILE*.18);
-    ctx.fillStyle = '#74451e'; ctx.fillRect(0, groundY + TILE*.06, viewport.widthPx, TILE*.18);
+    ctx.fillStyle = '#1b623f'; ctx.fillRect(0, groundY - TILE*.12, viewport.worldWidthPx, TILE*.18);
+    ctx.fillStyle = '#74451e'; ctx.fillRect(0, groundY + TILE*.06, viewport.worldWidthPx, TILE*.18);
 
     // Electric poles: 2 blocks tall (taller than the buildings), strung with wires. Drawn behind the buildings.
     const poleTop = groundY - TILE*2;
@@ -633,12 +640,12 @@ export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
     ctx.fillStyle = 'rgba(34,80,57,.42)';
     ctx.beginPath();
     ctx.moveTo(0, baseY);
-    for (let x=0; x<=viewport.widthPx+40; x+=40) {
+    for (let x=0; x<=viewport.worldWidthPx+40; x+=40) {
       const h = 18 + rand(x, 7) * 20;
       ctx.lineTo(x, baseY - h);
       ctx.lineTo(x + 20, baseY - h * .72);
     }
-    ctx.lineTo(viewport.widthPx, baseY + 24);
+    ctx.lineTo(viewport.worldWidthPx, baseY + 24);
     ctx.lineTo(0, baseY + 24);
     ctx.closePath();
     ctx.fill();
@@ -649,9 +656,12 @@ export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
     const treeBaseY = groundY - TILE * .18;
     const spacing = TILE * .72;
     const parallaxX = camX * TILE * .38;
-    for (let i=-4;i<24;i++) {
+    // Enough trunks to fill the wrap period, so a zoomed-out view widens the line
+    // instead of leaving a bare stretch of horizon where the band runs out.
+    const treeCount = Math.ceil((viewport.worldWidthPx + spacing * 2) / spacing);
+    for (let i=-4;i<treeCount;i++) {
       const worldX = i * spacing + 17;
-      const x = ((worldX - parallaxX) % (viewport.widthPx + spacing * 2)) - spacing;
+      const x = ((worldX - parallaxX) % (viewport.worldWidthPx + spacing * 2)) - spacing;
       const trunkH = 18 + rand(i,4)*20;
       const trunkW = 5 + rand(i,8)*5;
       const crownR = 15 + rand(i,3)*20;

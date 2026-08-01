@@ -15,7 +15,8 @@
 
 import { START_Y, SURFACE_HEIGHT, WORLD_W } from '../../shared/constants';
 import { canvas, gamePanel } from './dom';
-import { viewport } from './viewport';
+import { advanceViewportZoom, viewport } from './viewport';
+import { recenteredCamera } from './zoom';
 import { createAudio } from '../audio/audio';
 import { shouldAttemptAutoAudio } from '../audio/audio-permission';
 import { createDefaultStats, createInitialState } from '../core/state';
@@ -272,6 +273,13 @@ function updateAnimation(){
   p.drillAnim *= 0.90;
   state.remotePlayers = interpolateRemotePlayers(state.remotePlayers, 0.23);
   state.teleportEffect = advanceTeleportEffect(state.teleportEffect);
+  // A settling zoom grows the view around its own centre, so the ship stays put
+  // instead of sliding in from a corner while the follow easing catches up.
+  const previousTilesX = viewport.tilesX, previousTilesY = viewport.tilesY;
+  if (advanceViewportZoom()) {
+    state.camX = Math.max(0, recenteredCamera(state.camX, previousTilesX, viewport.tilesX));
+    state.camY = Math.max(0, recenteredCamera(state.camY, previousTilesY, viewport.tilesY));
+  }
   const targetCamX = Math.max(0, Math.min(WORLD_W-viewport.tilesX, p.drawX - viewport.tilesX/2 + 0.5));
   const targetCamY = Math.max(0, p.drawY - viewport.tilesY/2 + 0.5);
   state.camX += (targetCamX - state.camX) * 0.12;
