@@ -1,8 +1,8 @@
 // Track-agnostic procedural music engine.
 //
-// This is a DOM-free port of `soundtrack_source.py`, the Python script that used
-// to render the game's soundtrack to MP3/OGG ahead of time. Instead of shipping
-// audio assets we now synthesise the same PCM in a Web Worker at runtime, so the
+// This is a DOM-free port of `soundtrack_source.py`, the (now removed) Python
+// script that rendered the game's soundtrack to MP3/OGG ahead of time. Instead
+// of shipping audio assets we synthesise the same PCM in a Web Worker, so the
 // module must stay free of browser globals: it only does arithmetic over
 // `Float32Array`s and is therefore equally happy in a worker, on the main thread
 // or under Vitest in Node.
@@ -11,7 +11,7 @@
 // event bucketing, the stereo mix and the bus saturation. Everything musical
 // (patterns, note choices, timbres) lives in a `TrackDefinition` under `tracks/`.
 
-/** Render rate for every track. Matches `SAMPLE_RATE` in `soundtrack_source.py`. */
+/** Render rate for every track. Matches the rate the offline renderer used. */
 export const SAMPLE_RATE = 44100;
 
 /** Events are indexed into half-second buckets so each sample only visits nearby ones. */
@@ -25,7 +25,7 @@ const BUCKET_SIZE = 0.5;
 const WRAP_SECONDS = 2;
 
 // ---------------------------------------------------------------------------
-// Shared DSP primitives (ports of soundtrack_source.py lines 62-91)
+// Shared DSP primitives
 // ---------------------------------------------------------------------------
 
 export function clamp(x: number, lo = -1, hi = 1): number {

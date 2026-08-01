@@ -7,6 +7,7 @@
 // details are irrelevant to any single behaviour under test.
 
 import { vi } from 'vitest';
+import { DEFAULT_TRACK_ID } from '../audio/tracks';
 import type { AudioController, Enemy, Tile } from '../core/types';
 import type { NetMessage } from '../net/net-protocol';
 import type { EnemySim } from './enemies';
@@ -137,9 +138,7 @@ export function createAudioStub(): AudioStub {
     wantsSound: false,
     master: null,
     musicGain: null,
-    musicEl: null,
-    musicTimer: null,
-    step: 0,
+    currentTrackId: DEFAULT_TRACK_ID,
     lastMove: 0,
     lastLowFuel: 0,
     init: cue('init'),
@@ -156,10 +155,9 @@ export function createAudioStub(): AudioStub {
     enemyWake: cue('enemyWake'),
     alarm: cue('alarm'),
     lowFuel: cue('lowFuel'),
-    startMusic: async () => { played.push('startMusic'); return true; },
-    startSynthMusic: cue('startSynthMusic'),
-    musicNote: cue('musicNote'),
-    stopMusic: cue('stopMusic')
+    startMusic: () => { played.push('startMusic'); return true; },
+    stopMusic: cue('stopMusic'),
+    setTrack: cue('setTrack')
   };
 }
 

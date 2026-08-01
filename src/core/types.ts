@@ -1,6 +1,8 @@
 // The world's data shapes are defined once, as zod schemas, in
 // `shared/world-schema.ts` — the relay validates against the same definitions.
 import type { EnemyKind, Ore, Tile } from '../../shared/world-schema';
+// Type-only: the track registry never becomes a runtime dependency of this module.
+import type { TrackId } from '../audio/tracks';
 
 export type {
   AirTile,
@@ -162,9 +164,8 @@ export interface AudioController {
   wantsSound: boolean;
   master: GainNode | null;
   musicGain: GainNode | null;
-  musicEl: HTMLAudioElement | null;
-  musicTimer: number | null;
-  step: number;
+  /** Track the soundtrack plays (or will play once its render lands). */
+  currentTrackId: TrackId;
   lastMove: number;
   lastLowFuel: number;
   init(): void;
@@ -181,8 +182,8 @@ export interface AudioController {
   enemyWake(): void;
   alarm(): void;
   lowFuel(): void;
-  startMusic(): Promise<boolean>;
-  startSynthMusic(): void;
-  musicNote(freq: number, dur: number, type: OscillatorType, gain: number, start: number): void;
+  /** True when a loop actually started; false while the render is still pending. */
+  startMusic(trackId?: TrackId): boolean;
   stopMusic(): void;
+  setTrack(trackId: TrackId): void;
 }

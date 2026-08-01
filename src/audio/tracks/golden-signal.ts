@@ -1,9 +1,9 @@
 // "Golden Signal" — the A-minor Soviet/industrial mining march.
 //
-// A direct port of the arrangement in `soundtrack_source.py` (patterns, event
-// scheduling and voice synthesis), now expressed as a `TrackDefinition` the
-// engine can render at runtime. Frequencies are derived from note names so the
-// arrangement stays readable and editable, exactly as in the Python source.
+// A direct port of the arrangement from the retired `soundtrack_source.py`
+// offline renderer (patterns, event scheduling and voice synthesis), now
+// expressed as a `TrackDefinition` the engine renders at runtime. Frequencies
+// are derived from note names so the arrangement stays readable and editable.
 
 import { env, saw, sine, square, tri } from '../music-engine';
 import type { Event, Rng, TrackDefinition } from '../music-engine';
