@@ -43,6 +43,7 @@ export function createDefaultStats(): GameStats {
 export function createInitialState(): GameState {
   return {
     world: [],
+    soloTileDiff: new Map(),
     cash: STARTING.cash,
     tick: 0,
     gameOver: false,

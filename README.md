@@ -12,6 +12,15 @@ zustand store, the canvas renders the mine, and the simulation runs in fixed
 walks a UI phase machine — intro splash → lobby (solo or co-op) → playing.
 Co-op adds a Node WebSocket relay in `server/` that owns the shared mine.
 
+A solo mine is persistent. Terrain is never stored tile by tile — it regenerates
+from its coordinate seed — so the save keeps the *diff*: the list of
+`shared/world-schema.ts` tile entries the miners changed, exactly the format the
+relay uses for the shared world. Dying or refreshing rebuilds the terrain and
+lays that diff back over it, so tunnels, mined ore, and cracked blocks stay where
+you left them. The save keeps the newest 20,000 mutations and forgets older ones
+rather than outgrowing `localStorage`. Co-op terrain belongs to the relay and is
+never written to the local save.
+
 Underground fog of war is persistent. Movement initially reveals a 3x3 square; each Sensor Array level adds one tile to both dimensions, up to 8x8. For even sizes the ship is the top-left cell of the central 2x2, so 4x4 covers offsets `-1..2` horizontally and vertically. Surface rows are always visible. Co-op miners union and persist their explored tiles because terrain and enemies already use a shared-world model, while each miner's sensor level remains individual.
 
 ## Project structure
@@ -91,9 +100,9 @@ miner-mp/
 | `shared/world-schema.ts` | Zod schemas and derived types for tiles, enemies, and the persisted world state. |
 | `shared/tile-key.ts` | Canonical `"x,y"` coordinate key used by tile maps on both sides. |
 | `src/main.tsx` | Vite entry point: imports global styles, renders the React app, then starts the game runtime. |
-| `src/persistence.ts` | Local save/load of player progress and explored tiles (`localStorage`). |
+| `src/persistence.ts` | Local save/load of player progress, explored tiles, and the solo world's tile diff (`localStorage`). |
 | `src/core/` | Pure gameplay rules and types: balance, economy, upgrades, shop catalog, movement, weapon, dynamite, teleporter, enemies, objectives, extraction, scanner, fuel reserve, depth milestones, stats, danger, fixed-step clock, developer tools. |
-| `src/world/` | World generation, shared world-state reset, and visible tile range. |
+| `src/world/` | World generation, the tile diff that turns a saved or relayed world back into terrain (`tile-diff.ts`), shared world-state reset, and visible tile range. |
 | `src/game/` | Gameplay orchestration (`game.ts`) plus its feature modules — `session.ts` (relay session), `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `zoom.ts` (wheel/pinch camera zoom maths), `readouts.ts` — and the canvas handles (`dom.ts`). |
 | `src/net/` | Relay client (partysocket, auto-reconnect), wire protocol codec, and multiplayer settings. |
 | `src/render/` | Canvas drawing, terrain/fog chunk cache policy, and partner indicator. |
@@ -291,8 +300,8 @@ zooming the camera with the wheel or a trackpad.
 - Enemies wake when exposed nearby; drill them before they chew through the hull.
 - The goal is the Motherlode core at 10,000 m: crack it, then return alive to the
   depot to bank the extraction. The mine continues below it.
-- Progress (cash, upgrades, stats, explored tiles) is saved locally; death keeps
-  all of it and costs you the cargo and your position.
+- Progress (cash, upgrades, stats, explored tiles, and the mine you dug) is saved
+  locally; death keeps all of it and costs you the cargo and your position.
 
 ## Soundtrack
 

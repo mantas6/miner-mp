@@ -83,7 +83,6 @@ export function createSessionStub(role: Partial<SessionStubRole> = {}): SessionS
     sendPlayerState: vi.fn(),
     sendEnemySnapshot: vi.fn(),
     recordTile: vi.fn(),
-    resetTileDiff: vi.fn(),
     broadcastExploration: vi.fn(),
     setConnectionStatus: vi.fn(),
     startOnline: vi.fn(),

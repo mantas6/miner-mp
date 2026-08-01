@@ -18,6 +18,12 @@ export const MAX_WORLD_ROW = Math.floor(Number.MAX_SAFE_INTEGER / WORLD_W) - 1;
 export const WORLD_STATE_VERSION = 1;
 /** Upper bound on persisted/transmitted tile mutations. */
 export const MAX_STATE_TILE_ENTRIES = 100_000;
+/**
+ * Upper bound on tile mutations kept in the browser's solo save. Entries cost
+ * roughly 40 bytes of JSON each, so this leaves the whole blob well inside the
+ * ~5 MB `localStorage` budget; older mutations are dropped past it.
+ */
+export const MAX_SAVED_TILE_ENTRIES = 20_000;
 /** Upper bound on exploration indexes carried by one message. */
 export const MAX_EXPLORED_TILES = WORLD_W * 1004;
 /** Upper bound on encoded exploration payload length. */

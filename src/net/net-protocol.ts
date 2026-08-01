@@ -13,14 +13,10 @@ import type {
   EnemySnapshotMsg,
   EnemySpawnMsg,
   NetMessage,
-  PlayerStateMsg,
-  TileDiffEntry,
-  TileMsg
+  PlayerStateMsg
 } from '../../shared/protocol';
-import { tileKey } from '../../shared/tile-key';
 import { parseNetMessage } from '../../shared/protocol';
 import { tileSchema } from '../../shared/world-schema';
-import { MAX_WORLD_ROW, WORLD_CHUNK_ROWS, WORLD_W } from '../../shared/constants';
 
 // --- Message shapes and validation (defined in shared/protocol.ts) ----------
 
@@ -146,35 +142,9 @@ export function nextEnemyId(enemies: Pick<EnemySnapshotEntry, 'id'>[]): number {
   return enemies.reduce((next, enemy) => Math.max(next, enemy.id + 1), 1);
 }
 
-// --- Tile diff (dirty-tile set) --------------------------------------------
-
-/** Accumulated tile mutations keyed by coordinate. */
-export type TileDiff = Record<string, TileDiffEntry>;
-
-/**
- * Apply a tile mutation to an accumulated diff (last-writer-wins), returning a
- * new diff. Pure — the input diff is not mutated.
- */
-export function applyTileDiff(diff: TileDiff, msg: Pick<TileMsg, 'x' | 'y' | 'tile'>): TileDiff {
-  return { ...diff, [tileKey(msg.x, msg.y)]: { x: msg.x, y: msg.y, tile: msg.tile } };
-}
-
-/**
- * Apply a tile mutation onto a 2D world grid. Mutates and returns the grid (the
- * grid is a plain array of plain tiles). No-op if the coordinate is out of range.
- */
-export function applyTileToWorld(world: Tile[][], msg: Pick<TileMsg, 'x' | 'y' | 'tile'>, tileFactory?: (x: number, y: number) => Tile): Tile[][] {
-  if (tileFactory) {
-    const start = Math.floor(msg.y / WORLD_CHUNK_ROWS) * WORLD_CHUNK_ROWS;
-    const end = Math.min(MAX_WORLD_ROW + 1, start + WORLD_CHUNK_ROWS);
-    for (let y = start; y < end; y++) {
-      if (!world[y]) world[y] = Array.from({length: WORLD_W}, (_, x) => tileFactory(x, y));
-    }
-  }
-  const row = world[msg.y];
-  if (row && msg.x >= 0 && msg.x < row.length) row[msg.x] = msg.tile;
-  return world;
-}
+// The accumulated tile diff and its application to a world live in
+// `src/world/tile-diff.ts`: the relay's world and the solo save are the same
+// list of tile entries, so they are restored by the same code.
 
 // --- Enemy list reducers ---------------------------------------------------
 

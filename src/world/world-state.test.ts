@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createInitialState } from '../core/state';
+import { createTileDiff } from './tile-diff';
 import { confirmWorldStateReset, resetWorldTerrain, WORLD_STATE_RESET_CONFIRMATION } from './world-state';
 
 describe('world state reset', () => {
@@ -16,6 +17,7 @@ describe('world state reset', () => {
     state.cash = 9999;
     state.stats.maxDepth = 900;
     state.world = [[{type:'air'}]];
+    state.soloTileDiff = createTileDiff([{x:1, y:60, tile:{type:'air'}}]);
     state.enemies = [{id:1,kind:'tunnelFiend',x:1,y:1,drawX:1,drawY:1,hp:2,maxHp:2,alive:true,moveTick:0,biteTick:0,flash:0}];
     state.exploredTiles.add(400);
     state.extractionPhase = 'returning';
@@ -26,6 +28,9 @@ describe('world state reset', () => {
     resetWorldTerrain(state);
 
     expect(state.world).toEqual([]);
+    // The dug-out blocks go with the terrain, or the next restart would put the
+    // old tunnels back into the fresh mine.
+    expect(state.soloTileDiff.size).toBe(0);
     expect(state.enemies).toEqual([]);
     expect(state.exploredTiles.size).toBe(0);
     expect(state.extractionPhase).toBe('none');

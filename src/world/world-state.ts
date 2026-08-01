@@ -10,10 +10,13 @@ export function confirmWorldStateReset(confirmReset: (message: string) => boolea
 /**
  * Regenerate world-owned state while preserving every player-owned value.
  *
- * Clearing `world` is all it takes: tiles are generated lazily on first access.
+ * Clearing `world` is almost all it takes — tiles are generated lazily on first
+ * access — but the solo diff has to go with it, or the next restart would layer
+ * the old tunnels straight back onto the fresh terrain.
  */
 export function resetWorldTerrain(state: GameState): void {
   state.world = [];
+  state.soloTileDiff = new Map();
   state.enemies = [];
   state.exploredTiles.clear();
   state.particles = [];

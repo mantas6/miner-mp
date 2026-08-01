@@ -1,8 +1,10 @@
 // The world's data shapes are defined once, as zod schemas, in
 // `shared/world-schema.ts` — the relay validates against the same definitions.
 import type { EnemyKind, Ore, Tile } from '../../shared/world-schema';
-// Type-only: the track registry never becomes a runtime dependency of this module.
+// Type-only: neither the track registry nor the tile diff becomes a runtime
+// dependency of this module.
 import type { TrackId } from '../audio/tracks';
+import type { TileDiff } from '../world/tile-diff';
 
 export type {
   AirTile,
@@ -132,6 +134,12 @@ export interface InputState {
 
 export interface GameState {
   world: Tile[][];
+  /**
+   * Tile mutations of the *solo* world, against the terrain `world.ts`
+   * regenerates. Persisted to `localStorage` and re-applied on every restart;
+   * co-op terrain comes from the relay instead, so it is not recorded here.
+   */
+  soloTileDiff: TileDiff;
   cash: number;
   tick: number;
   gameOver: boolean;

@@ -10,6 +10,7 @@
 import { STARTING } from '../core/balance';
 import { cancelExtraction } from '../core/extraction-phase';
 import { createDefaultStats, respawnPlayer } from '../core/state';
+import { applyTileEntries, tileDiffEntries } from '../world/tile-diff';
 import { resetWorldTerrain } from '../world/world-state';
 import type { AudioController, GameState } from '../core/types';
 import type { EnemySim } from './enemies';
@@ -91,14 +92,15 @@ export function createRun(deps: GameRunDeps): GameRun {
   function generate(): void {
     state.enemies = [];
     state.world = [];
-    session.resetTileDiff();
+    // Terrain comes back from the seed, so the dug-out blocks have to be layered
+    // on again: a death or a refresh must not refill the tunnels behind you.
+    applyTileEntries(state.world, tileDiffEntries(state.soloTileDiff));
     resetPlayer(false);
     deps.enemies().resetExposure();
   }
 
   function clearWorldRuntime(): void {
     resetWorldTerrain(state);
-    session.resetTileDiff();
     deps.enemies().clearExposure();
     state.enemyIdCounter = 1;
     deps.input().clearKeys();

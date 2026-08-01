@@ -3,6 +3,8 @@ import { ORES, START_Y, WORLD_W } from '../../shared/constants';
 import { ECONOMY, STARTING } from '../core/balance';
 import { createInitialState } from '../core/state';
 import type { GameState } from '../core/types';
+import { createTileDiff } from '../world/tile-diff';
+import { makeTile } from '../world/world';
 import { createRun, type GameRun } from './run';
 import {
   createAudioStub,
@@ -178,6 +180,24 @@ describe('restarting after a death', () => {
     expect(h.state.world).toEqual([[{type: 'air'}]]);
   });
 
+  it('digs the solo tunnels back out of the regenerated terrain', () => {
+    const h = harness();
+    const dug = {x: 40, y: 60, tile: {type: 'air'} as const};
+    const cracked = {x: 41, y: 60, tile: {type: 'dirt', hp: 1, maxHp: 4} as const};
+    h.state.soloTileDiff = createTileDiff([dug, cracked]);
+    // A tile the miner never touched, to prove the seed still drives the rest.
+    expect(makeTile(dug.x, dug.y)).not.toEqual(dug.tile);
+
+    h.run.gameOver();
+    h.run.restartGame();
+
+    expect(h.state.world[dug.y][dug.x]).toEqual(dug.tile);
+    expect(h.state.world[cracked.y][cracked.x]).toEqual(cracked.tile);
+    expect(h.state.world[dug.y][dug.x + 2]).toEqual(makeTile(dug.x + 2, dug.y));
+    // The diff outlives the death, so the next one restores the same tunnels.
+    expect(h.state.soloTileDiff).toEqual(createTileDiff([dug, cracked]));
+  });
+
   it('announces the replacement ship to a paired peer', () => {
     const h = harness();
     h.state.connected = true;
@@ -238,7 +258,7 @@ describe('a shared-world reset', () => {
     expect(h.state.cash).toBe(900);
     expect(h.state.player.cargo).toHaveLength(2);
     expect(h.state.enemyIdCounter).toBe(1);
-    expect(h.session.resetTileDiff).toHaveBeenCalled();
+    expect(h.state.soloTileDiff.size).toBe(0);
     expect(h.enemies.clearExposure).toHaveBeenCalled();
     expect(h.input.clearKeys).toHaveBeenCalled();
     expect(h.invalidateTerrain).toHaveBeenCalled();

@@ -9,18 +9,14 @@ import {
   enemySnapshotFrom,
   enemyEntryFrom,
   nextEnemyId,
-  applyTileDiff,
-  applyTileToWorld,
   mergeEnemySnapshot,
   applyEnemySpawn,
   applyEnemyDead,
   applyEnemyDamage,
   createRateLimiter,
   type NetMessage,
-  type EnemySnapshotEntry,
-  type TileDiff
+  type EnemySnapshotEntry
 } from './net-protocol';
-import { tileKey } from '../../shared/tile-key';
 import { PROTOCOL_CASES } from '../../shared/protocol-fixtures';
 import type { Enemy, Tile } from '../core/types';
 
@@ -174,23 +170,14 @@ describe('isTile', () => {
     for (const t of tiles) expect(isTile(t)).toBe(true);
   });
 
-  it('preserves artifact metadata and its removal in accumulated tile diffs', () => {
+  it('preserves artifact metadata on the wire', () => {
     const artifact: Tile = {type:'artifact', artifact:{name:'Alien Reliquary', color:'#ff78e1', value:900, min:702, max:992, chance:.00025}, hp:7, maxHp:7};
     expect(roundTrip({type:'tile', revision:1, x:8, y:740, tile:artifact})).toEqual({type:'tile', revision:1, x:8, y:740, tile:artifact});
-
-    const diff = applyTileDiff(applyTileDiff({}, {x:8, y:740, tile:artifact}), {x:8, y:740, tile:{type:'air'}});
-    expect(Object.values(diff)).toEqual([{x:8, y:740, tile:{type:'air'}}]);
   });
 
-  it('round-trips and applies tile mutations below 10,000 m', () => {
+  it('round-trips tile mutations below 10,000 m', () => {
     const deep = {type:'tile', revision:1, x:8, y:1205, tile:{type:'air'}} as const;
     expect(roundTrip(deep)).toEqual(deep);
-
-    const world: Tile[][] = [];
-    applyTileToWorld(world, deep, (x, y) => ({type:'dirt', hp:x + y + 1, maxHp:x + y + 1}));
-    expect(world[100]).toBeUndefined();
-    expect(world[1205][8]).toEqual({type:'air'});
-    expect(world[1205][9]).toEqual({type:'dirt', hp:1215, maxHp:1215});
   });
 
   it('rejects malformed tiles', () => {
@@ -265,33 +252,6 @@ describe('builders', () => {
   it('allocates a fresh enemy id after adopting a host snapshot', () => {
     expect(nextEnemyId([])).toBe(1);
     expect(nextEnemyId([{ id: 3 }, { id: 11 }, { id: 7 }])).toBe(12);
-  });
-});
-
-describe('tile diff reducers', () => {
-  it('applyTileDiff is pure and last-writer-wins', () => {
-    const empty: TileDiff = {};
-    const a = applyTileDiff(empty, { x: 1, y: 2, tile: { type: 'air' } });
-    expect(empty).toEqual({});
-    expect(a[tileKey(1, 2)]).toEqual({ x: 1, y: 2, tile: { type: 'air' } });
-
-    const b = applyTileDiff(a, { x: 1, y: 2, tile: { type: 'dirt', hp: 1, maxHp: 2 } });
-    expect(a[tileKey(1, 2)].tile).toEqual({ type: 'air' });
-    expect(b[tileKey(1, 2)].tile).toEqual({ type: 'dirt', hp: 1, maxHp: 2 });
-    expect(Object.keys(b)).toHaveLength(1);
-  });
-
-  it('applyTileToWorld mutates the grid within bounds and ignores out-of-range', () => {
-    const world: Tile[][] = [
-      [{ type: 'dirt', hp: 1, maxHp: 1 }, { type: 'dirt', hp: 1, maxHp: 1 }],
-      [{ type: 'dirt', hp: 1, maxHp: 1 }, { type: 'dirt', hp: 1, maxHp: 1 }]
-    ];
-    applyTileToWorld(world, { x: 1, y: 0, tile: { type: 'air' } });
-    expect(world[0][1]).toEqual({ type: 'air' });
-    // Out of range: no throw, no change.
-    applyTileToWorld(world, { x: 5, y: 0, tile: { type: 'rock', hp: 999 } });
-    applyTileToWorld(world, { x: 0, y: 9, tile: { type: 'rock', hp: 999 } });
-    expect(world).toHaveLength(2);
   });
 });
 

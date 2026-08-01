@@ -4,6 +4,7 @@ import { createInitialState } from '../core/state';
 import type { Enemy, GameState } from '../core/types';
 import type { NetCallbacks, NetClient } from '../net/net';
 import type { EnemySnapshotEntry, NetMessage } from '../net/net-protocol';
+import { createTileDiff, tileDiffEntries } from '../world/tile-diff';
 import { uiStore } from '../ui/store';
 import { createSession, type GameSession } from './session';
 import { createWorldGrid, type WorldGrid } from './world-grid';
@@ -196,6 +197,36 @@ describe('world hydration', () => {
     h.receive({type: 'worldReset', revision: 5});
     h.receive({type: 'worldReset', revision: 1});
     expect(h.clearWorldRuntime).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('solo terrain recording', () => {
+  it('records local mutations while solo, and leaves the shared world out of the save', () => {
+    const h = harness();
+    // The relay socket is open but unpaired play is still this client's own world.
+    h.state.connected = false;
+
+    h.grid.set(5, 41, {type: 'air'});
+    expect(tileDiffEntries(h.state.soloTileDiff)).toEqual([{x: 5, y: 41, tile: {type: 'air'}}]);
+
+    asPairedHost(h);
+    h.grid.set(6, 41, {type: 'air'});
+
+    expect(tileDiffEntries(h.state.soloTileDiff)).toEqual([{x: 5, y: 41, tile: {type: 'air'}}]);
+    expect(mocks.net.sent).toEqual([{type: 'tile', revision: 1, x: 6, y: 41, tile: {type: 'air'}}]);
+  });
+
+  it('keeps the solo world intact when it adopts a relay world', () => {
+    const h = harness();
+    h.state.soloTileDiff = createTileDiff([{x: 5, y: 41, tile: {type: 'air'}}]);
+
+    h.receive({
+      type: 'worldState', version: 1, revision: 4, initialized: true,
+      tiles: [{x: 3, y: 40, tile: {type: 'air'}}], enemies: [], explored: ''
+    });
+
+    expect(h.grid.get(3, 40)).toEqual({type: 'air'});
+    expect(tileDiffEntries(h.state.soloTileDiff)).toEqual([{x: 5, y: 41, tile: {type: 'air'}}]);
   });
 });
 

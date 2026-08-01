@@ -1,10 +1,12 @@
 // Multiplayer session lifecycle for the client.
 //
-// Owns the `NetClient`, the connection-status copy, the shared world's revision,
-// and the accumulated tile diff — everything whose lifetime is "one relay
-// session" rather than "one run". Incoming peer messages are dispatched by a
-// single exhaustive switch so that adding a protocol message fails to compile
-// until it is handled here.
+// Owns the `NetClient`, the connection-status copy, and the shared world's
+// revision — everything whose lifetime is "one relay session" rather than "one
+// run". Incoming peer messages are dispatched by a single exhaustive switch so
+// that adding a protocol message fails to compile until it is handled here.
+//
+// It is also the single funnel every committed tile mutation passes through, so
+// it is where a solo world's diff (`state.soloTileDiff`) is recorded.
 
 import { encodeExploration, mergeExploration } from '../../shared/exploration-codec';
 import { getEnemyType } from '../core/enemy-types';
@@ -14,17 +16,16 @@ import {
   applyEnemyDead,
   applyEnemySpawn,
   applyRemotePlayerState,
-  applyTileDiff,
   enemyEntryFrom,
   enemySnapshotFrom,
   nextEnemyId,
   playerStateFrom,
   remotePlayerFrom,
   type NetMessage,
-  type TileDiff,
   type WorldStateMsg
 } from '../net/net-protocol';
 import type { Tile } from '../core/types';
+import { applyTileEntries, recordTileDiff } from '../world/tile-diff';
 import { uiStore } from '../ui/store';
 import type { EnemySim } from './enemies';
 import type { WorldGrid } from './world-grid';
@@ -42,10 +43,8 @@ export interface GameSession {
   sendPlayerState(): void;
   /** Send the host's authoritative enemy list, throttled by the net layer. */
   sendEnemySnapshot(): void;
-  /** Record a committed tile mutation in the diff and replicate it. */
+  /** Record a committed tile mutation in the solo diff and replicate it. */
   recordTile(x: number, y: number, tile: Tile, broadcast: boolean): void;
-  /** Drop the accumulated tile diff (world regenerated or replaced). */
-  resetTileDiff(): void;
   /** Replicate the full exploration set to the peer, if paired. */
   broadcastExploration(): void;
   setConnectionStatus(status: string, showInHud?: boolean): void;
@@ -93,10 +92,14 @@ export function createSession(deps: GameSessionDeps): GameSession {
   let connectionIssue: string | null = null;
   let resettingPlayerData = false;
   let worldRevision = 1;
-  let tileDiff: TileDiff = {};
 
   function isGuestEnemyReplica(): boolean {
     return state.role === 'guest';
+  }
+
+  /** No relay in the picture: this client owns, and must persist, its world. */
+  function isSolo(): boolean {
+    return !state.role && !state.connected;
   }
 
   function isPairedHost(): boolean {
@@ -112,8 +115,11 @@ export function createSession(deps: GameSessionDeps): GameSession {
   }
 
   function recordTile(x: number, y: number, tile: Tile, broadcast: boolean): void {
-    // Guests retain received/local mutations too: they may become the next host.
-    if (state.role) tileDiff = applyTileDiff(tileDiff, {x, y, tile});
+    // A solo world is regenerated from its seed on every restart, so the diff is
+    // the only record that a tunnel was ever dug. Co-op terrain is the relay's
+    // to remember; recording it here would push a shared world into a save file
+    // the next solo run would then replay.
+    if (isSolo()) recordTileDiff(state.soloTileDiff, {x, y, tile});
     if (broadcast && state.connected && net?.paired) net.send({type: 'tile', revision: worldRevision, x, y, tile});
   }
 
@@ -132,11 +138,7 @@ export function createSession(deps: GameSessionDeps): GameSession {
   function applyAuthoritativeWorld(msg: WorldStateMsg): void {
     worldRevision = msg.revision;
     state.world = [];
-    tileDiff = {};
-    for (const entry of msg.tiles) {
-      const row = grid.ensureRow(entry.y);
-      if (row) row[entry.x] = entry.tile;
-    }
+    applyTileEntries(state.world, msg.tiles);
     deps.enemies().applyEntries(msg.enemies);
     state.enemyIdCounter = nextEnemyId(state.enemies);
     state.exploredTiles.clear();
@@ -345,7 +347,6 @@ export function createSession(deps: GameSessionDeps): GameSession {
     sendPlayerState: () => { net?.sendPlayerState(playerStateFrom(state.player)); },
     sendEnemySnapshot: () => { net?.sendEnemySnapshot(enemySnapshotFrom(state.enemies, worldRevision)); },
     recordTile,
-    resetTileDiff: () => { tileDiff = {}; },
     broadcastExploration,
     setConnectionStatus,
     startOnline,

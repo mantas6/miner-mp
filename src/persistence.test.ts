@@ -4,8 +4,10 @@ import { createInitialState } from './core/state';
 import { ECONOMY } from './core/balance';
 import { cargoCost } from './core/economy';
 import { claimArtifact } from './core/artifacts';
-import { ARTIFACTS } from '../shared/constants';
+import { ARTIFACTS, MAX_SAVED_TILE_ENTRIES } from '../shared/constants';
 import { explorationIndex } from '../shared/exploration-codec';
+import type { TileEntry } from '../shared/world-schema';
+import { createTileDiff, tileDiffEntries } from './world/tile-diff';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -153,5 +155,91 @@ describe('fog exploration persistence', () => {
     expect(state.player.cargoMax).toBe(20);
     expect(state.player.visibility).toBe(3);
     expect(state.exploredTiles.size).toBe(0);
+  });
+});
+
+describe('solo terrain persistence', () => {
+  const dug: TileEntry = { x: 44, y: 61, tile: { type: 'air' } };
+  const cracked: TileEntry = { x: 45, y: 61, tile: { type: 'dirt', hp: 1, maxHp: 4 } };
+  const mined: TileEntry = {
+    x: 46, y: 61,
+    tile: { type: 'ore', ore: { name: 'Gold', color: '#ffd65c', value: 70, min: 152, max: 602, chance: 0.04 }, hp: 2, maxHp: 5 }
+  };
+
+  it('round-trips the tile diff in the relay world format', () => {
+    const stored = stubStorage();
+    const state = createInitialState();
+    state.soloTileDiff = createTileDiff([dug, cracked, mined]);
+
+    save(state);
+
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({
+      version: SAVE_VERSION,
+      tiles: [dug, cracked, mined]
+    });
+
+    const restored = createInitialState();
+    load(restored);
+    expect(restored.soloTileDiff).toEqual(state.soloTileDiff);
+  });
+
+  it('gives a version 3 save an untouched mine', () => {
+    stubStorage({ version: 3, cash: 90, explored: '910-911' });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(state.cash).toBe(90);
+    expect(state.exploredTiles.has(explorationIndex(10, 10))).toBe(true);
+    expect(state.soloTileDiff.size).toBe(0);
+  });
+
+  it('ignores a malformed tile list instead of failing the whole load', () => {
+    stubStorage({ version: SAVE_VERSION, cash: 90, tiles: [{ x: 1, y: 2, tile: { type: 'lava' } }] });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(state.cash).toBe(90);
+    expect(state.soloTileDiff.size).toBe(0);
+  });
+
+  it('drops the terrain rather than the wallet when storage is full', () => {
+    const stored = new Map<string, string>();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (value.includes('"tiles":[{')) throw new Error('QuotaExceededError');
+        stored.set(key, value);
+      }
+    });
+    const state = createInitialState();
+    state.cash = 4200;
+    state.soloTileDiff = createTileDiff([dug]);
+
+    save(state);
+
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({ cash: 4200, tiles: [] });
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('forgets the oldest mutations once the save budget is spent', () => {
+    stubStorage();
+    const state = createInitialState();
+    const entries: TileEntry[] = Array.from({ length: MAX_SAVED_TILE_ENTRIES + 2 }, (_, index) => ({
+      x: index % 90, y: 10 + index, tile: { type: 'air' }
+    }));
+    state.soloTileDiff = createTileDiff(entries);
+
+    save(state);
+
+    const restored = createInitialState();
+    load(restored);
+    const kept = tileDiffEntries(restored.soloTileDiff);
+    expect(kept).toHaveLength(MAX_SAVED_TILE_ENTRIES);
+    expect(kept[0]).toEqual(entries[2]);
+    expect(kept.at(-1)).toEqual(entries.at(-1));
   });
 });
