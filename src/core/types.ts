@@ -192,6 +192,8 @@ export interface AudioController {
   toggleSfx(): Promise<void>;
   blip(freq?: number, dur?: number, type?: OscillatorType, gain?: number, slide?: number): void;
   noise(dur?: number, gain?: number, filterFreq?: number): void;
+  /** Layered boom for dynamite and ship destruction; `power` scales loudness and length. */
+  explosion(power?: number): void;
   mine(): void;
   ore(value?: number): void;
   cash(value?: number): void;

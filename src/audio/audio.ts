@@ -151,6 +151,53 @@ export function createAudio(toast: ToastFn): AudioController {
       src.buffer = buffer; src.connect(filter); filter.connect(g); g.connect(this.master);
       src.start(now); src.stop(now + dur);
     },
+    /**
+     * A layered boom rather than a single burst: a pitch-swept sine carries the
+     * body, noise under a closing lowpass supplies the debris tail, and a short
+     * bright crack on top keeps it reading as an impact instead of a rumble.
+     */
+    explosion(power=1) {
+      if (!this.enabled || !this.sfxEnabled || !this.ctx || !this.master) return;
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const tail = 0.72 * power;
+
+      // Body: 150 Hz dropping to sub-bass, near-instant attack, long decay.
+      const thump = ctx.createOscillator();
+      const thumpGain = ctx.createGain();
+      thump.type = 'sine';
+      thump.frequency.setValueAtTime(150, now);
+      thump.frequency.exponentialRampToValueAtTime(32, now + tail * 0.65);
+      thumpGain.gain.setValueAtTime(0.0001, now);
+      thumpGain.gain.exponentialRampToValueAtTime(0.28 * power, now + 0.006);
+      thumpGain.gain.exponentialRampToValueAtTime(0.0001, now + tail);
+      thump.connect(thumpGain); thumpGain.connect(this.master);
+      thump.start(now); thump.stop(now + tail + 0.05);
+
+      // Debris: noise shaped by its own squared fade, then darkened over time so
+      // the crack at the front settles into a low rumble.
+      const length = Math.max(1, Math.floor(ctx.sampleRate * tail));
+      const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i=0;i<data.length;i++) {
+        const fade = 1 - i/data.length;
+        data[i] = (Math.random()*2-1) * fade * fade;
+      }
+      const src = ctx.createBufferSource();
+      const lowpass = ctx.createBiquadFilter();
+      const noiseGain = ctx.createGain();
+      src.buffer = buffer;
+      lowpass.type = 'lowpass';
+      lowpass.frequency.setValueAtTime(2400, now);
+      lowpass.frequency.exponentialRampToValueAtTime(140, now + tail);
+      noiseGain.gain.setValueAtTime(0.20 * power, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + tail);
+      src.connect(lowpass); lowpass.connect(noiseGain); noiseGain.connect(this.master);
+      src.start(now); src.stop(now + tail);
+
+      this.blip(240, 0.09, 'sawtooth', 0.11 * power, -190);
+      setTimeout(()=>this.blip(58, 0.26, 'sine', 0.07 * power, -20), 140);
+    },
     mine() { this.noise(0.13, 0.16, 620); this.blip(92, 0.10, 'sawtooth', 0.10, -35); },
     ore(value=20) { this.blip(520, 0.10, 'triangle', 0.14, 220); setTimeout(()=>this.blip(760 + Math.min(500,value), 0.12, 'triangle', 0.12), 70); },
     cash(_value=10) { [0,60,120].forEach((d,i)=>setTimeout(()=>this.blip(740+i*120, 0.08, 'square', 0.11), d)); },

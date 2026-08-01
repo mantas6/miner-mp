@@ -152,6 +152,7 @@ export function createAudioStub(): AudioStub {
     toggleSfx: async () => { played.push('toggleSfx'); },
     blip: cue('blip'),
     noise: cue('noise'),
+    explosion: cue('explosion'),
     mine: cue('mine'),
     ore: cue('ore'),
     cash: cue('cash'),

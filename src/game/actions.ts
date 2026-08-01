@@ -178,7 +178,7 @@ export function createActions(deps: GameActionsDeps): GameActions {
     for (const {x, y} of targets) grid.set(x, y, {type: 'air'});
     enemies.wakeEnemiesNear(p.x, p.y);
     deps.spawnExplosion(p.x, p.y);
-    audio.noise(.32, .12, 520);
+    audio.explosion();
     saveProgress();
     toast(targets.length
       ? `Dynamite cleared ${targets.length} blocks. Ore and artifacts were destroyed; no rewards granted.`

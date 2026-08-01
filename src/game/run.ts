@@ -132,8 +132,8 @@ export function createRun(deps: GameRunDeps): GameRun {
     if (state.connected && session.paired) session.send({type:'died'});
     toast(message);
     spawnExplosion(state.player.x, state.player.y);
+    audio.explosion(1.2);
     audio.alarm();
-    audio.bump();
   }
 
   function damage(amount: number): void {

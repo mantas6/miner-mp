@@ -175,7 +175,7 @@ describe('music and sound effects mute independently', () => {
     expect(audio.sfxEnabled).toBe(false);
     expect(audio.musicEnabled).toBe(true);
     expect(music.pause).not.toHaveBeenCalled();
-    expect(heardEffects(() => { audio.mine(); audio.cash(); audio.bump(); })).toBe(0);
+    expect(heardEffects(() => { audio.mine(); audio.cash(); audio.bump(); audio.explosion(); })).toBe(0);
     expect(uiStore.getState().musicOn).toBe(true);
     expect(uiStore.getState().sfxOn).toBe(false);
     expect(toasts.at(-1)).toBe('Sound effects off');
