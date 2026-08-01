@@ -1,4 +1,5 @@
-import { setSoundBlockedStatus, setSoundIcon, setSoundUnavailableStatus } from '../ui/store';
+import { setMusicIcon, setSfxIcon, setSoundBlockedStatus, setSoundUnavailableStatus } from '../ui/store';
+import { loadAudioSettings, saveAudioSettings } from './audio-settings';
 import { DEFAULT_TRACK_ID, TRACKS } from './tracks';
 import type { MusicTrack, TrackId } from './tracks';
 import type { AudioController } from '../core/types';
@@ -8,15 +9,48 @@ type ToastFn = (message: string) => void;
 export function createAudio(toast: ToastFn): AudioController {
   /** Which encoding this browser gets; decided once, when the element is made. */
   let preferMp3 = true;
+  const settings = loadAudioSettings();
 
   function trackSrc(track: MusicTrack): string {
     return preferMp3 ? track.mp3 : track.ogg;
   }
 
+  function persist(): void {
+    saveAudioSettings({music: audio.musicEnabled, sfx: audio.sfxEnabled});
+  }
+
+  /**
+   * The buttons show what is *audible*, not what is merely wanted: before the
+   * browser grants audio both read as off, so pressing one retries the unlock.
+   */
+  function syncButtons(): void {
+    setMusicIcon(audio.enabled && audio.musicEnabled);
+    setSfxIcon(audio.enabled && audio.sfxEnabled);
+  }
+
+  /** Resume the shared context. Every way of turning audio on funnels in here. */
+  async function unlock(): Promise<boolean> {
+    if (audio.enabled) return true;
+    try {
+      audio.init();
+      if (!audio.ctx) return false;
+      if (audio.ctx.state === 'suspended') await audio.ctx.resume();
+      audio.enabled = true;
+      return true;
+    } catch {
+      audio.enabled = false;
+      setSoundBlockedStatus();
+      toast('Audio blocked by browser — press Music or Sound after a tap/click.');
+      return false;
+    }
+  }
+
   const audio: AudioController = {
     ctx: null,
     enabled: false,
-    wantsSound: true,
+    musicEnabled: settings.music,
+    sfxEnabled: settings.sfx,
+    get wantsSound() { return this.musicEnabled || this.sfxEnabled; },
     master: null,
     musicGain: null,
     musicEl: null,
@@ -46,37 +80,49 @@ export function createAudio(toast: ToastFn): AudioController {
       this.musicEl.preload = 'auto';
       this.musicEl.volume = 0.36;
     },
+    /** The gesture-unlock path: bring back whatever the player left switched on. */
     async enable() {
-      this.wantsSound = true;
-      try {
-        this.init();
-        if (!this.ctx) return false;
-        if (this.ctx.state === 'suspended') await this.ctx.resume();
-        this.enabled = true;
-        setSoundIcon(true);
-        await this.startMusic();
-        this.blip(720, 0.10, 'square', 0.11);
-        toast('Soundtrack on');
-        return true;
-      } catch {
-        this.enabled = false;
-        setSoundBlockedStatus();
-        toast('Sound blocked by browser — press Sound after a tap/click.');
-        return false;
+      if (!await unlock()) return false;
+      if (this.musicEnabled) await this.startMusic();
+      syncButtons();
+      if (this.sfxEnabled) this.blip(720, 0.10, 'square', 0.11);
+      if (this.wantsSound) toast(this.musicEnabled ? 'Soundtrack on' : 'Sound effects on');
+      return true;
+    },
+    async toggleMusic() {
+      if (this.enabled && this.musicEnabled) {
+        this.musicEnabled = false;
+        this.stopMusic();
+        persist();
+        syncButtons();
+        // The click itself is an effect, so it only sounds if effects are on.
+        this.blip(180, 0.05, 'square', 0.08);
+        return toast('Music off');
       }
+      this.musicEnabled = true;
+      persist();
+      if (!await unlock()) return;
+      await this.startMusic();
+      syncButtons();
+      toast('Music on');
     },
-    disable() {
-      this.wantsSound = false;
-      this.enabled = false;
-      setSoundIcon(false);
-      this.stopMusic();
-    },
-    async toggle() {
-      if (this.enabled) { this.blip(180, 0.05, 'square', 0.08); this.disable(); }
-      else await this.enable();
+    async toggleSfx() {
+      if (this.enabled && this.sfxEnabled) {
+        this.blip(180, 0.05, 'square', 0.08);
+        this.sfxEnabled = false;
+        persist();
+        syncButtons();
+        return toast('Sound effects off');
+      }
+      this.sfxEnabled = true;
+      persist();
+      if (!await unlock()) return;
+      syncButtons();
+      this.blip(720, 0.10, 'square', 0.11);
+      toast('Sound effects on');
     },
     blip(freq=440, dur=0.08, type: OscillatorType = 'sine', gain=0.06, slide=0) {
-      if (!this.enabled || !this.ctx || !this.master) return;
+      if (!this.enabled || !this.sfxEnabled || !this.ctx || !this.master) return;
       const now = this.ctx.currentTime;
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
@@ -90,7 +136,7 @@ export function createAudio(toast: ToastFn): AudioController {
       osc.start(now); osc.stop(now + dur + 0.02);
     },
     noise(dur=0.12, gain=0.05, filterFreq=700) {
-      if (!this.enabled || !this.ctx || !this.master) return;
+      if (!this.enabled || !this.sfxEnabled || !this.ctx || !this.master) return;
       const now = this.ctx.currentTime;
       const buffer = this.ctx.createBuffer(1, Math.max(1, this.ctx.sampleRate * dur), this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
@@ -114,6 +160,7 @@ export function createAudio(toast: ToastFn): AudioController {
     lowFuel() { this.blip(880, 0.09, 'square', 0.10, -120); setTimeout(()=>this.blip(660, 0.13, 'square', 0.10, -90), 120); },
     async startMusic() {
       this.stopMusic();
+      if (!this.enabled || !this.musicEnabled) return false;
       if (this.musicEl) {
         this.musicEl.currentTime = this.musicEl.currentTime || 0;
         try {
@@ -131,7 +178,7 @@ export function createAudio(toast: ToastFn): AudioController {
       const bass = [55,55,65.4,55,73.4,65.4,49,49];
       const lead = [220,0,247,262,0,196,185,0,220,247,294,262,0,196,165,0];
       this.musicTimer = window.setInterval(() => {
-        if (!this.enabled || !this.ctx) return;
+        if (!this.enabled || !this.musicEnabled || !this.ctx) return;
         const i = this.step++;
         const now = this.ctx.currentTime;
         const root = bass[i % bass.length];

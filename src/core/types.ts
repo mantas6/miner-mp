@@ -160,8 +160,14 @@ export interface GameState {
 
 export interface AudioController {
   ctx: AudioContext | null;
+  /** The shared context is unlocked and running; a gesture already paid for it. */
   enabled: boolean;
-  wantsSound: boolean;
+  /** Soundtrack preference, remembered between visits. */
+  musicEnabled: boolean;
+  /** Sound-effect preference, remembered between visits. */
+  sfxEnabled: boolean;
+  /** Either switch is on, so a trusted gesture is worth spending on an unlock. */
+  readonly wantsSound: boolean;
   master: GainNode | null;
   musicGain: GainNode | null;
   musicEl: HTMLAudioElement | null;
@@ -172,9 +178,10 @@ export interface AudioController {
   lastMove: number;
   lastLowFuel: number;
   init(): void;
+  /** Unlock the context and resume whatever the player left switched on. */
   enable(): Promise<boolean>;
-  disable(): void;
-  toggle(): Promise<void>;
+  toggleMusic(): Promise<void>;
+  toggleSfx(): Promise<void>;
   blip(freq?: number, dur?: number, type?: OscillatorType, gain?: number, slide?: number): void;
   noise(dur?: number, gain?: number, filterFreq?: number): void;
   mine(): void;

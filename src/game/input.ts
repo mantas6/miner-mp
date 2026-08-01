@@ -127,7 +127,7 @@ export function createInput(deps: GameInputDeps): GameInput {
 
   function handleKeyDown(e: KeyboardEvent): void {
     // Keyboard movement must work even before the browser grants audio permission.
-    // Sound can still be enabled with the Sound button or any pointer/touch input.
+    // Audio can still be enabled with the HUD buttons or any pointer/touch input.
     const key = e.key.toLowerCase();
     const ui = uiStore.getState();
     // The splash and the lobby are React's; they handle their own keys.

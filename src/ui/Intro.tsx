@@ -61,7 +61,7 @@ export function Intro() {
             <li><strong>Enemies:</strong> drilling nearby blocks wakes them; drill them back before they chew the hull.</li>
             <li><strong>Goal:</strong> reach the Motherlode core at 10,000 m, crack it, and get home alive. The mine continues below it.</li>
             <li><strong>Upgrade:</strong> prices rise, so choose tank, hull, cargo, drill, and sensor upgrades carefully.</li>
-            <li><strong>Sound:</strong> optional soundtrack starts only after the Sound button or a trusted tap/click.</li>
+            <li><strong>Sound:</strong> music and sound effects have their own HUD buttons, and either only starts after a button press or a trusted tap/click.</li>
           </ul>
           <p className={styles.warning}>Low fuel below {FUEL.lowFuelFraction * 100}% means return to the surface immediately.</p>
         </div>

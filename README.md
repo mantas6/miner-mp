@@ -345,12 +345,12 @@ outside the Web Audio graph the sound effects use. On the first `init()` it
 picks the encoding once via `canPlayType('audio/mpeg')` — mp3 where supported,
 ogg otherwise — then sets `loop` and `volume = 0.36`.
 
-Nothing plays until a trusted user gesture — the Sound button, or a trusted
-`pointerdown`/`touchstart` (see `src/audio/audio-permission.ts`). If the browser
-still rejects `play()`,
+Nothing plays until a trusted user gesture — either HUD audio button, or a
+trusted `pointerdown`/`touchstart` (see `src/audio/audio-permission.ts`). If the
+browser still rejects `play()`,
 `startSynthMusic()` takes over with a small Web Audio chiptune loop routed
 through the music gain (0.065) under the 0.55 master, so the run is not left
-silent. Toggling sound off pauses the element and clears the fallback timer.
+silent. Muting the music pauses the element and clears the fallback timer.
 
 `setTrack(trackId)` swaps the element's `src` to another registered track and
 restarts playback from that track's beginning if music was already running.
@@ -358,7 +358,13 @@ restarts playback from that track's beginning if music was already running.
 ## Audio/browser notes
 
 - Browsers usually require a user gesture before audio can start.
-- The game exposes a sound toggle button for explicit activation.
+- The HUD exposes two toggles for explicit activation: `musicBtn` for the
+  soundtrack and `sfxBtn` for the sound effects. Each one mutes only its own
+  side, and both preferences are stored under `moleload:audio-settings:v1`
+  (`src/audio/audio-settings.ts`).
+- `audio.enabled` means the shared `AudioContext` is unlocked; `musicEnabled` and
+  `sfxEnabled` are the player's two switches. Pressing either button while the
+  context is still locked retries the unlock, so a blocked autoplay recovers.
 - Pointer/touch input can also trigger audio startup; a key press cannot.
 - Sound effects and the soundtrack are independent: the effects run on Web Audio,
   the music on an `<audio>` element, and a rejected autoplay only downgrades the
@@ -417,7 +423,7 @@ npm run preview
 # open the local URL printed by Vite
 ```
 
-In the browser, press Sound and confirm the soundtrack starts, then check the
+In the browser, press the music button and confirm the soundtrack starts, then check the
 network panel: it should fetch `/assets/music/golden-signal.mp3` (or
 `.ogg` on browsers without mp3 support) and loop it. Chiptune instead of the
 march means autoplay was rejected and the synth fallback took over.

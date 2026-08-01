@@ -119,8 +119,11 @@ export interface UiState {
   phase: UiPhase;
   connectionStatus: string;
   connectionInHud: boolean;
-  soundOn: boolean;
-  soundLabel: string;
+  /** Soundtrack and sound effects mute independently, one button each. */
+  musicOn: boolean;
+  musicLabel: string;
+  sfxOn: boolean;
+  sfxLabel: string;
   /** Queue of transient status lines; the newest one is the one on screen. */
   toasts: ToastMessage[];
 
@@ -133,7 +136,8 @@ export interface UiState {
   setInfoTab(tab: string): void;
   setPhase(phase: UiPhase): void;
   setConnection(status: string, showInHud: boolean): void;
-  setSound(on: boolean, label: string): void;
+  setMusic(on: boolean, label: string): void;
+  setSfx(on: boolean, label: string): void;
   pushToast(message: string): void;
   dismissToast(id: number): void;
 }
@@ -242,8 +246,10 @@ export const uiStore = createStore<UiState>((set, get) => ({
   phase: 'intro',
   connectionStatus: 'Disconnected',
   connectionInHud: false,
-  soundOn: false,
-  soundLabel: 'Enable optional sound',
+  musicOn: false,
+  musicLabel: 'Enable music',
+  sfxOn: false,
+  sfxLabel: 'Enable sound effects',
   toasts: [],
 
   syncHud(next) {
@@ -291,10 +297,16 @@ export const uiStore = createStore<UiState>((set, get) => ({
     set({connectionStatus: status, connectionInHud: showInHud});
   },
 
-  setSound(on, label) {
+  setMusic(on, label) {
     const state = get();
-    if (state.soundOn === on && state.soundLabel === label) return;
-    set({soundOn: on, soundLabel: label});
+    if (state.musicOn === on && state.musicLabel === label) return;
+    set({musicOn: on, musicLabel: label});
+  },
+
+  setSfx(on, label) {
+    const state = get();
+    if (state.sfxOn === on && state.sfxLabel === label) return;
+    set({sfxOn: on, sfxLabel: label});
   },
 
   /** A newer message takes over the toast slot; the older one never reappears. */
@@ -336,15 +348,24 @@ export function pushToast(message: string): void {
   uiStore.getState().pushToast(message);
 }
 
-/** Sound button state, written by the audio controller. */
-export function setSoundIcon(on: boolean): void {
-  uiStore.getState().setSound(on, on ? 'Disable sound' : 'Enable optional sound');
+/** Music button state, written by the audio controller. */
+export function setMusicIcon(on: boolean): void {
+  uiStore.getState().setMusic(on, on ? 'Mute music' : 'Enable music');
+}
+
+/** Sound-effects button state, written by the audio controller. */
+export function setSfxIcon(on: boolean): void {
+  uiStore.getState().setSfx(on, on ? 'Mute sound effects' : 'Enable sound effects');
 }
 
 export function setSoundUnavailableStatus(message = 'Sound unavailable in this browser'): void {
-  uiStore.getState().setSound(uiStore.getState().soundOn, message);
+  const store = uiStore.getState();
+  store.setMusic(store.musicOn, message);
+  store.setSfx(store.sfxOn, message);
 }
 
 export function setSoundBlockedStatus(): void {
-  uiStore.getState().setSound(false, 'Sound blocked — press Sound after a tap/click');
+  const store = uiStore.getState();
+  store.setMusic(false, 'Music blocked — press Music after a tap/click');
+  store.setSfx(false, 'Sound blocked — press Sound after a tap/click');
 }

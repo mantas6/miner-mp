@@ -181,7 +181,8 @@ function registerUiCommands(){
     closeShop: closeShopScreen,
     openInfo: openInfoScreen,
     closeInfo: closeInfoScreen,
-    toggleSound: () => { void audio.toggle(); },
+    toggleMusic: () => { void audio.toggleMusic(); },
+    toggleSfx: () => { void audio.toggleSfx(); },
     dismissIntro: event => dismissIntro(event),
     connect: url => {
       if (!url) { session.setConnectionStatus('Enter a server URL'); return; }

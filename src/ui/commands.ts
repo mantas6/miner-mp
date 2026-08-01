@@ -25,7 +25,8 @@ export interface UiCommands {
   closeShop(): void;
   openInfo(): void;
   closeInfo(): void;
-  toggleSound(): void;
+  toggleMusic(): void;
+  toggleSfx(): void;
   /** Leave the splash for the lobby; the press doubles as the audio gesture. */
   dismissIntro(event?: Event): void;
   connect(url: string): void;
@@ -57,7 +58,8 @@ export const uiCommands: UiCommands = {
   closeShop: noop,
   openInfo: noop,
   closeInfo: noop,
-  toggleSound: noop,
+  toggleMusic: noop,
+  toggleSfx: noop,
   dismissIntro: noop,
   connect: noop,
   playSolo: noop,

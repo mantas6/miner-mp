@@ -14,7 +14,7 @@ import { MinerApp } from './ui';
 /** Ids the game runtime, the keyboard layer, and the tests address directly. */
 const DOM_CONTRACT = [
   'shell', 'game-panel', 'game',
-  'hud', 'soundBtn', 'connectionStatus', 'cash', 'depth', 'depthTarget', 'scanner',
+  'hud', 'musicBtn', 'sfxBtn', 'connectionStatus', 'cash', 'depth', 'depthTarget', 'scanner',
   'fuel', 'fuelLabel', 'fuelReserve', 'fuelReserveLabel', 'hull', 'hullLabel', 'cargo', 'cargoLabel', 'extractionStatus',
   'sell', 'shopBtn', 'dynamiteBtn', 'teleporterBtn', 'gunBtn', 'infoBtn',
   'shop-screen', 'shop-card', 'shopCloseBtn',
@@ -252,6 +252,48 @@ describe('store-driven HUD', () => {
     patchHud({depthTarget: 'Motherlode core', depthTargetKind: 'motherlode', depthTargetRemaining: 0});
     expect(target.textContent).toBe('↓ 0 m to Motherlode core');
     expect(target.dataset.kind).toBe('motherlode');
+  });
+
+  it('mutes music and sound effects from separate buttons', () => {
+    const toggleMusic = vi.fn();
+    const toggleSfx = vi.fn();
+    setUiCommands({toggleMusic, toggleSfx});
+    render(<MinerApp />);
+
+    const music = document.getElementById('musicBtn') as HTMLButtonElement;
+    const sfx = document.getElementById('sfxBtn') as HTMLButtonElement;
+
+    // Nothing plays before the browser grants audio, so both read as muted.
+    expect(music.getAttribute('aria-pressed')).toBe('false');
+    expect(sfx.getAttribute('aria-pressed')).toBe('false');
+    expect(sfx.textContent).toBe('🔇');
+
+    fireEvent.click(music);
+    expect(toggleMusic).toHaveBeenCalledOnce();
+    expect(toggleSfx).not.toHaveBeenCalled();
+
+    fireEvent.click(sfx);
+    expect(toggleSfx).toHaveBeenCalledOnce();
+    expect(toggleMusic).toHaveBeenCalledOnce();
+  });
+
+  it('paints each audio switch from its own slice of the store', () => {
+    render(<MinerApp />);
+    const music = document.getElementById('musicBtn') as HTMLButtonElement;
+    const sfx = document.getElementById('sfxBtn') as HTMLButtonElement;
+
+    act(() => { uiStore.getState().setMusic(true, 'Mute music'); });
+    expect(music.getAttribute('aria-pressed')).toBe('true');
+    expect(music.className).not.toMatch(/muted/);
+    expect(music.getAttribute('aria-label')).toBe('Mute music');
+    // Effects are untouched by the music switch.
+    expect(sfx.getAttribute('aria-pressed')).toBe('false');
+    expect(sfx.className).toMatch(/muted/);
+
+    act(() => { uiStore.getState().setSfx(true, 'Mute sound effects'); });
+    expect(sfx.getAttribute('aria-pressed')).toBe('true');
+    expect(sfx.textContent).toBe('🔊');
+    expect(sfx.className).not.toMatch(/muted/);
   });
 
   it('shows the newest toast and fades the expired one out without clearing it', () => {
