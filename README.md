@@ -131,7 +131,7 @@ miner-mp/
 | `server/world-state.js` | Authoritative shared-mine state and its on-disk persistence. |
 | `server/test/` | Relay tests (`node --test`): protocol parity with the client, relay behaviour, world-state persistence. |
 | `.github/workflows/build.yml` | CI: lint and production build on pushes to `main` and pull requests. |
-| `.github/workflows/deploy-pages.yml` | Scheduled/manual GitHub Pages deployment of `dist/`. |
+| `.github/workflows/deploy-pages.yml` | Manually triggered GitHub Pages deployment of `dist/`. |
 
 ## Run locally
 
@@ -531,7 +531,7 @@ either of them.
 - `.github/workflows/build.yml` runs `npm ci`, `npm run lint` and `npm run build`
   on pushes to `main`, on pull requests, and on demand.
 - `.github/workflows/deploy-pages.yml` builds and publishes `dist/` to GitHub
-  Pages every Monday at 06:00 UTC, or when triggered manually.
+  Pages when triggered manually.
 
 `vite.config.ts` sets a relative `base`, so the same build works at a domain
 root and under the `/miner-mp/` Pages project subpath. The deployed site is
