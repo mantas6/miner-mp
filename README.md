@@ -39,14 +39,19 @@ miner-mp/
 ├── soundtrack/
 │   ├── engine.py
 │   ├── render.py
+│   ├── render_voice.sh
 │   └── tracks/
 │       ├── __init__.py
 │       └── golden_signal.py
 ├── public/
 │   └── assets/
-│       └── music/
-│           ├── golden-signal.mp3
-│           └── golden-signal.ogg
+│       ├── music/
+│       │   ├── golden-signal.mp3
+│       │   └── golden-signal.ogg
+│       └── voice/
+│           ├── golden-signal-line-1.mp3
+│           ├── golden-signal-line-1.ogg
+│           └── ...  (one pair per lyric line)
 ├── src/
 │   ├── main.tsx
 │   ├── persistence.ts
@@ -58,7 +63,10 @@ miner-mp/
 │   ├── audio/
 │   │   ├── audio.ts
 │   │   ├── audio-permission.ts
-│   │   └── tracks.ts
+│   │   ├── encoding.ts
+│   │   ├── intro-voice.ts
+│   │   ├── tracks.ts
+│   │   └── voice-lines.ts
 │   ├── ui/
 │   └── styles/
 ├── server/
@@ -87,13 +95,18 @@ miner-mp/
 | `src/game/` | Gameplay orchestration (`game.ts`) plus its feature modules — `session.ts` (relay session), `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `zoom.ts` (wheel/pinch camera zoom maths), `readouts.ts` — and the canvas handles (`dom.ts`). |
 | `src/net/` | Relay client (partysocket, auto-reconnect), wire protocol codec, and multiplayer settings. |
 | `src/render/` | Canvas drawing, terrain/fog chunk cache policy, and partner indicator. |
-| `src/audio/` | Web Audio graph, sound effects, soundtrack playback, and autoplay permission. |
+| `src/audio/` | Web Audio graph, sound effects, soundtrack playback, the intro voice-over, and autoplay permission. |
 | `src/audio/tracks.ts` | Track registry for playback: the `TrackId` union, `TRACKS` (title plus mp3/ogg URLs), `DEFAULT_TRACK_ID`. |
+| `src/audio/encoding.ts` | `prefersMp3()`/`pickSource()`: the one place that decides mp3 or ogg for an asset that ships as both. |
+| `src/audio/voice-lines.ts` | Lyric voice-over registry plus the pure scheduling maths — `pickVoiceLine()` (random, never an immediate repeat) and `nextVoiceGapMs()`. |
+| `src/audio/intro-voice.ts` | The splash-screen voice-over loop: one `<audio>` element, the gap timer, mute handling, and blocked-autoplay retries. |
 | `soundtrack/engine.py` | Track-agnostic synth/render/encode engine (stdlib only): oscillators, envelope, note names, event bucketing, 44.1 kHz stereo WAV mixdown, `tanh` saturation, loop-edge fades, and the ffmpeg mp3/ogg encode. |
 | `soundtrack/tracks/golden_signal.py` | "Golden Signal", the built-in Soviet/industrial mining march: patterns, voices, tempo, seed. Also the template for new tracks. |
 | `soundtrack/tracks/__init__.py` | Generator-side registry: the `TRACKS` dict keyed by slug and `get_track()`. |
 | `soundtrack/render.py` | CLI that renders registered tracks into `public/assets/music/`. |
+| `soundtrack/render_voice.sh` | espeak-ng + ffmpeg pipeline that renders the robot lyric voice-overs into `public/assets/voice/`. |
 | `public/assets/music/` | The shipped soundtrack assets (`golden-signal.mp3`, `golden-signal.ogg`) — build products of `soundtrack/render.py`, copied verbatim into `dist/` by Vite. |
+| `public/assets/voice/` | The shipped lyric voice-overs (`golden-signal-line-1..4.{mp3,ogg}`) — build products of `soundtrack/render_voice.sh`, copied verbatim into `dist/` by Vite. |
 | `src/ui/` | React components, the zustand UI store (`store.ts`), the command table the buttons dispatch into (`commands.ts`), and co-located CSS modules. |
 | `src/styles/base.css` | Design tokens plus element-level styling (`button`, `ul`, `kbd`, `meter`, `canvas`, `#shell`, `#game-panel`). |
 | `src/styles/icons.css` | Global equipment sprite sheet (`icon-*`), addressed by name from the shop catalog. |
@@ -357,6 +370,70 @@ silent. Muting the music pauses the element and clears the fallback timer.
 `setTrack(trackId)` swaps the element's `src` to another registered track and
 restarts playback from that track's beginning if music was already running.
 
+## Intro voice-over
+
+While the splash screen is up, a robot voice reads the song's lyrics — one
+short clip per line, chosen at random with a few seconds of silence between
+them:
+
+```
+Golden signal, shining bright
+Lift us through the neon night
+Golden signal, hold the line
+We are sparks in silver time
+```
+
+### Rendering the clips
+
+`soundtrack/render_voice.sh` writes `public/assets/voice/golden-signal-line-N.mp3`
+and `.ogg` (N = 1..4). It is a shell pipeline rather than part of the Python
+generator because the synthesis is espeak-ng's, not ours:
+
+1. **espeak-ng** (`-v en-us+klatt3 -s 132 -p 25 -a 190 -g 6`) — the `klatt`
+   variants are formant synthesis, so the timbre is machine-like before any
+   effect is applied. Low pitch, slightly slow, small inter-word gap.
+2. **ffmpeg** — `afftfilt` forces every FFT bin's phase to zero while keeping its
+   magnitude, which is the classic robot/vocoder buzz and leaves the words
+   intact; a short two-tap `aecho` adds a metallic slapback; a 170 Hz–6.8 kHz
+   band gives it the PA-speaker feel; `loudnorm` lands each line at −26 LUFS so
+   it never shouts over the −27 LUFS soundtrack.
+3. Encoded to mp3 (128 kbps) and ogg (96 kbps) mono — the format pair and the
+   naming match `public/assets/music/`.
+
+```bash
+soundtrack/render_voice.sh                        # overwrite the shipped clips
+soundtrack/render_voice.sh --out-dir /tmp/x --keep-wav
+ESPEAK="espeak-ng" soundtrack/render_voice.sh     # use a locally installed binary
+```
+
+The default invocation runs espeak-ng through `nix run nixpkgs#espeak-ng`, so
+nothing has to be installed; `ESPEAK` and `FFMPEG` override the two binaries.
+The clips are ~3.5–4.0 s each and are committed like the soundtrack is.
+
+### Playback
+
+`src/audio/intro-voice.ts` owns one `<audio>` element at `volume = 0.3` (under
+the soundtrack's 0.36) and loops: wait, pick a line, speak it, wait again.
+`src/audio/voice-lines.ts` holds the registry and the two pure decisions —
+`pickVoiceLine()` never returns the line that just played, and
+`nextVoiceGapMs()` picks a 2.6–6.2 s gap — which is where the co-located tests
+aim.
+
+The loop is scoped to the overlay: `Intro.tsx` calls `startIntroVoice()` on
+mount and `stopIntroVoice()` on unmount (`src/ui/commands.ts`), and
+`dismissIntro()` stops it before the gesture starts the soundtrack, so a line
+can never talk over the first bar or leak into the lobby. Because the splash is
+rendered before `game/game.ts` is even imported, `initGame()` also starts the
+loop if the phase is still `intro`; `start()` on a running loop does nothing.
+
+The lyrics are part of the song, so they follow the **music** toggle, not the
+sound-effects one. They deliberately do not go through the `AudioContext`: that
+graph needs a trusted gesture to resume and the only gesture on the splash is
+the one that dismisses it, whereas a media element can be allowed to play on its
+own. If `play()` is rejected the scheduler simply asks again every 2 s, so the
+voice starts the moment the browser (or the player un-muting) allows it, and a
+blocked attempt does not use up a turn in the no-repeat rotation.
+
 ## Audio/browser notes
 
 - Browsers usually require a user gesture before audio can start.
@@ -371,6 +448,10 @@ restarts playback from that track's beginning if music was already running.
 - Sound effects and the soundtrack are independent: the effects run on Web Audio,
   the music on an `<audio>` element, and a rejected autoplay only downgrades the
   music to the synth fallback.
+- The intro voice-over is a third `<audio>` element that follows the music
+  toggle. It starts before any gesture has been spent, so it is expected to be
+  refused on a first visit and to be heard on later ones; it retries rather than
+  giving up, and stops with the splash either way.
 
 ## Development checklist
 

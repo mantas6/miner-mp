@@ -29,6 +29,9 @@ export interface UiCommands {
   toggleSfx(): void;
   /** Leave the splash for the lobby; the press doubles as the audio gesture. */
   dismissIntro(event?: Event): void;
+  /** Begin the lyric voice-over that loops for as long as the splash is up. */
+  startIntroVoice(): void;
+  stopIntroVoice(): void;
   connect(url: string): void;
   playSolo(event?: Event): void;
   grantDeveloperCash(): void;
@@ -61,6 +64,8 @@ export const uiCommands: UiCommands = {
   toggleMusic: noop,
   toggleSfx: noop,
   dismissIntro: noop,
+  startIntroVoice: noop,
+  stopIntroVoice: noop,
   connect: noop,
   playSolo: noop,
   grantDeveloperCash: noop,

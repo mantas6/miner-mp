@@ -1,5 +1,6 @@
 import { setMusicIcon, setSfxIcon, setSoundBlockedStatus, setSoundUnavailableStatus } from '../ui/store';
 import { loadAudioSettings, saveAudioSettings } from './audio-settings';
+import { pickSource, prefersMp3 } from './encoding';
 import { DEFAULT_TRACK_ID, TRACKS } from './tracks';
 import type { MusicTrack, TrackId } from './tracks';
 import type { AudioController } from '../core/types';
@@ -12,7 +13,7 @@ export function createAudio(toast: ToastFn): AudioController {
   const settings = loadAudioSettings();
 
   function trackSrc(track: MusicTrack): string {
-    return preferMp3 ? track.mp3 : track.ogg;
+    return pickSource(track, preferMp3);
   }
 
   function persist(): void {
@@ -74,7 +75,7 @@ export function createAudio(toast: ToastFn): AudioController {
       this.musicGain.gain.value = 0.065;
       this.musicGain.connect(this.master);
       this.musicEl = new Audio();
-      preferMp3 = Boolean(this.musicEl.canPlayType && this.musicEl.canPlayType('audio/mpeg'));
+      preferMp3 = prefersMp3(this.musicEl);
       this.musicEl.src = trackSrc(TRACKS[this.currentTrackId]);
       this.musicEl.loop = true;
       this.musicEl.preload = 'auto';

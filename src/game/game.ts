@@ -19,6 +19,7 @@ import { advanceViewportZoom, viewport } from './viewport';
 import { recenteredCamera } from './zoom';
 import { createAudio } from '../audio/audio';
 import { shouldAttemptAutoAudio } from '../audio/audio-permission';
+import { createIntroVoice, type IntroVoice } from '../audio/intro-voice';
 import { createDefaultStats, createInitialState } from '../core/state';
 import { createRenderer, type Renderer } from '../render/renderer';
 import { FUEL, ECONOMY } from '../core/balance';
@@ -53,6 +54,7 @@ import { createInput, type GameInput } from './input';
 
 const state = createInitialState();
 let audio: AudioController;
+let introVoice: IntroVoice;
 let renderer: Renderer | undefined;
 let developerToolsEnabled = false;
 
@@ -185,6 +187,8 @@ function registerUiCommands(){
     toggleMusic: () => { void audio.toggleMusic(); },
     toggleSfx: () => { void audio.toggleSfx(); },
     dismissIntro: event => dismissIntro(event),
+    startIntroVoice: () => introVoice.start(),
+    stopIntroVoice: () => introVoice.stop(),
     connect: url => {
       if (!url) { session.setConnectionStatus('Enter a server URL'); return; }
       saveServerUrl(url);
@@ -390,6 +394,10 @@ function isPlaying(){
 function dismissIntro(event?: Event){
   const store = uiStore.getState();
   if (store.phase !== 'intro') return;
+  // Silence the lyric voice-over before the gesture starts the soundtrack, so
+  // the last line cannot talk over the first bar. Unmounting the overlay would
+  // stop it anyway; this just makes the hand-off explicit and ordered.
+  introVoice.stop();
   tryAutoAudio(event);
   store.setPhase('lobby');
 }
@@ -507,6 +515,8 @@ function wireModules(){
 export function initGame(options: { developerToolsEnabled?: boolean } = {}){
   developerToolsEnabled = options.developerToolsEnabled === true;
   audio = createAudio(toast);
+  // The lyrics are part of the song, so they follow the music switch.
+  introVoice = createIntroVoice({wantsVoice: () => audio.musicEnabled});
   state.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   wireModules();
   renderer = createRenderer({ state, get: (x: number, y: number) => grid.get(x, y), rand });
@@ -522,4 +532,8 @@ export function initGame(options: { developerToolsEnabled?: boolean } = {}){
   });
   addEventListener('pointerdown', tryAutoAudio);
   registerUiCommands(); run.generate(); setInterval(saveProgress, 60000); addEventListener('beforeunload', saveProgress); focusGame(); setTimeout(focusGame, 60); loop();
+  // The splash is mounted before this module is even imported, so its own
+  // start command may have landed on the placeholder no-op. Starting here too
+  // makes the order irrelevant: `start()` on a running loop does nothing.
+  if (uiStore.getState().phase === 'intro') introVoice.start();
 }
