@@ -434,6 +434,22 @@ describe('session lifecycle', () => {
     expect(uiStore.getState().phase).toBe('playing');
   });
 
+  it('drops a waiting socket when the player backs out of the connect screen', () => {
+    const h = harness();
+    mocks.net.callbacks?.onPaired?.('host');
+
+    h.session.cancelOnline();
+
+    expect(mocks.net.disconnectCalls).toBe(1);
+    expect(h.state).toMatchObject({connected: false, role: null, remotePlayers: []});
+    expect(uiStore.getState().connectionStatus).toBe('Disconnected');
+    // No socket is left to pair, so nothing can start a run behind the lobby.
+    mocks.net.paired = true;
+    mocks.net.callbacks?.onPeerJoined?.();
+    expect(h.startGame).not.toHaveBeenCalled();
+    expect(uiStore.getState().phase).toBe('lobby');
+  });
+
   it('asks the relay for a world reset only while connected', () => {
     const h = harness();
 

@@ -87,6 +87,7 @@ export function createSessionStub(role: Partial<SessionStubRole> = {}): SessionS
     broadcastExploration: vi.fn(),
     setConnectionStatus: vi.fn(),
     startOnline: vi.fn(),
+    cancelOnline: vi.fn(),
     playSolo: vi.fn(),
     resetForPlayerData: vi.fn(),
     requestWorldReset: vi.fn(() => false)

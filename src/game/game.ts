@@ -194,6 +194,7 @@ function registerUiCommands(){
       saveServerUrl(url);
       session.startOnline(url);
     },
+    cancelConnect: () => session.cancelOnline(),
     playSolo: event => session.playSolo(event),
     grantDeveloperCash: grantDeveloperMoney,
     runDeveloperService,

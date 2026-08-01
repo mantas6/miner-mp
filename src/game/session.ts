@@ -51,6 +51,8 @@ export interface GameSession {
   setConnectionStatus(status: string, showInHud?: boolean): void;
   /** Connect to a relay and start (or join) a shared world. */
   startOnline(url: string): void;
+  /** Drop a relay session that never became a run (the player backed out). */
+  cancelOnline(): void;
   /** Leave any session and play offline. */
   playSolo(event?: Event): void;
   /** Tear the session down for a player-data reset (suppresses reconnect glue). */
@@ -293,6 +295,22 @@ export function createSession(deps: GameSessionDeps): GameSession {
     net.connect();
   }
 
+  /**
+   * Leaving the connect panel must not leave a socket behind: a host that is
+   * still waiting would otherwise drag the player into a run the moment a peer
+   * joined, from a screen that offers no multiplayer at all.
+   */
+  function cancelOnline(): void {
+    if (!net) return;
+    connectionIssue = null;
+    net.disconnect();
+    net = null;
+    state.connected = false;
+    state.role = null;
+    state.remotePlayers = [];
+    setConnectionStatus('Disconnected');
+  }
+
   function playSolo(event?: Event): void {
     net?.disconnect();
     net = null;
@@ -331,6 +349,7 @@ export function createSession(deps: GameSessionDeps): GameSession {
     broadcastExploration,
     setConnectionStatus,
     startOnline,
+    cancelOnline,
     playSolo,
     resetForPlayerData,
     requestWorldReset

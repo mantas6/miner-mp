@@ -25,8 +25,9 @@ const DOM_CONTRACT = [
   'fuel-warning', 'toast'
 ];
 
-/** Ids that only exist in one phase, because only that overlay is mounted. */
-const LOBBY_CONTRACT = ['lobby-screen', 'serverUrl', 'lobbyConnectionStatus', 'connectBtn', 'soloBtn'];
+/** Ids that only exist in the lobby phase, step by step: mode first, relay second. */
+const LOBBY_MODE_CONTRACT = ['lobby-screen', 'soloBtn', 'multiplayerBtn'];
+const LOBBY_CONNECT_CONTRACT = ['lobby-screen', 'serverUrl', 'lobbyConnectionStatus', 'connectBtn', 'lobbyBackBtn'];
 
 const pristine = {...uiStore.getState()};
 const pristineCommands = {...uiCommands};
@@ -81,7 +82,7 @@ describe('boot phase machine', () => {
 
     act(() => { uiStore.getState().setPhase('lobby'); });
     expect(document.getElementById('intro')).toBeNull();
-    for (const id of LOBBY_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
+    for (const id of LOBBY_MODE_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
 
     act(() => { uiStore.getState().setPhase('playing'); });
     expect(document.getElementById('intro')).toBeNull();
@@ -148,24 +149,71 @@ describe('boot phase machine', () => {
     expect(dismissIntro).not.toHaveBeenCalled();
   });
 
-  it('dispatches the lobby choices with the entered relay URL', () => {
-    const connect = vi.fn();
+  it('starts a solo run straight from the mode picker, forwarding the gesture', () => {
     const playSolo = vi.fn();
-    setUiCommands({connect, playSolo});
+    setUiCommands({playSolo});
     render(<MinerApp />);
     act(() => { uiStore.getState().setPhase('lobby'); });
+
+    // The relay panel is a step away, not a control on this screen.
+    expect(document.getElementById('serverUrl')).toBeNull();
+    expect(document.activeElement?.id).toBe('soloBtn');
+
+    fireEvent.click(document.getElementById('soloBtn')!);
+    expect(playSolo).toHaveBeenCalledTimes(1);
+    expect(playSolo.mock.calls[0][0]).toBeInstanceOf(Event);
+  });
+
+  it('opens the relay panel only after multiplayer is chosen, and focuses the URL', () => {
+    render(<MinerApp />);
+    act(() => { uiStore.getState().setPhase('lobby'); });
+
+    act(() => { fireEvent.click(document.getElementById('multiplayerBtn')!); });
+
+    for (const id of LOBBY_CONNECT_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
+    expect(document.getElementById('soloBtn')).toBeNull();
+    expect(document.activeElement?.id).toBe('serverUrl');
+  });
+
+  it('connects with the entered relay URL from the button and from Enter', () => {
+    const connect = vi.fn();
+    setUiCommands({connect});
+    render(<MinerApp />);
+    act(() => { uiStore.getState().setPhase('lobby'); });
+    act(() => { fireEvent.click(document.getElementById('multiplayerBtn')!); });
 
     fireEvent.change(document.getElementById('serverUrl')!, {target: {value: ' ws://relay.test '}});
     fireEvent.click(document.getElementById('connectBtn')!);
     expect(connect).toHaveBeenCalledWith('ws://relay.test');
 
-    fireEvent.click(document.getElementById('soloBtn')!);
-    expect(playSolo).toHaveBeenCalled();
+    // Connect is the form's submit action, so Enter in the field reaches it too.
+    // (happy-dom has no implicit submission, hence the direct submit event.)
+    fireEvent.submit(document.getElementById('serverUrl')!.closest('form')!);
+    expect(connect).toHaveBeenCalledTimes(2);
+  });
+
+  it('backs out of the relay panel from the button or Escape, cancelling the attempt', () => {
+    const cancelConnect = vi.fn();
+    setUiCommands({cancelConnect});
+    render(<MinerApp />);
+    act(() => { uiStore.getState().setPhase('lobby'); });
+
+    act(() => { fireEvent.click(document.getElementById('multiplayerBtn')!); });
+    act(() => { fireEvent.click(document.getElementById('lobbyBackBtn')!); });
+    expect(cancelConnect).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('soloBtn')).not.toBeNull();
+    expect(document.getElementById('serverUrl')).toBeNull();
+
+    act(() => { fireEvent.click(document.getElementById('multiplayerBtn')!); });
+    act(() => { fireEvent.keyDown(document.body, {key: 'Escape'}); });
+    expect(cancelConnect).toHaveBeenCalledTimes(2);
+    expect(document.getElementById('soloBtn')).not.toBeNull();
   });
 
   it('keeps reporting connection progress while the host waits in the lobby', () => {
     render(<MinerApp />);
     act(() => { uiStore.getState().setPhase('lobby'); });
+    act(() => { fireEvent.click(document.getElementById('multiplayerBtn')!); });
 
     act(() => { uiStore.getState().setConnection('Host - waiting for player', true); });
 

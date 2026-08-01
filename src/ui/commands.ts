@@ -33,6 +33,8 @@ export interface UiCommands {
   startIntroVoice(): void;
   stopIntroVoice(): void;
   connect(url: string): void;
+  /** Abandon a pending relay connection when the player leaves the connect panel. */
+  cancelConnect(): void;
   playSolo(event?: Event): void;
   grantDeveloperCash(): void;
   runDeveloperService(id: DeveloperServiceId): void;
@@ -67,6 +69,7 @@ export const uiCommands: UiCommands = {
   startIntroVoice: noop,
   stopIntroVoice: noop,
   connect: noop,
+  cancelConnect: noop,
   playSolo: noop,
   grantDeveloperCash: noop,
   runDeveloperService: noop,
