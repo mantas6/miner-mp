@@ -59,7 +59,7 @@ export function load(state: GameState): void {
       state.stats[key] = numeric(savedStats[key], defaultStats[key], 0);
     }
   } catch (err) {
-    console.warn('Could not load saved Moleload progress:', err);
+    console.warn('Could not load saved Stalinload progress:', err);
   }
 }
 
@@ -83,6 +83,6 @@ export function save(state: GameState): void {
       savedAt: Date.now()
     }));
   } catch (err) {
-    console.warn('Could not save Moleload progress:', err);
+    console.warn('Could not save Stalinload progress:', err);
   }
 }

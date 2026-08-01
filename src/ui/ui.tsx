@@ -26,7 +26,7 @@ export function MinerApp({ developerToolsEnabled = false }: { developerToolsEnab
           focus from the first frame, or WASD/arrow input goes nowhere. */}
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex, jsx-a11y/no-autofocus */}
       <section id="game-panel" tabIndex={0} autoFocus>
-        <canvas id="game" width={960} height={640} tabIndex={0} aria-label="Moleload mining game" />
+        <canvas id="game" width={960} height={640} tabIndex={0} aria-label="Stalinload mining game" />
         <Hud />
         <ShopScreen />
         <InfoScreen developerToolsEnabled={developerToolsEnabled} />

@@ -88,6 +88,16 @@ describe('boot phase machine', () => {
     expect(document.getElementById('lobby-screen')).toBeNull();
   });
 
+  it('keeps the splash copy to the title, one tagline, and the start prompt', () => {
+    render(<MinerApp />);
+
+    const intro = document.getElementById('intro')!;
+    expect(intro.querySelector('h2')?.textContent).toBe('Stalinload');
+    expect(intro.textContent).toContain('Press Enter to start');
+    // The rules live in Info / Cargo now: a wall of text here buries the prompt.
+    expect(intro.querySelectorAll('li')).toHaveLength(0);
+  });
+
   it('dismisses the intro on a press, forwarding the gesture for audio unlock', () => {
     const dismissIntro = vi.fn();
     setUiCommands({dismissIntro});

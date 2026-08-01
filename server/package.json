@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Authoritative WebSocket world relay for Moleload 2-player co-op.",
+  "description": "Authoritative WebSocket world relay for Stalinload 2-player co-op.",
   "scripts": {
     "start": "node index.js",
     "test": "node --test",

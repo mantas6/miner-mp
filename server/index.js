@@ -159,7 +159,7 @@ export function createRelayServer({
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT) || 8081;
   const server = createRelayServer({ port });
-  server.wss.on('listening', () => console.log(`Moleload relay listening on ws://0.0.0.0:${port}; world state: ${server.statePath}`));
+  server.wss.on('listening', () => console.log(`Stalinload relay listening on ws://0.0.0.0:${port}; world state: ${server.statePath}`));
   const shutdown = async () => { await server.close(); process.exit(0); };
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);

@@ -1,4 +1,4 @@
-# Moleload
+# Stalinload
 
 **Status:** public repo. The `main` build is deployed to GitHub Pages at
 <https://mantas6.github.io/miner-mp/>; run it locally with Vite (`npm run dev`)
