@@ -28,6 +28,7 @@ import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from '../
 import { formatExpeditionObjective } from '../core/objective';
 import { load, save } from '../persistence';
 import { formatExpeditionStats } from '../core/stats';
+import { formatSurfaceActionHint } from '../core/surface-hint';
 import { rand } from '../world/world';
 import { setUiCommands } from '../ui/commands';
 import { buildCargoRows, pushToast as toast, uiStore, type HudSnapshot, type PlayerSnapshot } from '../ui/store';
@@ -337,6 +338,18 @@ function syncUi(){
   hudScratch.teleportReturn = state.teleportReturnPosition !== null;
   hudScratch.teleportDepthReached = canTeleportToSurface(p.y);
   hudScratch.teleportUsable = canUseTeleporter(p, state.teleportReturnPosition);
+  // What Space would actually do if pressed right now, so the depot prompt never
+  // offers a service the ship does not need or cannot pay for.
+  hudScratch.surfaceHint = formatSurfaceActionHint({
+    atSurface: surf,
+    gameOver: state.gameOver,
+    cargoValue: hudScratch.cargoValue,
+    cash: state.cash,
+    fuel: p.fuel,
+    fuelMax: p.fuelMax,
+    hull: p.hull,
+    hullMax: p.hullMax
+  });
   // Scanner line, return-fuel forecast, and depth landmark, each recomputed only
   // when its own inputs moved. Milestone crossings toast from in here.
   readouts.sync(hudScratch);

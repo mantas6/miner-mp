@@ -16,7 +16,7 @@ const DOM_CONTRACT = [
   'shell', 'game-panel', 'game',
   'hud', 'musicBtn', 'sfxBtn', 'connectionStatus', 'cash', 'depth', 'depthTarget', 'scanner',
   'fuel', 'fuelLabel', 'fuelReturn', 'fuelSurplus', 'hull', 'hullLabel', 'cargo', 'cargoLabel', 'extractionStatus',
-  'sell', 'shopBtn', 'dynamiteBtn', 'teleporterBtn', 'gunBtn', 'infoBtn',
+  'surfaceHint', 'sell', 'shopBtn', 'dynamiteBtn', 'teleporterBtn', 'gunBtn', 'infoBtn',
   'shop-screen', 'shop-card', 'shopCloseBtn',
   'fuelBtn', 'repairBtn', 'cargoBtn', 'tankBtn', 'hullBtn', 'drillBtn', 'visibilityBtn',
   'shopDynamiteBtn', 'shopTeleporterBtn', 'shopGunBtn', 'shopBulletsBtn',
@@ -254,6 +254,29 @@ describe('store-driven HUD', () => {
 
     fireEvent.click(dynamite);
     expect(detonateDynamite).toHaveBeenCalledOnce();
+  });
+
+  it('prompts for the depot key only while a press would do something', () => {
+    render(<MinerApp />);
+    const hint = document.getElementById('surfaceHint') as HTMLElement;
+
+    // A fully serviced ship at the depot has nothing to press Space for.
+    expect(hint.hidden).toBe(true);
+
+    patchHud({surfaceHint: 'Space: sell & refuel'});
+    expect(hint.hidden).toBe(false);
+    expect(hint.textContent).toBe('Space: sell & refuel');
+
+    // The shop is modal and covers the HUD, so the prompt stands down under it.
+    act(() => { uiStore.getState().setShopOpen(true); });
+    expect(hint.hidden).toBe(true);
+
+    act(() => { uiStore.getState().setShopOpen(false); });
+    expect(hint.hidden).toBe(false);
+
+    // Underground and after a loss the game clears the line itself.
+    patchHud({surfaceHint: null});
+    expect(hint.hidden).toBe(true);
   });
 
   it('marks the gun button armed while aiming', () => {

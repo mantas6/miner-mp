@@ -21,6 +21,7 @@ import { formatExpeditionObjective } from '../core/objective';
 import { formatTerrainScanner } from '../core/scanner';
 import { createInitialState } from '../core/state';
 import { formatExpeditionStats, type ExpeditionStatRow } from '../core/stats';
+import { formatSurfaceActionHint } from '../core/surface-hint';
 import type { Ore, Player } from '../core/types';
 import { INFO_NAVIGATION_SECTIONS } from './info-navigation';
 
@@ -56,6 +57,8 @@ export interface HudSnapshot {
   teleportUsable: boolean;
   /** Adjacent drill/flight target readout, refreshed when the target changes. */
   scanner: string;
+  /** What one press of Space would do at the depot, or null when it would do nothing. */
+  surfaceHint: string | null;
   /** Return-fuel forecast for the climb home. */
   fuelReserveStatus: FuelReserveStatus;
   fuelReserveNeeded: number;
@@ -71,7 +74,7 @@ const HUD_KEYS = [
   'fuelAlert', 'hullAlert', 'cargoAlert', 'objective', 'extractionHud', 'extractionInfo',
   'atSurface', 'gameOver', 'gunArmed', 'gunOwned', 'bullets', 'dynamite', 'teleporters',
   'teleportReturn', 'teleportDepthReached', 'teleportUsable',
-  'scanner', 'fuelReserveStatus', 'fuelReserveNeeded', 'fuelReserveMargin',
+  'scanner', 'surfaceHint', 'fuelReserveStatus', 'fuelReserveNeeded', 'fuelReserveMargin',
   'depthTarget', 'depthTargetKind', 'depthTargetRemaining'
 ] as const satisfies readonly (keyof HudSnapshot)[];
 
@@ -190,6 +193,16 @@ function initialHud(): HudSnapshot {
     // Nothing has been scanned before the first frame, which is exactly what the
     // scanner says about terrain it has not mapped yet.
     scanner: formatTerrainScanner({tile: {type: 'air'}, direction: [0, 1], explored: false}),
+    surfaceHint: formatSurfaceActionHint({
+      atSurface: true,
+      gameOver: false,
+      cargoValue: 0,
+      cash: initialState.cash,
+      fuel: player.fuel,
+      fuelMax: player.fuelMax,
+      hull: player.hull,
+      hullMax: player.hullMax
+    }),
     fuelReserveStatus: 'safe',
     fuelReserveNeeded: 0,
     fuelReserveMargin: Math.floor(player.fuel),

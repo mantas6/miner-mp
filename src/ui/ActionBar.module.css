@@ -3,6 +3,10 @@
   position: absolute; right: 0; bottom: 0; width: min(380px, 42%); border-radius: var(--r-lg); padding: 10px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
 }
 .actionBar button[hidden] { display: none; }
+/* The depot prompt borrows the HUD's status-pill recipe, so it reads as a note
+   above the buttons rather than as a fourth thing competing for attention. */
+.surfaceHint { composes: connectionStatus from './common.module.css'; grid-column: 1 / -1; width: auto; justify-content: center; }
+.surfaceHint[hidden] { display: none; }
 .openShopBtn { background: var(--btn-bg-gold); color: #fff2bd; }
 .gunBtn.armed { background: linear-gradient(#9d6d23, #5e390f); color: #fff0a6; box-shadow: inset 0 0 0 2px #ffe28b, 0 0 18px rgba(255,211,95,.55); }
 
