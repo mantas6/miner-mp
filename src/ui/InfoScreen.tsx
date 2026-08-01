@@ -185,7 +185,7 @@ export function InfoScreen({developerToolsEnabled = false}: {developerToolsEnabl
           <ul className={styles.controlList}>
             <li><kbd>WASD</kbd> / <kbd>Arrows</kbd><span>Move, fly, and dig</span></li>
             <li><strong>Fog map</strong><span>Movement permanently reveals the sensor footprint. Co-op miners share explored tiles.</span></li>
-            <li><kbd>Shift</kbd> + movement<span>Sprint through open space at increased fuel cost; open-space descent is free and drilling stays normal</span></li>
+            <li><kbd>Shift</kbd> + movement<span>Sprint through open space at increased fuel cost; open-space descent is free and drilling stays normal. Slamming a boosted ship into rock, a ceiling, or a wall buckles the hull.</span></li>
             <li><kbd>Enter</kbd><span>Sell cargo at the surface depot</span></li>
             <li><kbd>Space</kbd><span>Repair or refuel at the surface</span></li>
             <li><kbd>E</kbd> / <kbd>Detonate</kbd><span>Use one carried dynamite underground; blasts yield no cargo, and destroyed artifacts grant no cash</span></li>

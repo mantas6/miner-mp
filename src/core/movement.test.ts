@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { FUEL } from './balance';
+import { FUEL, HULL, STARTING } from './balance';
 import { partialFill } from './economy';
-import { activeSprintDirection, fuelAfterMovement, isOpenSpaceDestination, isSprintActive, keyboardMovementRepeatMs, movementDestination, movementFuelCost } from './movement';
+import { activeSprintDirection, fuelAfterMovement, isOpenSpaceDestination, isSprintActive, keyboardMovementRepeatMs, movementDestination, movementFuelCost, sprintCrashDamage, sprintMomentumAfterMove } from './movement';
 
 describe('world boundaries', () => {
   it('keeps horizontal and surface boundaries but allows downward travel beyond 10,000 m', () => {
@@ -86,6 +86,64 @@ describe('sprint movement', () => {
     expect(keyboardMovementRepeatMs(100, true, destinationOpen)).toBe(100);
   });
 
+  it('builds momentum only from a completed sprint step through open space', () => {
+    const open = isOpenSpaceDestination(true, 'air', false);
+    const dirt = isOpenSpaceDestination(true, 'dirt', false);
+
+    expect(sprintMomentumAfterMove(true, true, open, 0, 1)).toEqual([0, 1]);
+    // Drilling out a tile and stepping in is not a boost run-up.
+    expect(sprintMomentumAfterMove(true, true, dirt, 0, 1)).toBeNull();
+    expect(sprintMomentumAfterMove(true, false, open, 0, 1)).toBeNull();
+    // Anything that fails to advance stops the ship dead.
+    expect(sprintMomentumAfterMove(false, true, open, 0, 1)).toBeNull();
+  });
+});
+
+describe('boost crashes', () => {
+  it('charges the hull when momentum is rammed into a wall on any axis', () => {
+    expect(sprintCrashDamage([0, 1], true, 0, 1)).toBe(HULL.sprintCrash);
+    expect(sprintCrashDamage([0, -1], true, 0, -1)).toBe(HULL.sprintCrash);
+    expect(sprintCrashDamage([-1, 0], true, -1, 0)).toBe(HULL.sprintCrash);
+    expect(sprintCrashDamage([1, 0], true, 1, 0)).toBe(HULL.sprintCrash);
+  });
+
+  it('hurts more than a plain rock bump without being a death sentence', () => {
+    expect(HULL.sprintCrash).toBeGreaterThan(HULL.rockBump);
+    expect(HULL.sprintCrash + HULL.rockBump).toBeLessThan(STARTING.hull / 4);
+  });
+
+  it('spares a nudge into a wall that no boost led up to', () => {
+    expect(sprintCrashDamage(null, true, 0, 1)).toBe(0);
+    expect(sprintCrashDamage([0, 1], false, 0, 1)).toBe(0);
+  });
+
+  it('only crashes along the direction the speed was built in', () => {
+    expect(sprintCrashDamage([1, 0], true, 0, 1)).toBe(0);
+    expect(sprintCrashDamage([0, 1], true, 0, -1)).toBe(0);
+  });
+
+  it('cannot bill a held Shift once per auto-repeat, because the crash spends the momentum', () => {
+    let momentum = sprintMomentumAfterMove(true, true, isOpenSpaceDestination(true, 'air', false), 0, 1);
+    let total = 0;
+
+    // Ten blocked repeats against the same wall: only the first one lands.
+    for (let attempt = 0; attempt < 10; attempt++) {
+      total += sprintCrashDamage(momentum, true, 0, 1);
+      momentum = sprintMomentumAfterMove(false, true, false, 0, 1);
+    }
+
+    expect(total).toBe(HULL.sprintCrash);
+  });
+
+  it('lets the ship crash again once it has flown away and boosted back in', () => {
+    const open = isOpenSpaceDestination(true, 'air', false);
+    const regained = sprintMomentumAfterMove(true, true, open, 0, 1);
+
+    expect(sprintCrashDamage(regained, true, 0, 1)).toBe(HULL.sprintCrash);
+  });
+});
+
+describe('sprint fuel edge cases', () => {
   it('does not waive downward fuel for enemies or blocked boundaries', () => {
     const activeEnemy = isOpenSpaceDestination(true, 'air', true);
     const clampedBoundary = isOpenSpaceDestination(false, 'air', false);

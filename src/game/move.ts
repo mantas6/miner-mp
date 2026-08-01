@@ -10,11 +10,12 @@ import { START_Y, WORLD_W } from '../../shared/constants';
 import { ECONOMY, FUEL, HULL } from '../core/balance';
 import { claimArtifact } from '../core/artifacts';
 import { beginExtraction, completeExtractionAtDepot } from '../core/extraction-phase';
-import { fuelAfterMovement, isOpenSpaceDestination, movementDestination } from '../core/movement';
+import { fuelAfterMovement, isOpenSpaceDestination, movementDestination, sprintCrashDamage, sprintMomentumAfterMove } from '../core/movement';
 import type {
   AirTile,
   ArtifactTile,
   AudioController,
+  Direction,
   DirtTile,
   DormantEnemyTile,
   GameState,
@@ -232,12 +233,27 @@ export function createMovement(deps: GameMovementDeps): GameMovement {
     if (p.fuel <= 0) gameOver('Out of fuel — ship exploded. Tap anywhere to restart.');
   }
 
+  /**
+   * Terrain refused a boosted move: the ship pancakes against the wall it was
+   * charging at. Charged on top of whatever the destination tile costs anyway,
+   * and only for the direction the momentum was actually built in.
+   */
+  function crashIntoWall(momentum: Direction | null, sprinting: boolean, dx: number, dy: number, nx: number, ny: number): void {
+    const crash = sprintCrashDamage(momentum, sprinting, dx, dy);
+    if (crash <= 0) return;
+    damage(crash);
+    spawnDust(nx, ny, '#c9d4e4', 12);
+    audio.explosion(0.3);
+    toast('Boost crash — hull buckled!');
+  }
+
   function move(dx: number, dy: number, sprinting = false): void {
     if (state.gameOver) return;
     const p = state.player;
     if (p.fuel <= 0) { gameOver('Out of fuel — ship exploded. Tap anywhere to restart.'); return; }
     const {x: nx, y: ny} = movementDestination(p.x, p.y, dx, dy, WORLD_W, START_Y);
     if (nx === p.x && ny === p.y) {
+      state.input.sprintMomentum = null;
       if (dy < 0 && p.y === START_Y) toast('Stay low — the surface airspace is for the depot, not flying.');
       return;
     }
@@ -254,10 +270,18 @@ export function createMovement(deps: GameMovementDeps): GameMovement {
     p.facing = dx ? Math.sign(dx) : p.facing;
     p.drillDx = dx;
     p.drillDy = dy;
-    if (activeEnemy) { p.drillAnim = 1.65; context.useFuel(context.dig(FUEL.dig.enemy)); enemies.damageEnemy(activeEnemy); return; }
-    if (tile.type !== 'air' && dy < 0) { p.drillDx = 0; p.drillDy = -1; p.drillAnim = 0.75; audio.bump(); toast('The drill cannot dig upward. Use tunnels to fly up.'); return; }
-    if (tile.type !== 'air' && dx !== 0 && dy === 0 && !grounded()) { p.drillDx = dx; p.drillDy = 0; p.drillAnim = 0.55; audio.bump(); toast('Side drilling needs solid ground underneath.'); return; }
-    if (resolveDestinationTile(tile, context) === 'blocked') return;
+    const resolve = (): MoveOutcome => {
+      if (activeEnemy) { p.drillAnim = 1.65; context.useFuel(context.dig(FUEL.dig.enemy)); enemies.damageEnemy(activeEnemy); return 'blocked'; }
+      if (tile.type !== 'air' && dy < 0) { p.drillDx = 0; p.drillDy = -1; p.drillAnim = 0.75; audio.bump(); toast('The drill cannot dig upward. Use tunnels to fly up.'); return 'blocked'; }
+      if (tile.type !== 'air' && dx !== 0 && dy === 0 && !grounded()) { p.drillDx = dx; p.drillDy = 0; p.drillAnim = 0.55; audio.bump(); toast('Side drilling needs solid ground underneath.'); return 'blocked'; }
+      return resolveDestinationTile(tile, context);
+    };
+    // Read the momentum before the move consumes it: the crash is paid by the
+    // speed the *previous* step built up, not by this one.
+    const momentum = state.input.sprintMomentum;
+    const advanced = resolve() === 'advance';
+    state.input.sprintMomentum = sprintMomentumAfterMove(advanced, sprinting, destinationOpen, dx, dy);
+    if (!advanced) { crashIntoWall(momentum, sprinting, dx, dy, nx, ny); return; }
     advanceShip(nx, ny);
   }
 

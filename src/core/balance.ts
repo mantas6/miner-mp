@@ -53,6 +53,11 @@ export const SPRINT = Object.freeze({
 export const HULL = Object.freeze({
   lowHullFraction: 0.30,
   rockBump: 4,
+  /**
+   * Slamming a boosted ship into terrain. Charged on top of any tile damage, and
+   * only once per run-up: the crash spends the sprint momentum that earned it.
+   */
+  sprintCrash: 6,
   hazardBase: 3.5,
   hazardDepthDivisor: 90,
   enemyBite: Object.freeze({

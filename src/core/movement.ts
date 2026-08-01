@@ -1,4 +1,4 @@
-import { SPRINT } from './balance';
+import { HULL, SPRINT } from './balance';
 import type { Direction } from './types';
 
 export function movementDestination(x: number, y: number, dx: number, dy: number, worldWidth: number, startY: number): {x: number; y: number} {
@@ -22,6 +22,28 @@ export function isSprintActive(sprintRequested: boolean, destinationOpen: boolea
 
 export function activeSprintDirection(sprintRequested: boolean, destinationOpen: boolean, dx: number, dy: number): Direction | null {
   return isSprintActive(sprintRequested, destinationOpen) && (dx !== 0 || dy !== 0) ? [dx, dy] : null;
+}
+
+/**
+ * Sprint momentum the ship carries out of a move attempt.
+ *
+ * Only a completed sprint step through open space builds speed; anything that
+ * fails to advance — terrain, an enemy, a world edge — brings the ship to a stop.
+ * That makes the momentum a one-shot ticket, which is what keeps a held Shift
+ * against a wall from crashing once per auto-repeat.
+ */
+export function sprintMomentumAfterMove(advanced: boolean, sprintRequested: boolean, destinationOpen: boolean, dx: number, dy: number): Direction | null {
+  return advanced ? activeSprintDirection(sprintRequested, destinationOpen, dx, dy) : null;
+}
+
+/**
+ * Hull damage for a boosted move that terrain refused, on top of whatever the
+ * destination tile charges by itself. Requires momentum in the very direction
+ * being rammed, so turning to face a wall mid-boost is not a crash.
+ */
+export function sprintCrashDamage(momentum: Direction | null, sprintRequested: boolean, dx: number, dy: number): number {
+  if (!sprintRequested || !momentum) return 0;
+  return momentum[0] === dx && momentum[1] === dy ? HULL.sprintCrash : 0;
 }
 
 export function keyboardMovementRepeatMs(normalRepeatMs: number, sprintRequested: boolean, destinationOpen: boolean): number {

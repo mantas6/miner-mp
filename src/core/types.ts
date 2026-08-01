@@ -125,6 +125,8 @@ export interface InputState {
   keyImpulse: Direction | null;
   /** Current keyboard sprint through open air; null while drilling, blocked, or idle. */
   sprintDirection: Direction | null;
+  /** Speed carried out of the last move; a crash into terrain spends it. */
+  sprintMomentum: Direction | null;
   lastKeyboardMove: number;
   keyboardRepeatMs: number;
   gunArmed: boolean;

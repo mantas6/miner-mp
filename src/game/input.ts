@@ -81,6 +81,7 @@ export function createInput(deps: GameInputDeps): GameInput {
     state.input.resetConfirmUntil = 0;
     state.input.keyImpulse = null;
     state.input.sprintDirection = null;
+    state.input.sprintMomentum = null;
     state.input.gunArmed = false;
     state.input.lastKeyboardMove = 0;
   }

@@ -64,6 +64,7 @@ export function createInitialState(): GameState {
     input: {
       keyImpulse: null,
       sprintDirection: null,
+      sprintMomentum: null,
       lastKeyboardMove: 0,
       keyboardRepeatMs: 105,
       gunArmed: false,

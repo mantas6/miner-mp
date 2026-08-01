@@ -161,6 +161,106 @@ describe('blocked moves', () => {
   });
 });
 
+describe('crashing a boosted ship into a wall', () => {
+  /** Fly one boosted tile through open air so the ship carries speed into the wall. */
+  function boostInto(h: Harness, dx: number, dy: number): void {
+    h.movement.move(dx, dy, true);
+    expect(h.state.input.sprintMomentum).toEqual([dx, dy]);
+    h.movement.move(dx, dy, true);
+  }
+
+  it('buckles the hull on a boosted landing, on top of the tile damage', () => {
+    const h = harness();
+    h.grid.put(10, 42, {type: 'rock', hp: 999});
+
+    boostInto(h, 0, 1);
+
+    expect(h.damage.mock.calls).toEqual([[HULL.rockBump], [HULL.sprintCrash]]);
+    expect(h.state.player.y).toBe(41);
+    expect(h.toasts.saw('Boost crash')).toBe(true);
+  });
+
+  it('buckles the hull on a boosted ceiling hit', () => {
+    const h = harness();
+    h.grid.put(10, 38, dirt(3));
+
+    boostInto(h, 0, -1);
+
+    expect(h.damage).toHaveBeenCalledWith(HULL.sprintCrash);
+    expect(h.state.player.y).toBe(39);
+  });
+
+  it('buckles the hull on a boosted side slam into an ungrounded wall', () => {
+    const h = harness();
+    h.grid.put(12, 40, dirt(3));
+
+    boostInto(h, 1, 0);
+
+    expect(h.damage).toHaveBeenCalledWith(HULL.sprintCrash);
+    expect(h.toasts.saw('Boost crash')).toBe(true);
+    expect(h.state.player.x).toBe(11);
+  });
+
+  it('charges the crash once, however long Shift is held against the wall', () => {
+    const h = harness();
+    h.grid.put(10, 42, {type: 'rock', hp: 999});
+
+    boostInto(h, 0, 1);
+    for (let repeat = 0; repeat < 8; repeat++) h.movement.move(0, 1, true);
+
+    expect(h.damage.mock.calls.filter(([amount]) => amount === HULL.sprintCrash)).toHaveLength(1);
+    expect(h.state.input.sprintMomentum).toBeNull();
+  });
+
+  it('leaves an unboosted bump exactly as it was', () => {
+    const h = harness();
+    h.grid.put(10, 42, {type: 'rock', hp: 999});
+
+    h.movement.move(0, 1);
+    h.movement.move(0, 1);
+
+    expect(h.damage.mock.calls).toEqual([[HULL.rockBump]]);
+    expect(h.toasts.saw('Boost crash')).toBe(false);
+  });
+
+  it('does not crash a boost that gets turned into a wall it never charged at', () => {
+    const h = harness();
+    h.grid.put(11, 41, dirt(3));
+
+    // Boost downward, then turn sideways into the wall at ordinary speed.
+    h.movement.move(0, 1, true);
+    h.movement.move(1, 0, true);
+
+    expect(h.damage).not.toHaveBeenCalled();
+  });
+
+  it('does not treat drilling out a tile as a boost run-up', () => {
+    const h = harness();
+    h.grid.put(10, 41, dirt(1));
+    h.grid.put(10, 42, {type: 'rock', hp: 999});
+    h.state.player.drill = 5;
+
+    h.movement.move(0, 1, true);
+    expect(h.state.player.y).toBe(41);
+    expect(h.state.input.sprintMomentum).toBeNull();
+
+    h.movement.move(0, 1, true);
+    expect(h.damage.mock.calls).toEqual([[HULL.rockBump]]);
+  });
+
+  it('drops the momentum at a world edge instead of crashing into nothing', () => {
+    const h = harness();
+    Object.assign(h.state.player, {x: 2, y: 40});
+
+    h.movement.move(-1, 0, true);
+    expect(h.state.input.sprintMomentum).toEqual([-1, 0]);
+
+    h.movement.move(-1, 0, true);
+    expect(h.state.input.sprintMomentum).toBeNull();
+    expect(h.damage).not.toHaveBeenCalled();
+  });
+});
+
 describe('digging', () => {
   it('takes several passes through tough dirt before the ship advances', () => {
     const h = harness();
