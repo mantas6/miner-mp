@@ -108,11 +108,11 @@ miner-mp/
 | `shared/protocol-fixtures.ts` | Shared message fixtures, so the client and relay protocol tests assert against the same payloads. |
 | `shared/world-schema.ts` | Zod schemas and derived types for tiles, enemies, and the persisted world state. |
 | `shared/tile-key.ts` | Canonical `"x,y"` coordinate key used by tile maps on both sides. |
-| `src/main.tsx` | Vite entry point: imports global styles, renders the React app, then starts the game runtime. |
+| `src/main.tsx` | Vite entry point: imports global styles and renders the app inside `<StrictMode>` and an error boundary, handing the game-runtime factory to it. |
 | `src/persistence.ts` | Local save/load of player progress, the ship's parked tile, explored tiles, and the solo world's tile diff (`localStorage`). |
 | `src/core/` | Pure gameplay rules and types: balance, economy, upgrades, shop catalog, movement, weapon, dynamite, teleporter, enemies, objectives, extraction, scanner, fuel reserve, depth milestones, stats, danger, fixed-step clock, developer tools. |
 | `src/world/` | World generation, the tile diff that turns a saved or relayed world back into terrain (`tile-diff.ts`), shared world-state reset, and visible tile range. |
-| `src/game/` | Gameplay orchestration (`game.ts`) plus its feature modules — `session.ts` (relay session), `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `zoom.ts` (wheel/pinch camera zoom maths), `readouts.ts` — and the canvas handles (`dom.ts`). |
+| `src/game/` | Gameplay orchestration (`game.ts`, the `createGameRuntime()` factory) plus its feature modules — `session.ts` (relay session), `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `zoom.ts` (wheel/pinch camera zoom maths), `readouts.ts` — the canvas surface factory (`dom.ts`) and the teardown registry every side effect registers with (`disposal.ts`). |
 | `src/net/` | Relay client (partysocket, auto-reconnect), wire protocol codec, and multiplayer settings. |
 | `src/render/` | Canvas drawing, terrain/fog chunk cache policy, and partner indicator. |
 | `src/audio/` | Web Audio graph, sound effects, soundtrack playback, the intro voice-over, and autoplay permission. |
@@ -127,7 +127,7 @@ miner-mp/
 | `soundtrack/render_voice.sh` | espeak-ng + ffmpeg pipeline that renders the robot lyric voice-overs into `public/assets/voice/`. |
 | `public/assets/music/` | The shipped soundtrack assets (`golden-signal.mp3`, `golden-signal.ogg`) — build products of `soundtrack/render.py`, copied verbatim into `dist/` by Vite. |
 | `public/assets/voice/` | The shipped lyric voice-overs (`golden-signal-line-1..4.{mp3,ogg}`) — build products of `soundtrack/render_voice.sh`, copied verbatim into `dist/` by Vite. |
-| `src/ui/` | React components, the zustand UI store (`store.ts`), the command table the buttons dispatch into (`commands.ts`), and co-located CSS modules. |
+| `src/ui/` | React components, the zustand UI store (`store.ts`), the command table the buttons dispatch into (`commands.ts`), the effect that owns the runtime's lifetime (`useGameRuntime.ts`), the boot/crash notices (`Failure.tsx`), and co-located CSS modules. |
 | `src/styles/base.css` | Design tokens plus element-level styling (`button`, `ul`, `kbd`, `meter`, `canvas`, `#shell`, `#game-panel`). |
 | `src/styles/icons.css` | Global equipment sprite sheet (`icon-*`), addressed by name from the shop catalog. |
 | `src/styles/intro-art.css` | Global intro badge art. |
@@ -143,6 +143,30 @@ miner-mp/
 | `server/test/` | Relay tests (`node --test`): protocol parity with the client, relay behaviour, world-state persistence. |
 | `.github/workflows/build.yml` | CI: lint, CSS format check, typecheck, tests and production build on pushes to `main` and pull requests. |
 | `.github/workflows/deploy-pages.yml` | Manually triggered GitHub Pages deployment of `dist/`. |
+
+## Runtime lifecycle
+
+The simulation is mounted by React, not by module import order. `main.tsx` renders
+the shell inside `<StrictMode>` and an error boundary, handing it
+`createGameRuntime` as a prop; `useGameRuntime` (in `src/ui/`) calls that factory
+from an effect with the mounted `#game` canvas and `#game-panel`, and disposes the
+runtime again on cleanup. Three consequences:
+
+- **No `flushSync`.** The canvas and the panel arrive as refs, so nothing has to
+  read the DOM at import time and no render has to be committed synchronously.
+- **Everything is revocable.** Window and document listeners, the 60-second save
+  interval, the focus timeout and the animation-frame loop all register their undo
+  with `src/game/disposal.ts`, so `dispose()` leaves nothing behind — which is what
+  makes dev StrictMode's double invocation (and Fast Refresh, and a crash remount)
+  produce exactly one live runtime instead of two stacked simulations.
+- **Failure is visible.** The boot reports `booting | ready | failed` into the
+  store. A refused boot renders the "Mine offline" notice, and a React crash
+  renders "Interface crashed" (`src/ui/Failure.tsx`) — instead of a silently dead
+  canvas, or a canvas still simulating behind a HUD that unmounted.
+
+Game code stays React-free: the bridges remain store writes, the `commands.ts`
+table, and the two element refs. Teardown also resets that table to no-ops, so a
+button can never reach a disposed runtime.
 
 ## Run locally
 
@@ -447,8 +471,9 @@ The loop is scoped to the overlay: `Intro.tsx` calls `startIntroVoice()` on
 mount and `stopIntroVoice()` on unmount (`src/ui/commands.ts`), and
 `dismissIntro()` stops it before the gesture starts the soundtrack, so a line
 can never talk over the first bar or leak into the lobby. Because the splash is
-rendered before `game/game.ts` is even imported, `initGame()` also starts the
-loop if the phase is still `intro`; `start()` on a running loop does nothing.
+mounted before the runtime is built, `createGameRuntime()` also starts the loop if
+the phase is still `intro`; `start()` on a running loop does nothing, and the
+runtime's `dispose()` stops it, so a StrictMode remount leaves one voice, not two.
 
 The lyrics are part of the song, so they follow the **music** toggle, not the
 sound-effects one. They deliberately do not go through the `AudioContext`: that

@@ -1,5 +1,4 @@
 import { SURFACE_HEIGHT, TILE, WORLD_W } from '../../shared/constants';
-import { canvas, ctx } from '../game/dom';
 import { viewport } from '../game/viewport';
 import { getPartnerIndicator } from './partner-indicator';
 import { getVisibleTileRange } from '../world/visible-tile-range';
@@ -47,6 +46,13 @@ export interface RendererState {
 
 export interface RendererDeps {
   state: RendererState;
+  /**
+   * The visible canvas and its context, handed over by the runtime that mounted
+   * them. Imported at module scope this used to make the renderer unloadable
+   * before the DOM existed.
+   */
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
   /** Tile at a world coordinate, generating terrain on demand. */
   get(x: number, y: number): Tile;
   /** Deterministic per-coordinate noise in [0, 1). */
@@ -81,7 +87,7 @@ interface ChunkLayerOptions {
   isBlank?(startX: number, startY: number, endX: number, endY: number): boolean;
 }
 
-export function createRenderer({ state, get, rand }: RendererDeps): Renderer {
+export function createRenderer({ state, canvas, ctx, get, rand }: RendererDeps): Renderer {
   let drawingContext: CanvasRenderingContext2D = ctx;
   const isExplored = (x: number, y: number) => !state.exploredTiles || isTileExplored(state.exploredTiles, x, y);
 

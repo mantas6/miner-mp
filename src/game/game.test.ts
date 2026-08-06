@@ -16,6 +16,7 @@ import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react';
 import { uiStore } from '../ui/store';
 import { MinerApp } from '../ui/ui';
+import type { GameRuntime } from './game';
 
 /** happy-dom has no canvas raster, so drawing calls go into a black hole. */
 function stubCanvasContext(): void {
@@ -59,6 +60,8 @@ function dialogOpen(id: string): boolean {
 }
 
 describe('booting the game', () => {
+  let runtime: GameRuntime;
+
   beforeAll(async () => {
     stubCanvasContext();
     render(React.createElement(MinerApp));
@@ -66,11 +69,19 @@ describe('booting the game', () => {
       frame = callback;
       return 0;
     });
-    const { initGame } = await import('./game');
-    await act(async () => { initGame({}); });
+    const { createGameRuntime } = await import('./game');
+    // The shell is mounted first, then the runtime is built against its elements —
+    // the same order `useGameRuntime` uses, without React owning the lifetime here.
+    await act(async () => {
+      runtime = createGameRuntime({
+        canvas: document.getElementById('game') as HTMLCanvasElement,
+        panel: document.getElementById('game-panel') as HTMLElement
+      });
+    });
   });
 
   afterAll(() => {
+    runtime.dispose();
     vi.unstubAllGlobals();
     localStorage.clear();
   });

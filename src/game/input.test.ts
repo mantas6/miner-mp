@@ -4,11 +4,11 @@
 // installs. What matters here is the gating: nothing may reach the simulation
 // before the run is live, and after a death a press has to deploy the next ship.
 //
-// `attach()` has no counterpart, so each harness leaves its listeners behind for
-// the rest of the file. That is harmless — every harness owns its own state and
-// spies, and a window capture listener cannot silence its siblings.
+// `attach()` returns its own detach, so each harness's listeners are dropped again
+// after the test that installed them — the same counterpart the runtime uses to
+// survive being remounted.
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createInitialState } from '../core/state';
 import type { GameState } from '../core/types';
 import { uiStore } from '../ui/store';
@@ -47,6 +47,12 @@ interface Harness {
   tryAutoAudio: ReturnType<typeof vi.fn>;
 }
 
+const detachers: (() => void)[] = [];
+
+afterEach(() => {
+  for (const detach of detachers.splice(0)) detach();
+});
+
 function harness(): Harness {
   const context = {
     state: createInitialState(),
@@ -62,7 +68,7 @@ function harness(): Harness {
     ...context,
     isOpenMovementDestination: () => true
   });
-  input.attach();
+  detachers.push(input.attach());
   return {...context, input};
 }
 

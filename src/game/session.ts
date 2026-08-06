@@ -59,6 +59,12 @@ export interface GameSession {
   resetForPlayerData(): void;
   /** Ask the relay to reset the shared world. False when offline. */
   requestWorldReset(): boolean;
+  /**
+   * Drop the socket on runtime teardown. Unlike `cancelOnline()` this reports
+   * nothing to the UI: the runtime that owned this session is going away, and a
+   * replacement one starts from its own 'Disconnected' state.
+   */
+  dispose(): void;
 }
 
 export interface GameSessionDeps {
@@ -91,7 +97,8 @@ export function createSession(deps: GameSessionDeps): GameSession {
 
   let net: NetClient | null = null;
   let connectionIssue: string | null = null;
-  let resettingPlayerData = false;
+  /** A deliberate close (player-data reset, runtime teardown): skip the reconnect glue. */
+  let teardownInFlight = false;
   let worldRevision = 1;
 
   function isGuestEnemyReplica(): boolean {
@@ -294,7 +301,7 @@ export function createSession(deps: GameSessionDeps): GameSession {
           state.role = null;
           state.remotePlayers = [];
           state.enemyIdCounter = nextEnemyId(state.enemies);
-          if (!resettingPlayerData) deps.enemies().resetExposure();
+          if (!teardownInFlight) deps.enemies().resetExposure();
           setConnectionStatus(connectionIssue || 'Disconnected');
         }
       }
@@ -330,9 +337,9 @@ export function createSession(deps: GameSessionDeps): GameSession {
   }
 
   function resetForPlayerData(): void {
-    resettingPlayerData = true;
+    teardownInFlight = true;
     net?.disconnect();
-    resettingPlayerData = false;
+    teardownInFlight = false;
     net = null;
   }
 
@@ -358,6 +365,14 @@ export function createSession(deps: GameSessionDeps): GameSession {
     cancelOnline,
     playSolo,
     resetForPlayerData,
-    requestWorldReset
+    requestWorldReset,
+    dispose() {
+      // Suppress the reconnect glue the close handler would otherwise run: the
+      // whole runtime is being discarded.
+      teardownInFlight = true;
+      net?.disconnect();
+      net = null;
+      teardownInFlight = false;
+    }
   };
 }

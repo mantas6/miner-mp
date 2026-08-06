@@ -15,6 +15,7 @@ import { SAVE_KEY, SAVE_VERSION } from '../persistence';
 import { uiCommands } from '../ui/commands';
 import { uiStore } from '../ui/store';
 import { MinerApp } from '../ui/ui';
+import type { GameRuntime } from './game';
 
 const SHAFT_X = Math.floor(WORLD_W / 2);
 /** The shaft the previous run left behind, directly below the depot. */
@@ -45,6 +46,8 @@ function depthMeters(): number {
 }
 
 describe('booting into a saved solo mine', () => {
+  let runtime: GameRuntime;
+
   beforeAll(async () => {
     const context: unknown = new Proxy({}, {
       get: (_target, key) => (key === 'canvas' ? document.getElementById('game') : () => context),
@@ -64,13 +67,19 @@ describe('booting into a saved solo mine', () => {
       frame = callback;
       return 0;
     });
-    const { initGame } = await import('./game');
-    await act(async () => { initGame({}); });
+    const { createGameRuntime } = await import('./game');
+    await act(async () => {
+      runtime = createGameRuntime({
+        canvas: document.getElementById('game') as HTMLCanvasElement,
+        panel: document.getElementById('game-panel') as HTMLElement
+      });
+    });
     act(() => { uiCommands.dismissIntro(); });
     act(() => { uiCommands.playSolo(); });
   });
 
   afterAll(() => {
+    runtime.dispose();
     vi.unstubAllGlobals();
     localStorage.clear();
   });

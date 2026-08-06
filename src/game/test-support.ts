@@ -89,7 +89,8 @@ export function createSessionStub(role: Partial<SessionStubRole> = {}): SessionS
     cancelOnline: vi.fn(),
     playSolo: vi.fn(),
     resetForPlayerData: vi.fn(),
-    requestWorldReset: vi.fn(() => false)
+    requestWorldReset: vi.fn(() => false),
+    dispose: vi.fn()
   };
 }
 
@@ -119,7 +120,7 @@ export function createEnemySimStub(): EnemySimStub {
 }
 
 export function createInputStub(): GameInput {
-  return {tick: vi.fn(), clearKeys: vi.fn(), reset: vi.fn(), attach: vi.fn()};
+  return {tick: vi.fn(), clearKeys: vi.fn(), reset: vi.fn(), attach: vi.fn(() => () => {})};
 }
 
 export interface AudioStub extends AudioController {

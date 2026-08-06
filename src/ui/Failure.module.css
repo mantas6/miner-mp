@@ -1,0 +1,40 @@
+.notice {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  /* Opaque: the dead game behind it is not information, it is noise. */
+  background: var(--bg);
+  color: var(--ink);
+}
+.notice h2 {
+  margin: 0;
+  font-size: var(--fs-xl);
+  color: var(--red);
+}
+.notice p {
+  margin: 0;
+  font-size: var(--fs-md);
+  color: var(--muted);
+}
+.detail {
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.notice button {
+  justify-self: center;
+  margin-top: 6px;
+  padding: 9px 18px;
+  border: var(--glass-border);
+  border-radius: var(--r-sm);
+  background: var(--btn-bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-md);
+  cursor: pointer;
+}

@@ -47,11 +47,6 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('../game/dom', () => ({
-  canvas: mocks.canvas,
-  ctx: mocks.mainContext
-}));
-
 vi.mock('../game/viewport', () => ({
   viewport: mocks.viewport
 }));
@@ -68,7 +63,19 @@ function zoomViewport(zoom: number): void {
   });
 }
 
-import { createRenderer } from './renderer';
+import { createRenderer as createRendererWithSurface, type RendererDeps } from './renderer';
+
+/**
+ * The renderer takes its canvas and context as dependencies now, so the tests
+ * inject the same fakes the module mock used to supply.
+ */
+function createRenderer(deps: Omit<RendererDeps, 'canvas' | 'ctx'>) {
+  return createRendererWithSurface({
+    ...deps,
+    canvas: mocks.canvas as unknown as HTMLCanvasElement,
+    ctx: mocks.mainContext as unknown as CanvasRenderingContext2D
+  });
+}
 
 describe('terrain cache lifecycle', () => {
   beforeEach(() => {

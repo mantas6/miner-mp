@@ -111,6 +111,19 @@ export interface ToastMessage {
  */
 export type UiPhase = 'intro' | 'lobby' | 'playing';
 
+/**
+ * Whether the simulation behind the canvas is alive.
+ *
+ *   booting --(runtime constructed)--> ready
+ *          --(constructor threw)-----> failed
+ *
+ * The phase machine above describes a *running* game; this describes whether
+ * there is one at all. It exists because the runtime is now mounted by a React
+ * effect that can fail (no canvas, no 2D context, a save that will not load), and
+ * a silent failure used to leave a dead black rectangle with no explanation.
+ */
+export type RuntimeStatus = 'booting' | 'ready' | 'failed';
+
 export interface UiState {
   hud: HudSnapshot;
   player: PlayerSnapshot;
@@ -120,6 +133,9 @@ export interface UiState {
   infoOpen: boolean;
   infoTab: string;
   phase: UiPhase;
+  runtimeStatus: RuntimeStatus;
+  /** Why the runtime failed, when it did. Shown verbatim in the failure notice. */
+  runtimeError: string | null;
   connectionStatus: string;
   connectionInHud: boolean;
   /** Soundtrack and sound effects mute independently, one button each. */
@@ -138,6 +154,7 @@ export interface UiState {
   setInfoOpen(open: boolean): void;
   setInfoTab(tab: string): void;
   setPhase(phase: UiPhase): void;
+  setRuntimeStatus(status: RuntimeStatus, error?: string | null): void;
   setConnection(status: string, showInHud: boolean): void;
   setMusic(on: boolean, label: string): void;
   setSfx(on: boolean, label: string): void;
@@ -258,6 +275,8 @@ export const uiStore = createStore<UiState>((set, get) => ({
   infoOpen: false,
   infoTab: INFO_NAVIGATION_SECTIONS[0].id,
   phase: 'intro',
+  runtimeStatus: 'booting',
+  runtimeError: null,
   connectionStatus: 'Disconnected',
   connectionInHud: false,
   musicOn: false,
@@ -303,6 +322,12 @@ export const uiStore = createStore<UiState>((set, get) => ({
 
   setPhase(phase) {
     if (get().phase !== phase) set({phase});
+  },
+
+  setRuntimeStatus(status, error = null) {
+    const state = get();
+    if (state.runtimeStatus === status && state.runtimeError === error) return;
+    set({runtimeStatus: status, runtimeError: error});
   },
 
   setConnection(status, showInHud) {

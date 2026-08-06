@@ -2,9 +2,10 @@
 //
 // Components never import `game.ts` (that would drag the whole simulation into
 // the UI module graph and back again through the store). Instead the game
-// registers a flat command table during `initGame()`, and buttons dispatch into
-// it. Every command is a no-op until registration, so rendering the UI without a
-// running game — in tests, or during the first frame — is harmless.
+// registers a flat command table while it boots, and buttons dispatch into it.
+// Every command is a no-op until registration and again after teardown, so
+// rendering the UI without a running game — in tests, between a StrictMode
+// double-mount, after a crash — is harmless.
 
 import type { DeveloperServiceId } from '../core/developer';
 import type { PlayerUpgradeId } from '../core/upgrades';
@@ -47,38 +48,53 @@ function noop(): void {
   /* no game is wired up yet */
 }
 
-export const uiCommands: UiCommands = {
-  sell: noop,
-  refuel: noop,
-  repair: noop,
-  buyUpgrade: noop,
-  buyDynamite: noop,
-  buyTeleporter: noop,
-  buyGun: noop,
-  buyBullets: noop,
-  detonateDynamite: noop,
-  useTeleporter: noop,
-  toggleGunArmed: noop,
-  openShop: noop,
-  closeShop: noop,
-  openInfo: noop,
-  closeInfo: noop,
-  toggleMusic: noop,
-  toggleSfx: noop,
-  dismissIntro: noop,
-  startIntroVoice: noop,
-  stopIntroVoice: noop,
-  connect: noop,
-  cancelConnect: noop,
-  playSolo: noop,
-  grantDeveloperCash: noop,
-  runDeveloperService: noop,
-  grantDeveloperUpgrade: noop,
-  resetPlayerData: noop,
-  resetWorldState: noop
-};
+/**
+ * A fresh table of no-ops. Also what teardown restores: a disposed runtime must
+ * not stay reachable through the buttons, or a click would drive a simulation
+ * whose listeners, timers and animation frames are already gone.
+ */
+function noopCommands(): UiCommands {
+  return {
+    sell: noop,
+    refuel: noop,
+    repair: noop,
+    buyUpgrade: noop,
+    buyDynamite: noop,
+    buyTeleporter: noop,
+    buyGun: noop,
+    buyBullets: noop,
+    detonateDynamite: noop,
+    useTeleporter: noop,
+    toggleGunArmed: noop,
+    openShop: noop,
+    closeShop: noop,
+    openInfo: noop,
+    closeInfo: noop,
+    toggleMusic: noop,
+    toggleSfx: noop,
+    dismissIntro: noop,
+    startIntroVoice: noop,
+    stopIntroVoice: noop,
+    connect: noop,
+    cancelConnect: noop,
+    playSolo: noop,
+    grantDeveloperCash: noop,
+    runDeveloperService: noop,
+    grantDeveloperUpgrade: noop,
+    resetPlayerData: noop,
+    resetWorldState: noop
+  };
+}
+
+/** The live table. Mutated in place, so every holder sees the current game. */
+export const uiCommands: UiCommands = noopCommands();
 
 /** Install (or override, in tests) the command implementations. */
 export function setUiCommands(commands: Partial<UiCommands>): void {
   Object.assign(uiCommands, commands);
+}
+
+/** Point every command back at a no-op (runtime teardown). */
+export function resetUiCommands(): void {
+  Object.assign(uiCommands, noopCommands());
 }

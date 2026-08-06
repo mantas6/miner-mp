@@ -48,8 +48,13 @@ export interface GameInput {
   clearKeys(): void;
   /** Drop every scrap of keyboard/aim state (restart, world reset). */
   reset(): void;
-  /** Register the window-level keyboard and restart-pointer listeners. */
-  attach(): void;
+  /**
+   * Register the window-level keyboard and restart-pointer listeners, returning
+   * the detach function. Every listener has to be revocable: React may remount
+   * the runtime (StrictMode, Fast Refresh), and a second set of capture handlers
+   * would double every keypress.
+   */
+  attach(): () => void;
 }
 
 export interface GameInputDeps {
@@ -205,14 +210,24 @@ export function createInput(deps: GameInputDeps): GameInput {
     e.stopPropagation();
   }
 
-  function attach(): void {
-    addEventListener('keydown', handleKeyDown, {capture: true});
-    addEventListener('keyup', handleKeyUp, {capture: true});
-    addEventListener('pointerdown', handleRestartPointer, {capture: true});
-    // Active listener: a passive one may not cancel the browser's page zoom.
-    addEventListener('wheel', handleWheel, {capture: true, passive: false});
-    // Touch needs an active listener so the synthetic click can be suppressed.
-    addEventListener('touchstart', handleRestartPointer, {capture: true, passive: false});
+  function attach(): () => void {
+    const capture = {capture: true};
+    // Active listeners: a passive one may not cancel the browser's page zoom, and
+    // touch needs one so the synthetic click can be suppressed.
+    const activeCapture = {capture: true, passive: false};
+    addEventListener('keydown', handleKeyDown, capture);
+    addEventListener('keyup', handleKeyUp, capture);
+    addEventListener('pointerdown', handleRestartPointer, capture);
+    addEventListener('wheel', handleWheel, activeCapture);
+    addEventListener('touchstart', handleRestartPointer, activeCapture);
+
+    return () => {
+      removeEventListener('keydown', handleKeyDown, capture);
+      removeEventListener('keyup', handleKeyUp, capture);
+      removeEventListener('pointerdown', handleRestartPointer, capture);
+      removeEventListener('wheel', handleWheel, activeCapture);
+      removeEventListener('touchstart', handleRestartPointer, activeCapture);
+    };
   }
 
   return {tick, clearKeys, reset, attach};
