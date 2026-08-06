@@ -10,6 +10,8 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "lint": "oxlint src shared server vite.config.ts",
     "lint:fix": "oxlint --fix src shared server vite.config.ts",
+    "fmt": "oxfmt \"src/**/*.css\"",
+    "fmt:check": "oxfmt --check \"src/**/*.css\"",
     "test": "vitest run --config vite.config.ts",
     "test:watch": "vitest --config vite.config.ts"
   },
@@ -19,6 +21,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.2.0",
     "happy-dom": "^20.10.6",
+    "oxfmt": "^0.62.0",
     "oxlint": "^1.76.0",
     "typescript": "^6.0.3",
     "vite": "^7.0.0",

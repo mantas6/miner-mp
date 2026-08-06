@@ -44,6 +44,7 @@ miner-mp/
 ├── tsconfig.test.json
 ├── vite.config.ts
 ├── .oxlintrc.json
+├── .oxfmtrc.json
 ├── init.sh
 ├── start.sh
 ├── test.sh
@@ -133,13 +134,14 @@ miner-mp/
 | `vite.config.ts` | Vite build config (relative `base`, React Fast Refresh) and Vitest test config. |
 | `tsconfig.test.json` | The test half of `npm run typecheck`: the same strict options plus `vitest/globals`, which `tsconfig.json` withholds from production source. |
 | `.oxlintrc.json` | Lint rules for `src/`, `shared/` and `server/` (oxlint), with the reason behind every disabled rule. |
+| `.oxfmtrc.json` | oxfmt configuration; `npm run fmt` formats every stylesheet under `src/`. |
 | `init.sh` | Installs dependencies and starts a background Vite dev server for smoke testing. |
 | `start.sh` | Builds, then runs the relay and the preview server together for local co-op. |
-| `test.sh` | Full check sequence: lint, client tests, typecheck, production build, relay tests. |
+| `test.sh` | Full check sequence: lint, CSS format check, client tests, typecheck, production build, relay tests. |
 | `server/index.js` | Co-op multiplayer relay server (Node + `ws`). |
 | `server/world-state.js` | Authoritative shared-mine state and its on-disk persistence. |
 | `server/test/` | Relay tests (`node --test`): protocol parity with the client, relay behaviour, world-state persistence. |
-| `.github/workflows/build.yml` | CI: lint, typecheck, tests and production build on pushes to `main` and pull requests. |
+| `.github/workflows/build.yml` | CI: lint, CSS format check, typecheck, tests and production build on pushes to `main` and pull requests. |
 | `.github/workflows/deploy-pages.yml` | Manually triggered GitHub Pages deployment of `dist/`. |
 
 ## Run locally
@@ -478,7 +480,8 @@ blocked attempt does not use up a turn in the no-repeat rotation.
 ## Development checklist
 
 After making changes, run the full check sequence — `./test.sh` does all of it
-(lint, unit tests, typecheck, production build, then the relay's own tests):
+(lint, CSS format check, unit tests, typecheck, production build, then the
+relay's own tests):
 
 ```bash
 ./test.sh
@@ -489,6 +492,8 @@ The individual commands, if you want them one at a time:
 ```bash
 npm run lint        # oxlint over src/, shared/, server/ and vite.config.ts
 npm run lint:fix    # same, applying the safe autofixes
+npm run fmt         # oxfmt over every stylesheet under src/
+npm run fmt:check   # same, failing instead of rewriting
 npm test            # Vitest, co-located *.test.ts / *.test.tsx
 npm run test:watch  # the same suite in watch mode
 npm run typecheck   # tsc over the app, then over the tests (tsconfig.test.json)
@@ -538,8 +543,9 @@ march means autoplay was rejected and the synth fallback took over.
 Two GitHub Actions workflows cover the client; the relay is not deployed by
 either of them.
 
-- `.github/workflows/build.yml` runs `npm ci`, `npm run lint` and `npm run build`
-  on pushes to `main`, on pull requests, and on demand.
+- `.github/workflows/build.yml` runs `npm ci`, then lint, CSS format check,
+  typecheck, tests and `npm run build` on pushes to `main`, on pull requests,
+  and on demand.
 - `.github/workflows/deploy-pages.yml` builds and publishes `dist/` to GitHub
   Pages when triggered manually.
 
