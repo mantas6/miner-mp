@@ -40,6 +40,9 @@ function patchHud(patch: Partial<HudSnapshot>): void {
 
 beforeEach(() => {
   uiStore.setState(pristine);
+  // `setState` restores an empty queue but cannot cancel a toast expiry an
+  // earlier test armed, which would fire mid-test outside `act()`.
+  uiStore.getState().clearToasts();
 });
 
 afterEach(() => {
@@ -70,6 +73,23 @@ describe('app shell', () => {
 
     act(() => { uiStore.getState().setInfoOpen(true); });
     expect(info.open).toBe(true);
+  });
+
+  it('reports a close the browser performed itself back to the game', () => {
+    const closeShop = vi.fn();
+    const closeInfo = vi.fn();
+    setUiCommands({closeShop, closeInfo});
+    render(<MinerApp />);
+
+    // What Escape reaching the UA does: the dialog closes without the store or
+    // the close button being involved at all.
+    act(() => { uiStore.getState().setShopOpen(true); });
+    act(() => { (document.getElementById('shop-screen') as HTMLDialogElement).close(); });
+    expect(closeShop).toHaveBeenCalled();
+
+    act(() => { uiStore.getState().setInfoOpen(true); });
+    act(() => { (document.getElementById('info-screen') as HTMLDialogElement).close(); });
+    expect(closeInfo).toHaveBeenCalled();
   });
 });
 
@@ -418,7 +438,7 @@ describe('store-driven HUD', () => {
     act(() => { uiStore.getState().pushToast('Cargo is empty.'); });
     expect(toast.textContent).toBe('Cargo is empty.');
 
-    act(() => { uiStore.setState({toasts: []}); });
+    act(() => { uiStore.getState().clearToasts(); });
     expect(toast.textContent).toBe('Cargo is empty.');
     expect(toast.className).not.toMatch(/show/);
   });

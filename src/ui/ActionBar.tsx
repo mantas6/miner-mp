@@ -31,7 +31,10 @@ export function ActionBar() {
   return (
     <div className={styles.actionBar}>
       <div id="surfaceHint" className={styles.surfaceHint} aria-live="polite" hidden={!surfaceHint || overlayOpen}>{surfaceHint}</div>
-      <button id="sell" hidden={!atSurface} disabled={!atSurface || cargoValue <= 0} onClick={() => uiCommands.sell()}>Sell</button>
+      {/* `hidden` is the only gate on where a button applies (the CSS hides it and
+          the UA takes it out of the tab order); `disabled` only says why an
+          otherwise-visible button cannot fire, so the two never repeat a term. */}
+      <button id="sell" hidden={!atSurface} disabled={cargoValue <= 0} onClick={() => uiCommands.sell()}>Sell</button>
       <button
         id="shopBtn"
         className={styles.openShopBtn}
@@ -41,7 +44,7 @@ export function ActionBar() {
       <button
         id="dynamiteBtn"
         hidden={atSurface}
-        disabled={atSurface || dynamite <= 0 || gameOver}
+        disabled={dynamite <= 0 || gameOver}
         onClick={() => uiCommands.detonateDynamite()}
       >Detonate (E) · x{dynamite}</button>
       <button
@@ -54,7 +57,7 @@ export function ActionBar() {
         id="gunBtn"
         className={clsx(styles.gunBtn, gunArmed && styles.armed)}
         hidden={atSurface || !gunOwned}
-        disabled={atSurface || !gunOwned || bullets <= 0 || gameOver}
+        disabled={bullets <= 0 || gameOver}
         aria-pressed={gunArmed}
         onClick={() => uiCommands.toggleGunArmed()}
       >{gunArmed ? `AIMING — press direction · x${bullets}` : `Arm Gun (G) · x${bullets}`}</button>

@@ -123,6 +123,7 @@ describe('music and sound effects mute independently', () => {
   beforeEach(() => {
     localStorage.clear();
     uiStore.setState(pristineStore);
+    uiStore.getState().clearToasts();
     oscillators = 0;
     toasts = [];
     FakeMusicElement.last = null;

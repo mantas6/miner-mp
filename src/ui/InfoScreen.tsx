@@ -32,14 +32,6 @@ export function InfoScreen({developerToolsEnabled = false}: {developerToolsEnabl
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    const onClose = () => uiCommands.closeInfo();
-    dialog.addEventListener('close', onClose);
-    return () => dialog.removeEventListener('close', onClose);
-  }, []);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
     if (open && !dialog.open) {
       dialog.showModal();
       closeRef.current?.focus({preventScroll: true});
@@ -78,6 +70,9 @@ export function InfoScreen({developerToolsEnabled = false}: {developerToolsEnabl
       ref={dialogRef}
       className={styles.screen}
       aria-labelledby="info-title"
+      // A native close request (Escape reaching the UA, a form submit) must not
+      // leave the store thinking the info screen is still open.
+      onClose={() => uiCommands.closeInfo()}
       onPointerDown={event => { if (event.target === dialogRef.current) uiCommands.closeInfo(); }}
     >
       <div id="info-card" ref={cardRef} className={styles.card}>

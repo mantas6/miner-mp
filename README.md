@@ -41,6 +41,7 @@ miner-mp/
 ├── index.html
 ├── package.json
 ├── tsconfig.json
+├── tsconfig.test.json
 ├── vite.config.ts
 ├── .oxlintrc.json
 ├── init.sh
@@ -129,7 +130,8 @@ miner-mp/
 | `src/styles/base.css` | Design tokens plus element-level styling (`button`, `ul`, `kbd`, `meter`, `canvas`, `#shell`, `#game-panel`). |
 | `src/styles/icons.css` | Global equipment sprite sheet (`icon-*`), addressed by name from the shop catalog. |
 | `src/styles/intro-art.css` | Global intro badge art. |
-| `vite.config.ts` | Vite build config (relative `base`) and Vitest test config. |
+| `vite.config.ts` | Vite build config (relative `base`, React Fast Refresh) and Vitest test config. |
+| `tsconfig.test.json` | The test half of `npm run typecheck`: the same strict options plus `vitest/globals`, which `tsconfig.json` withholds from production source. |
 | `.oxlintrc.json` | Lint rules for `src/`, `shared/` and `server/` (oxlint), with the reason behind every disabled rule. |
 | `init.sh` | Installs dependencies and starts a background Vite dev server for smoke testing. |
 | `start.sh` | Builds, then runs the relay and the preview server together for local co-op. |
@@ -137,7 +139,7 @@ miner-mp/
 | `server/index.js` | Co-op multiplayer relay server (Node + `ws`). |
 | `server/world-state.js` | Authoritative shared-mine state and its on-disk persistence. |
 | `server/test/` | Relay tests (`node --test`): protocol parity with the client, relay behaviour, world-state persistence. |
-| `.github/workflows/build.yml` | CI: lint and production build on pushes to `main` and pull requests. |
+| `.github/workflows/build.yml` | CI: lint, typecheck, tests and production build on pushes to `main` and pull requests. |
 | `.github/workflows/deploy-pages.yml` | Manually triggered GitHub Pages deployment of `dist/`. |
 
 ## Run locally
@@ -489,7 +491,7 @@ npm run lint        # oxlint over src/, shared/, server/ and vite.config.ts
 npm run lint:fix    # same, applying the safe autofixes
 npm test            # Vitest, co-located *.test.ts / *.test.tsx
 npm run test:watch  # the same suite in watch mode
-npm run typecheck   # tsc --noEmit
+npm run typecheck   # tsc over the app, then over the tests (tsconfig.test.json)
 npm run build       # production build into dist/
 npm --prefix server test        # relay tests (node --test)
 npm --prefix server run typecheck   # node --check over the relay sources

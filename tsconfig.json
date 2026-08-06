@@ -19,7 +19,12 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["vitest/globals"]
+    // Production source gets no ambient globals at all: not Vitest's, and not the
+    // Node ones `@types/node` drags in transitively. Anything the browser bundle
+    // uses has to be a real import or a DOM lib type. Test code opts back in via
+    // tsconfig.test.json, which `npm run typecheck` runs as a second pass.
+    "types": []
   },
-  "include": ["src", "shared", "vite.config.ts"]
+  "include": ["src", "shared", "vite.config.ts"],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx"]
 }

@@ -39,6 +39,7 @@ function button(id: string): HTMLButtonElement {
 
 beforeEach(() => {
   uiStore.setState(pristine);
+  uiStore.getState().clearToasts();
 });
 
 afterEach(() => {

@@ -1,0 +1,14 @@
+// The test-only half of the type check. The base config excludes `*.test.ts(x)`
+// and sets `"types": []` so no test global can leak into production source; this
+// pass adds them back for the test files themselves. Sources are still checked
+// here through the imports the tests make, under the same strict options.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vitest/globals"]
+  },
+  // `**/*.d.ts` carries the ambient Vite/`ImportMeta` declarations the imported
+  // sources need; everything else is pulled in by the tests' own imports.
+  "include": ["src/**/*.d.ts", "src/**/*.test.ts", "src/**/*.test.tsx", "shared/**/*.test.ts", "shared/**/*.test.tsx"],
+  "exclude": []
+}

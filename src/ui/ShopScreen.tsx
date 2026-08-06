@@ -12,7 +12,7 @@ import {
   type ShopRowState
 } from '../core/shop-catalog';
 import { uiCommands } from './commands';
-import { useUiStore, type PlayerSnapshot } from './store';
+import { useUiStore } from './store';
 import styles from './ShopScreen.module.css';
 import '../styles/icons.css';
 
@@ -60,16 +60,6 @@ export function ShopScreen() {
   const cardRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  // A native close request (Escape reaching the UA, a form submit) must not leave
-  // the store thinking the shop is still open.
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    const onClose = () => uiCommands.closeShop();
-    dialog.addEventListener('close', onClose);
-    return () => dialog.removeEventListener('close', onClose);
-  }, []);
-
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -84,7 +74,7 @@ export function ShopScreen() {
   }, [open]);
 
   const summary = shopSummary(cash, atSurface);
-  const rowArgs = [player as PlayerSnapshot, cash, atSurface] as const;
+  const rowArgs = [player, cash, atSurface] as const;
 
   return (
     <dialog
@@ -92,6 +82,9 @@ export function ShopScreen() {
       ref={dialogRef}
       className={styles.screen}
       aria-labelledby="shop-title"
+      // A native close request (Escape reaching the UA, a form submit) must not
+      // leave the store thinking the shop is still open.
+      onClose={() => uiCommands.closeShop()}
       onPointerDown={event => { if (event.target === dialogRef.current) uiCommands.closeShop(); }}
     >
       <div id="shop-card" ref={cardRef} className={styles.card}>

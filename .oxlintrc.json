@@ -54,7 +54,8 @@
       // functions such as `useFuel()` that are not React hooks.
       "files": ["src/**/*.tsx"],
       "rules": {
-        "react-hooks/rules-of-hooks": "error"
+        "react-hooks/rules-of-hooks": "error",
+        "react-hooks/exhaustive-deps": "error"
       }
     },
     {

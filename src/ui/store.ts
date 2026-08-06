@@ -143,6 +143,7 @@ export interface UiState {
   setSfx(on: boolean, label: string): void;
   pushToast(message: string): void;
   dismissToast(id: number): void;
+  clearToasts(): void;
 }
 
 /** Visible lifetime of one toast, matching the pre-store CSS timing. */
@@ -246,7 +247,7 @@ function sameStatRows(a: ExpeditionStatRow[], b: ExpeditionStatRow[]): boolean {
 }
 
 let nextToastId = 1;
-let toastTimer = 0;
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const uiStore = createStore<UiState>((set, get) => ({
   hud: initialHud(),
@@ -327,12 +328,26 @@ export const uiStore = createStore<UiState>((set, get) => ({
     const entry = {id: nextToastId++, message};
     set({toasts: [entry]});
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => get().dismissToast(entry.id), TOAST_VISIBLE_MS) as unknown as number;
+    toastTimer = setTimeout(() => get().dismissToast(entry.id), TOAST_VISIBLE_MS);
   },
 
   dismissToast(id) {
     const toasts = get().toasts.filter(toast => toast.id !== id);
-    if (toasts.length !== get().toasts.length) set({toasts});
+    if (toasts.length === get().toasts.length) return;
+    clearTimeout(toastTimer);
+    toastTimer = undefined;
+    set({toasts});
+  },
+
+  /**
+   * Drop the queue and the pending expiry together. Replacing the state wholesale
+   * (`setState`) empties `toasts` but cannot cancel the timer `pushToast` armed,
+   * so anything resetting the store goes through here instead.
+   */
+  clearToasts() {
+    clearTimeout(toastTimer);
+    toastTimer = undefined;
+    if (get().toasts.length > 0) set({toasts: []});
   }
 }));
 
