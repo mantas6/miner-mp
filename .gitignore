@@ -10,6 +10,12 @@ dist/
 .vite-dev.pid
 server/data/
 
+# Playwright artifacts
+test-results/
+playwright-report/
+blob-report/
+.playwright-cache/
+
 # Local editor/OS files
 .DS_Store
 .idea/

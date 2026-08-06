@@ -1,0 +1,18 @@
+// The third pass of `npm run typecheck`: the Playwright suite and its config.
+//
+// Its own config because the specs are the only TypeScript here that is neither
+// browser bundle nor Vitest: they run in Node (so they need those globals, which
+// `tsconfig.json` withholds with `"types": []`), and they must stay out of both
+// other passes — a spec that leaked into the app's `include` would drag
+// `@playwright/test` into the production graph's type space.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // Test files evaluate arrow functions inside the *page*, so DOM types are
+    // needed here too; they come from the inherited `lib`.
+    "noEmit": true
+  },
+  "include": ["e2e", "playwright.config.ts"],
+  "exclude": []
+}

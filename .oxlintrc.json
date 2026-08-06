@@ -10,7 +10,7 @@
     "browser": true,
     "es2022": true
   },
-  "ignorePatterns": ["dist", "public", "server/data"],
+  "ignorePatterns": ["dist", "public", "server/data", "test-results", "playwright-report"],
   "rules": {
     // Style the codebase already follows everywhere, pinned so it stays that way.
     "eqeqeq": "error",
@@ -62,6 +62,12 @@
     {
       "files": ["server/**/*.js"],
       "env": { "browser": false, "node": true }
+    },
+    {
+      // The Playwright suite straddles both: the spec bodies run in Node, and the
+      // callbacks they hand to `page.evaluate()` run in the page.
+      "files": ["e2e/**/*.ts", "playwright.config.ts"],
+      "env": { "browser": true, "node": true }
     }
   ]
 }

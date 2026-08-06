@@ -32,7 +32,10 @@ Underground fog of war is persistent. Movement initially reveals a 3x3 square; e
 
 ## Project structure
 
-Unit tests live next to the code they cover as `*.test.ts` (or `*.test.tsx` for components) siblings.
+Unit tests live next to the code they cover as `*.test.ts` (or `*.test.tsx` for
+components) siblings. The browser-only behaviour they cannot reach — canvas focus,
+native `<dialog>`s, `:focus-visible`, the boot flow — is covered by the Playwright
+suite in `e2e/`.
 
 ```text
 miner-mp/
@@ -42,7 +45,9 @@ miner-mp/
 ├── package.json
 ├── tsconfig.json
 ├── tsconfig.test.json
+├── tsconfig.e2e.json
 ├── vite.config.ts
+├── playwright.config.ts
 ├── .oxlintrc.json
 ├── .oxfmtrc.json
 ├── init.sh
@@ -88,6 +93,14 @@ miner-mp/
 │   │   └── voice-lines.ts
 │   ├── ui/
 │   └── styles/
+├── e2e/
+│   ├── boot.spec.ts
+│   ├── gameplay.spec.ts
+│   ├── dialogs.spec.ts
+│   ├── focus-visible.spec.ts
+│   ├── failure.spec.ts
+│   └── support/
+│       └── game.ts
 ├── server/
 │   ├── index.js
 │   ├── world-state.js
@@ -131,17 +144,20 @@ miner-mp/
 | `src/styles/base.css` | Design tokens plus element-level styling (`button`, `ul`, `kbd`, `meter`, `canvas`, `#shell`, `#game-panel`) and the app-wide `:focus-visible` ring. |
 | `src/styles/icons.css` | Global equipment sprite sheet (`icon-*`), addressed by name from the shop catalog. |
 | `src/styles/intro-art.css` | Global intro badge art. |
-| `vite.config.ts` | Vite build config (relative `base`, React Fast Refresh) and Vitest test config. |
+| `vite.config.ts` | Vite build config (relative `base`, React Fast Refresh) and Vitest test config. Vitest only collects `src/**` and `shared/**`, so `e2e/` is never picked up by `npm test`. |
 | `tsconfig.test.json` | The test half of `npm run typecheck`: the same strict options plus `vitest/globals`, which `tsconfig.json` withholds from production source. |
-| `.oxlintrc.json` | Lint rules for `src/`, `shared/` and `server/` (oxlint), with the reason behind every disabled rule. |
+| `tsconfig.e2e.json` | The third `npm run typecheck` pass: `e2e/` and `playwright.config.ts`, which run in Node and so need those globals rather than Vitest's. |
+| `playwright.config.ts` | End-to-end config: one Chromium project, the Vite dev server started as a `webServer`, and the local/CI browser resolution described under "End-to-end tests". |
+| `e2e/` | The Playwright suite — boot flow, keyboard mining, the modal dialogs and focus restoration, the `:focus-visible` ring, and the runtime-failure notice — plus `support/game.ts`, the shared page fixtures. |
+| `.oxlintrc.json` | Lint rules for `src/`, `shared/`, `server/` and `e2e/` (oxlint), with the reason behind every disabled rule. |
 | `.oxfmtrc.json` | oxfmt configuration; `npm run fmt` formats every stylesheet under `src/`. |
 | `init.sh` | Installs dependencies and starts a background Vite dev server for smoke testing. |
 | `start.sh` | Builds, then runs the relay and the preview server together for local co-op. |
-| `test.sh` | Full check sequence: lint, CSS format check, client tests, typecheck, production build, relay tests. |
+| `test.sh` | Full check sequence: lint, CSS format check, client tests, typecheck, production build, the Playwright suite when a system Chromium is available, relay tests. |
 | `server/index.js` | Co-op multiplayer relay server (Node + `ws`). |
 | `server/world-state.js` | Authoritative shared-mine state and its on-disk persistence. |
 | `server/test/` | Relay tests (`node --test`): protocol parity with the client, relay behaviour, world-state persistence. |
-| `.github/workflows/build.yml` | CI: lint, CSS format check, typecheck, tests and production build on pushes to `main` and pull requests. |
+| `.github/workflows/build.yml` | CI: lint, CSS format check, typecheck, unit tests and production build, plus a parallel job that installs Chromium and runs the Playwright suite. |
 | `.github/workflows/deploy-pages.yml` | Manually triggered GitHub Pages deployment of `dist/`. |
 
 ## Runtime lifecycle
@@ -322,7 +338,9 @@ zooming the camera with the wheel or a trackpad.
   only. The runtime focuses the canvas at boot, when the window regains focus, and
   once a run starts.
 - **Focus is visible when it was asked for.** One app-wide `:focus-visible` ring in
-  `base.css`; programmatic focus after a click or a closing dialog draws nothing.
+  `base.css`. Programmatic focus after a click — including the focus a closing
+  dialog restores to the button that opened it — draws nothing, while a session
+  driven from the keyboard keeps its ring. `e2e/focus-visible.spec.ts` pins both.
 - **State outside the canvas.** The meters and readouts are text, the toast and the
   fuel banner are live regions, and `#game-status` politely announces the ship's
   situation — at the depot, in the mine, holds full, hull critical, ship lost. It is
@@ -524,8 +542,8 @@ blocked attempt does not use up a turn in the no-repeat rotation.
 ## Development checklist
 
 After making changes, run the full check sequence — `./test.sh` does all of it
-(lint, CSS format check, unit tests, typecheck, production build, then the
-relay's own tests):
+(lint, CSS format check, unit tests, typecheck, production build, the Playwright
+suite when a system Chromium is available, then the relay's own tests):
 
 ```bash
 ./test.sh
@@ -540,7 +558,9 @@ npm run fmt         # oxfmt over every stylesheet under src/
 npm run fmt:check   # same, failing instead of rewriting
 npm test            # Vitest, co-located *.test.ts / *.test.tsx
 npm run test:watch  # the same suite in watch mode
-npm run typecheck   # tsc over the app, then over the tests (tsconfig.test.json)
+npm run test:e2e    # Playwright, e2e/*.spec.ts against a Vite dev server
+npm run test:e2e:ui # the same suite in Playwright's UI mode
+npm run typecheck   # tsc over the app, the tests, then the e2e suite
 npm run build       # production build into dist/
 npm --prefix server test        # relay tests (node --test)
 npm --prefix server run typecheck   # node --check over the relay sources
@@ -551,6 +571,47 @@ errors, plus the React hooks rules for components and JSX a11y checks. Every
 disabled rule carries a comment explaining the pattern it conflicts with; single
 intentional exceptions are suppressed at the call site with
 `// oxlint-disable-next-line <rule>` and a reason instead.
+
+### End-to-end tests
+
+`e2e/` is a Playwright suite for the things a DOM shim cannot answer: whether the
+canvas really holds the keyboard, whether a native modal `<dialog>` really contains
+Tab and restores focus, whether `:focus-visible` really draws a ring, and whether
+the boot flow gets from the splash to a live run without the browser complaining.
+
+| Spec | Covers |
+|---|---|
+| `e2e/boot.spec.ts` | The title card and its start button; `Enter` and "press anywhere" both reaching the lobby; solo starting the run with the canvas focused, the HUD painted and the scanner reading real terrain; the canvas being the surface's only tab stop; the whole flow producing no console errors and no page errors. |
+| `e2e/gameplay.spec.ts` | One keypress charged exactly once and clearing exactly one tile (the fence against a doubled input/step pipeline); depth rising and fuel falling over a descent; the depot actions swapping for the underground ones, live region included; focus staying on the canvas while mining. |
+| `e2e/dialogs.spec.ts` | Shop and info opening with focus inside the dialog; `Escape`, the × button and the backdrop each closing it and restoring focus to the trigger; Tab never escaping into the HUD behind; the info tablist's click and arrow-key navigation; the two overlays handing the screen over rather than stacking; the lobby refusing `Escape` (twice) while the relay panel's own `Escape` still steps back. |
+| `e2e/focus-visible.spec.ts` | The ring drawn for `Tab` (3px, and inset on the canvas) and gone for a click that moves focus, including the focus a clicked-shut dialog restores. |
+| `e2e/failure.spec.ts` | A refused 2D context — stubbed with an init script — surfacing as the "Mine offline" notice with its detail line, its `role="alert"` and a working Reload, while the crash boundary stays out of it. |
+
+Two notes on how the suite is wired:
+
+- **The dev server, not `vite preview`.** React only double-invokes `<StrictMode>`
+  effects in a development build, so the runtime's `dispose()` is only exercised
+  there. `playwright.config.ts` starts `npm run dev` on port 5199 itself.
+- **One deliberate white box.** `openOverlayDirectly()` in `e2e/support/game.ts`
+  imports the app's own `src/ui/commands.ts` through the dev server to request an
+  overlay. It exists because "shop and info at once" has no pointer path — while one
+  is up the other's button is inert, which is the property being tested. Everything
+  else in the suite is keys and clicks on documented element ids.
+
+Browser resolution differs by environment, because a Playwright-downloaded Chromium
+does not run on NixOS:
+
+```bash
+npm run test:e2e                                   # local: the first chromium on PATH
+PLAYWRIGHT_CHROMIUM_PATH=/path/to/chromium npm run test:e2e   # local: an explicit one
+npx playwright install --with-deps chromium && npm run test:e2e   # the pinned download
+```
+
+`playwright.config.ts` prefers `PLAYWRIGHT_CHROMIUM_PATH`, then falls back to
+`chromium`/`chromium-browser`/`google-chrome-stable`/`google-chrome`/`chrome` on
+`PATH`. In CI (`CI` set) it uses neither, so the pinned download installed by the
+workflow is the browser under test. `./test.sh` runs the suite only when one of
+those system binaries exists and says so when it skips.
 
 When touching the audio TypeScript (`src/audio/`):
 
@@ -588,8 +649,10 @@ Two GitHub Actions workflows cover the client; the relay is not deployed by
 either of them.
 
 - `.github/workflows/build.yml` runs `npm ci`, then lint, CSS format check,
-  typecheck, tests and `npm run build` on pushes to `main`, on pull requests,
-  and on demand.
+  typecheck, unit tests and `npm run build` on pushes to `main`, on pull requests,
+  and on demand. A second job in the same workflow installs Chromium
+  (`npx playwright install --with-deps chromium`) and runs the end-to-end suite
+  beside it, uploading the HTML report when it fails.
 - `.github/workflows/deploy-pages.yml` builds and publishes `dist/` to GitHub
   Pages when triggered manually.
 
