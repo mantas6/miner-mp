@@ -13,6 +13,12 @@
 // The boot overlays are mounted by phase, not hidden by class: at most one of
 // Intro/Lobby exists in the tree at any time, so neither can bleed through the
 // other and no z-index has to arbitrate between them.
+//
+// The canvas is the only tab stop of the game surface, and it carries the whole
+// accessible account of it: a name, a description listing the keys, and a polite
+// live region for the state a sighted player reads off the pixels. The panel
+// around it is layout, so it is not focusable — two tab stops for one surface
+// meant a Tab that appeared to do nothing.
 
 import { RuntimeFailure } from './Failure';
 import { FuelWarning } from './FuelWarning';
@@ -24,6 +30,7 @@ import { ShopScreen } from './ShopScreen';
 import { useUiStore } from './store';
 import { Toast } from './Toast';
 import { useGameRuntime, type GameRuntimeFactory } from './useGameRuntime';
+import common from './common.module.css';
 
 export interface MinerAppProps {
   developerToolsEnabled?: boolean;
@@ -36,11 +43,37 @@ export function MinerApp({ developerToolsEnabled = false, createRuntime }: Miner
   const { canvasRef, panelRef } = useGameRuntime(createRuntime);
   return (
     <main id="shell">
-      {/* The game panel is the keyboard surface: it has to be focusable and hold
-          focus from the first frame, or WASD/arrow input goes nowhere. */}
-      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex, jsx-a11y/no-autofocus */}
-      <section id="game-panel" ref={panelRef} tabIndex={0} autoFocus>
-        <canvas ref={canvasRef} id="game" width={960} height={640} tabIndex={0} aria-label="Stalinload mining game" />
+      {/* The panel only sizes and positions the surface; the canvas inside it is
+          the keyboard target, focused by the runtime from the first frame. */}
+      <section id="game-panel" ref={panelRef}>
+        {/* `application` is the honest role for a canvas the arrow keys drive: it
+            tells a screen reader to hand the keys straight through to the game
+            instead of spending them on its own browse-mode navigation. The lint
+            rule below reads a focusable canvas as an interactive element being
+            demoted; here the focusability and the role say the same thing, which
+            is that this is the control. */}
+        <canvas
+          ref={canvasRef}
+          id="game"
+          width={960}
+          height={640}
+          tabIndex={0}
+          // oxlint-disable-next-line jsx-a11y/no-interactive-element-to-noninteractive-role
+          role="application"
+          aria-label="Stalinload mine"
+          aria-describedby="game-instructions"
+        />
+        {/* Both of these are for screen readers only: the mine itself is pixels,
+            so without them the surface has a name and nothing else. */}
+        <p id="game-instructions" className={common.srOnly}>
+          Drill for ore and sell it at the surface depot before the fuel runs out.
+          WASD or the arrow keys move, fly and dig. Enter sells cargo at the depot,
+          Space refuels or repairs there. E detonates dynamite, T uses a teleporter,
+          G arms the gun and a direction key fires it. Escape closes an open screen.
+          The readouts and meters after this surface report cash, depth, fuel, hull
+          and cargo; the Info and Cargo button has the full rules.
+        </p>
+        <GameStatus />
         <Hud />
         <ShopScreen />
         <InfoScreen developerToolsEnabled={developerToolsEnabled} />
@@ -52,4 +85,18 @@ export function MinerApp({ developerToolsEnabled = false, createRuntime }: Miner
       <RuntimeFailure />
     </main>
   );
+}
+
+/**
+ * The mine's state changes, spoken.
+ *
+ * The meters carry the numbers, but where the ship is and whether it is in
+ * trouble were only ever legible from the canvas. This is one line of text and no
+ * pixels, so it adds nothing to the screen: `core/ship-status.ts` formats it out
+ * of a handful of booleans, so the field only changes when the ship crosses one of
+ * those thresholds — a 60 Hz sync re-renders nothing here.
+ */
+function GameStatus() {
+  const announcement = useUiStore(state => state.hud.announcement);
+  return <p id="game-status" className={common.srOnly} aria-live="polite">{announcement}</p>;
 }

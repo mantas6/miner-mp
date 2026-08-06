@@ -8,6 +8,21 @@
   box-shadow: var(--glass-shadow);
 }
 
+/* Available to a screen reader, invisible and zero-area to everything else — so a
+   description or a live region can sit inside a laid-out box (the game panel is a
+   grid) without becoming a row of its own. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .connectionStatus {
   display: inline-flex;
   align-items: center;

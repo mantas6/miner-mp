@@ -20,9 +20,10 @@
     // The automatic JSX runtime (`"jsx": "react-jsx"`) means React is never
     // imported for JSX, and the components rely on that.
     "react/react-in-jsx-scope": "off",
-    // Overlay screens are divs on purpose: the shop/info overlays are the only
-    // native `<dialog>`s, and the ids/tag names of the rest are a contract the
-    // game runtime and the CSS modules address directly.
+    // Every overlay that can be one *is* a native `<dialog>` now (shop, info,
+    // lobby). What is left are roles with no tag to prefer: the fuel gauge is a
+    // `role="meter"` div because it paints two slices, and the canvas is a
+    // `role="application"`.
     "jsx-a11y/prefer-tag-over-role": "off",
     // Side-effect imports are how CSS modules and global stylesheets are pulled in.
     "import/no-unassigned-import": "off",

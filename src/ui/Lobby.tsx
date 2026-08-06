@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { loadServerUrl } from '../net/multiplayer-settings';
 import { DEFAULT_SERVER_URL } from '../net/net';
 import { uiCommands } from './commands';
+import { isRelayProblemStatus } from './connection-status';
 import { useUiStore } from './store';
 import styles from './Lobby.module.css';
 
@@ -106,6 +107,10 @@ function ConnectPanel({onBack}: {onBack(): void}) {
         onSubmit={event => { event.preventDefault(); uiCommands.connect(serverUrl.trim()); }}
       >
         <label className={styles.serverUrl} htmlFor="serverUrl">Relay server URL
+          {/* The status line is this field's description, so a screen reader reads
+              the relay's answer as part of the field instead of as a stray label
+              somewhere after it — and when that answer is a failure, the field is
+              the thing that is wrong. */}
           <input
             id="serverUrl"
             ref={urlRef}
@@ -113,6 +118,8 @@ function ConnectPanel({onBack}: {onBack(): void}) {
             value={serverUrl}
             spellCheck={false}
             autoComplete="off"
+            aria-describedby="lobbyConnectionStatus"
+            aria-invalid={isRelayProblemStatus(status)}
             onChange={event => setServerUrl(event.target.value)}
           />
         </label>
@@ -127,15 +134,62 @@ function ConnectPanel({onBack}: {onBack(): void}) {
   );
 }
 
-/** The shared card both steps are painted on, so neither can drift from the other. */
+/**
+ * The shared card both steps are painted on, so neither can drift from the other.
+ *
+ * A native modal `<dialog>`, like the shop and the info overlays: `showModal()`
+ * buys the focus containment that `role="dialog" aria-modal="true"` only claimed —
+ * Tab used to walk straight out of the card and into the HUD buttons behind it,
+ * which belong to a run that has not started. The browser also makes everything
+ * outside inert, so the runtime's `focusGame()` can no longer pull focus out of
+ * the lobby when the window regains it.
+ *
+ * There is nothing to close it *to*, though — the run has not started, so there is
+ * no screen underneath — so the dialog refuses every close request, and Escape is
+ * taken out of the browser's hands entirely (see below). Stepping the relay panel
+ * back to the mode picker is `ConnectPanel`'s own Escape.
+ */
 function LobbyScreen({title, kicker, children}: {title: string; kicker: string; children: ReactNode}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  // Guarded because `showModal()` on an open dialog throws, and a mount effect
+  // runs twice in StrictMode.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+
+  // `onCancel` refuses the close request, but a browser only honours that refusal
+  // while the page still holds fresh user activation — deliberately, so a page
+  // cannot trap anyone. A second Escape therefore closes the dialog, which here
+  // would leave the player staring at a mine they have not started. So Escape is
+  // stopped before it can become a close request at all. `preventDefault` only, and
+  // no `stopPropagation`: the relay panel's step-back listens for the same key.
+  useEffect(() => {
+    function refuseEscape(event: KeyboardEvent): void {
+      if (event.key === 'Escape') event.preventDefault();
+    }
+    addEventListener('keydown', refuseEscape, {capture: true});
+    return () => removeEventListener('keydown', refuseEscape, {capture: true});
+  }, []);
+
   return (
-    <div id="lobby-screen" className={styles.screen} role="dialog" aria-modal="true" aria-labelledby="lobby-title">
+    <dialog
+      id="lobby-screen"
+      ref={dialogRef}
+      className={styles.screen}
+      aria-labelledby="lobby-title"
+      onCancel={event => event.preventDefault()}
+      // A press on the dimmed area around the card has nothing to do — there is no
+      // overlay to dismiss — and letting it through would move focus to the dialog
+      // itself, taking Enter away from the button that had it.
+      onPointerDown={event => { if (event.target === dialogRef.current) event.preventDefault(); }}
+    >
       <div className={styles.card}>
         <p className={styles.kicker}>{kicker}</p>
         <h2 id="lobby-title">{title}</h2>
         {children}
       </div>
-    </div>
+    </dialog>
   );
 }

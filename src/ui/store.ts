@@ -19,6 +19,7 @@ import { type FuelReserveStatus } from '../core/fuel-reserve';
 import { formatExtractionPresentation } from '../core/extraction-presentation';
 import { formatExpeditionObjective } from '../core/objective';
 import { formatTerrainScanner } from '../core/scanner';
+import { formatShipStatusAnnouncement } from '../core/ship-status';
 import { createInitialState } from '../core/state';
 import { formatExpeditionStats, type ExpeditionStatRow } from '../core/stats';
 import { formatSurfaceActionHint } from '../core/surface-hint';
@@ -67,6 +68,13 @@ export interface HudSnapshot {
   depthTarget: string;
   depthTargetKind: DepthMilestoneKind;
   depthTargetRemaining: number;
+  /**
+   * The canvas state a sighted player reads off the pixels, as one spoken line.
+   * Deliberately built from thresholds only, never from a continuous value: it
+   * feeds a live region, so it must change when the ship crosses something and
+   * stay put for every frame in between.
+   */
+  announcement: string;
 }
 
 const HUD_KEYS = [
@@ -75,7 +83,7 @@ const HUD_KEYS = [
   'atSurface', 'gameOver', 'gunArmed', 'gunOwned', 'bullets', 'dynamite', 'teleporters',
   'teleportReturn', 'teleportDepthReached', 'teleportUsable',
   'scanner', 'surfaceHint', 'fuelReserveStatus', 'fuelReserveNeeded', 'fuelReserveMargin',
-  'depthTarget', 'depthTargetKind', 'depthTargetRemaining'
+  'depthTarget', 'depthTargetKind', 'depthTargetRemaining', 'announcement'
 ] as const satisfies readonly (keyof HudSnapshot)[];
 
 /** The ship stats the shop and the developer panel price and label their rows from. */
@@ -238,7 +246,13 @@ function initialHud(): HudSnapshot {
     fuelReserveMargin: Math.floor(player.fuel),
     depthTarget: milestone.target,
     depthTargetKind: milestone.kind,
-    depthTargetRemaining: milestone.remainingMeters
+    depthTargetRemaining: milestone.remainingMeters,
+    announcement: formatShipStatusAnnouncement({
+      gameOver: false,
+      atSurface: true,
+      cargoFull: false,
+      hullCritical: false
+    })
   };
 }
 

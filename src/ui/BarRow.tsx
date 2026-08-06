@@ -12,10 +12,16 @@ interface BarProps {
   alert: boolean;
 }
 
+/**
+ * One labelled meter. `<meter>` is a labelable element, so the caption is a real
+ * `<label for>`: without the association the label was three words of decoration
+ * next to an unnamed gauge, and the reading ("70 out of 100") never said of what.
+ * The value text repeats the numbers for the eye, so it stays out of the name.
+ */
 function Bar({id, label, value, max, text, alert}: BarProps) {
   return (
     <div className={clsx(styles.bar, alert && styles.alert)}>
-      <label>{label}</label>
+      <label htmlFor={id}>{label}</label>
       <meter id={id} min={0} max={max} value={value}></meter>
       <span id={`${id}Label`} className={styles.barValue}>{text}</span>
     </div>

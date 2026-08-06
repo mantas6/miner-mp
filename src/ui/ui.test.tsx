@@ -8,12 +8,13 @@
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setUiCommands, uiCommands } from './commands';
+import { RELAY_PROBLEM_STATUS } from './connection-status';
 import { uiStore, type HudSnapshot } from './store';
 import { MinerApp } from './ui';
 
 /** Ids the game runtime, the keyboard layer, and the tests address directly. */
 const DOM_CONTRACT = [
-  'shell', 'game-panel', 'game',
+  'shell', 'game-panel', 'game', 'game-instructions', 'game-status',
   'hud', 'musicBtn', 'sfxBtn', 'connectionStatus', 'cash', 'depth', 'depthTarget', 'scanner',
   'fuel', 'fuelLabel', 'fuelReturn', 'fuelSurplus', 'hull', 'hullLabel', 'cargo', 'cargoLabel', 'extractionStatus',
   'surfaceHint', 'sell', 'shopBtn', 'dynamiteBtn', 'teleporterBtn', 'gunBtn', 'infoBtn',
@@ -84,6 +85,49 @@ describe('app shell', () => {
     render(<MinerApp />);
 
     for (const id of DOM_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
+  });
+
+  /**
+   * The panel used to be a tab stop as well, so Tab landed on a wrapper that does
+   * nothing and looked, with no focus ring anywhere, like a key that had been eaten.
+   */
+  it('gives the game surface exactly one tab stop, on the canvas', () => {
+    render(<MinerApp />);
+    const panel = document.getElementById('game-panel')!;
+    const canvas = document.getElementById('game')!;
+
+    expect(panel.hasAttribute('tabindex')).toBe(false);
+    expect(panel.hasAttribute('autofocus')).toBe(false);
+    expect([...panel.querySelectorAll('[tabindex]')].map(element => element.id)).toEqual(['game']);
+    expect(canvas.getAttribute('tabindex')).toBe('0');
+  });
+
+  it('gives the canvas a name, a role that passes keys through, and instructions', () => {
+    render(<MinerApp />);
+    const canvas = document.getElementById('game')!;
+
+    expect(canvas.getAttribute('role')).toBe('application');
+    expect(canvas.getAttribute('aria-label')).toBe('Stalinload mine');
+    // A description that points nowhere is worse than none at all.
+    const description = document.getElementById(canvas.getAttribute('aria-describedby')!);
+    expect(description?.textContent).toContain('WASD');
+    expect(description?.textContent).toContain('Space refuels or repairs');
+  });
+
+  /**
+   * The gameplay a sighted player reads off the pixels, in text. It has to be a
+   * live region, and it has to be quiet: the field behind it changes only when the
+   * ship crosses a threshold, never with a continuous value.
+   */
+  it('reports the ship state outside the canvas, in a polite live region', () => {
+    render(<MinerApp />);
+    const status = document.getElementById('game-status')!;
+
+    expect(status.getAttribute('aria-live')).toBe('polite');
+    expect(status.textContent).toBe('At the surface depot.');
+
+    patchHud({announcement: 'In the mine. Cargo hold full.'});
+    expect(status.textContent).toBe('In the mine. Cargo hold full.');
   });
 
   it('uses native modal dialogs for the shop and info overlays', () => {
@@ -237,6 +281,10 @@ describe('boot phase machine', () => {
     act(() => { uiStore.getState().setPhase('lobby'); });
     expect(document.getElementById('intro')).toBeNull();
     for (const id of LOBBY_MODE_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
+    // A real modal, so the browser contains Tab instead of letting it walk into the
+    // HUD of a run that has not started.
+    expect(dialog('lobby-screen').tagName).toBe('DIALOG');
+    expect(dialog('lobby-screen').open).toBe(true);
 
     act(() => { uiStore.getState().setPhase('playing'); });
     expect(document.getElementById('intro')).toBeNull();
@@ -262,6 +310,24 @@ describe('boot phase machine', () => {
 
     expect(dismissIntro).toHaveBeenCalledTimes(1);
     expect(dismissIntro.mock.calls[0][0]).toBeInstanceOf(Event);
+  });
+
+  /**
+   * The splash used to be a `role="button"` div listening for `pointerdown` alone,
+   * so the click a screen reader synthesises fell on the floor. The prompt is a
+   * real button now, and a click is all it takes.
+   */
+  it('dismisses the intro from the start button a screen reader can click', () => {
+    const dismissIntro = vi.fn();
+    setUiCommands({dismissIntro});
+    render(<MinerApp />);
+
+    const start = document.getElementById('introStartBtn') as HTMLButtonElement;
+    expect(start.tagName).toBe('BUTTON');
+    expect(document.getElementById('intro')?.getAttribute('role')).toBeNull();
+
+    fireEvent.click(start);
+    expect(dismissIntro).toHaveBeenCalledTimes(1);
   });
 
   it('dismisses the intro on Enter or Space wherever focus happens to be', () => {
@@ -327,6 +393,56 @@ describe('boot phase machine', () => {
     for (const id of LOBBY_CONNECT_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
     expect(document.getElementById('soloBtn')).toBeNull();
     expect(document.activeElement?.id).toBe('serverUrl');
+  });
+
+  it('describes the relay field with its status line, and marks it invalid on failure', () => {
+    render(<MinerApp />);
+    act(() => { uiStore.getState().setPhase('lobby'); });
+    act(() => { fireEvent.click(document.getElementById('multiplayerBtn')!); });
+    const field = document.getElementById('serverUrl') as HTMLInputElement;
+
+    expect(field.getAttribute('aria-describedby')).toBe('lobbyConnectionStatus');
+    expect(field.getAttribute('aria-invalid')).toBe('false');
+
+    // Progress is not a problem with what was typed; a refused relay is.
+    act(() => { uiStore.getState().setConnection('Connecting...', true); });
+    expect(field.getAttribute('aria-invalid')).toBe('false');
+
+    act(() => { uiStore.getState().setConnection(RELAY_PROBLEM_STATUS.socket, true); });
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  /**
+   * The lobby is the one modal with nothing behind it, so a close request must not
+   * be honoured — and `onCancel` alone cannot promise that, because a browser stops
+   * honouring a refusal once the page's user activation is stale.
+   */
+  it('refuses to let Escape dismiss the lobby', () => {
+    render(<MinerApp />);
+    act(() => { uiStore.getState().setPhase('lobby'); });
+
+    for (let press = 0; press < 3; press++) {
+      const event = new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true});
+      act(() => { window.dispatchEvent(event); });
+      // Refused before the browser can turn the key into a close request at all.
+      expect(event.defaultPrevented).toBe(true);
+    }
+
+    expect(dialog('lobby-screen').open).toBe(true);
+    expect(document.getElementById('soloBtn')).not.toBeNull();
+  });
+
+  it('keeps the keyboard on the card when the dimmed area is pressed', () => {
+    render(<MinerApp />);
+    act(() => { uiStore.getState().setPhase('lobby'); });
+    expect(document.activeElement?.id).toBe('soloBtn');
+
+    const press = new PointerEvent('pointerdown', {bubbles: true, cancelable: true});
+    act(() => { dialog('lobby-screen').dispatchEvent(press); });
+
+    // Cancelling the press is what stops the dialog itself from taking focus.
+    expect(press.defaultPrevented).toBe(true);
+    expect(document.activeElement?.id).toBe('soloBtn');
   });
 
   it('connects with the entered relay URL from the button and from Enter', () => {
@@ -561,20 +677,55 @@ describe('store-driven HUD', () => {
     expect(sfx.className).not.toMatch(/muted/);
   });
 
-  it('shows the newest toast and fades the expired one out without clearing it', () => {
+  /**
+   * The 60 Hz contract, now that a live region hangs off the HUD snapshot too: a
+   * frame that changed nothing must not reach a single subscriber, or the ship's
+   * spoken status would be re-announced sixty times a second.
+   */
+  it('notifies nobody when a frame changes nothing', () => {
     render(<MinerApp />);
-    const toast = document.getElementById('toast') as HTMLElement;
+    const notified = vi.fn();
+    const unsubscribe = uiStore.subscribe(notified);
+    const frame = {...uiStore.getState().hud};
 
-    act(() => { uiStore.getState().pushToast('Sold cargo for $40.'); });
-    expect(toast.textContent).toBe('Sold cargo for $40.');
-    expect(toast.className).toMatch(/show/);
+    act(() => { for (let i = 0; i < 5; i++) uiStore.getState().syncHud(frame); });
+    expect(notified).not.toHaveBeenCalled();
 
-    act(() => { uiStore.getState().pushToast('Cargo is empty.'); });
-    expect(toast.textContent).toBe('Cargo is empty.');
+    act(() => { uiStore.getState().syncHud({...frame, announcement: 'In the mine.'}); });
+    expect(notified).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
 
-    act(() => { uiStore.getState().clearToasts(); });
-    expect(toast.textContent).toBe('Cargo is empty.');
-    expect(toast.className).not.toMatch(/show/);
+  /**
+   * The toast is a `role="status"` live region, so what is left in it after the
+   * fade is not a cosmetic detail: an expired message that stays in the element is
+   * a message a screen reader can still be handed.
+   */
+  it('shows the newest toast, fades the expired one out, then empties the live region', async () => {
+    vi.useFakeTimers();
+    try {
+      render(<MinerApp />);
+      const toast = document.getElementById('toast') as HTMLElement;
+      expect(toast.getAttribute('role')).toBe('status');
+      expect(toast.textContent).toBe('');
+
+      act(() => { uiStore.getState().pushToast('Sold cargo for $40.'); });
+      expect(toast.textContent).toBe('Sold cargo for $40.');
+      expect(toast.className).toMatch(/show/);
+
+      act(() => { uiStore.getState().pushToast('Cargo is empty.'); });
+      expect(toast.textContent).toBe('Cargo is empty.');
+
+      // The text outlives the fade-out, so the pill has something to fade with.
+      act(() => { uiStore.getState().clearToasts(); });
+      expect(toast.textContent).toBe('Cargo is empty.');
+      expect(toast.className).not.toMatch(/show/);
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+      expect(toast.textContent).toBe('');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

@@ -13,8 +13,9 @@ import { setViewportSize, viewport } from './viewport';
 
 /** The two elements the runtime is mounted against. */
 export interface GameSurfaceRefs {
+  /** The mine itself: what is drawn, and the surface's only keyboard tab stop. */
   canvas: HTMLCanvasElement;
-  /** The focusable panel that owns the keyboard and dictates the canvas size. */
+  /** The layout box that dictates the canvas size. Not focusable. */
   panel: HTMLElement;
 }
 

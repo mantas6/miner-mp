@@ -11,9 +11,17 @@ import '../styles/intro-art.css';
  * carries the name, one line of flavour, the three keys needed to start, and
  * the prompt to leave.
  *
- * The keyboard shortcut is a window listener rather than the card's own
- * `onKeyDown` because the game panel holds focus at boot; the listener only
- * exists while this overlay is mounted, so it cannot leak into the run.
+ * The prompt is a real `<button>`, so activation is the browser's job in every
+ * mode it can happen: a mouse click, Enter or Space on the focused button, or the
+ * synthetic click a screen reader dispatches when the user activates it in browse
+ * mode. The card around it keeps its own press handler for the "tap anywhere"
+ * affordance, but it claims no role for it — a `role="button"` the size of the
+ * screen that only listened for `pointerdown` promised a keyboard and
+ * screen-reader activation it never implemented.
+ *
+ * The window key listener stays as well, because the canvas holds focus at boot
+ * and Enter has to work from there. It only exists while this overlay is mounted,
+ * so it cannot leak into the run.
  */
 export function Intro() {
   // The lyric voice-over is scoped to this overlay: mounting starts the loop and
@@ -37,12 +45,11 @@ export function Intro() {
   }, []);
 
   return (
+    // A press anywhere on the card starts the game, which is the shortcut a mouse
+    // or a thumb expects. It is not announced as a control: the button below is.
     <div
       id="intro"
       className={styles.intro}
-      role="button"
-      tabIndex={0}
-      aria-label="Press to continue to the shift dispatch"
       // Cancelling the press keeps the touch-compatibility click from landing on
       // the lobby button that appears underneath the moment this card unmounts.
       onPointerDown={event => { uiCommands.dismissIntro(event.nativeEvent); event.preventDefault(); }}
@@ -70,7 +77,16 @@ export function Intro() {
           <p className={styles.hint}>
             <kbd>WASD</kbd> dig · <kbd>Enter</kbd> sell · <kbd>Space</kbd> refuel · rest in Info / Cargo
           </p>
-          <p className={styles.cta}>★ Press Enter to start ★</p>
+          {/* A pointer press has already been handled by the card above by the
+              time the click arrives, and `dismissIntro` ignores a splash that is
+              no longer up — so this path is only ever the one that had no pointer
+              press to begin with: a screen reader's synthetic click. */}
+          <button
+            id="introStartBtn"
+            className={styles.cta}
+            type="button"
+            onClick={event => uiCommands.dismissIntro(event.nativeEvent)}
+          >★ Press Enter to start ★</button>
         </div>
       </div>
     </div>

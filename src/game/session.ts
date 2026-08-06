@@ -27,6 +27,7 @@ import {
 } from '../net/net-protocol';
 import type { Tile } from '../core/types';
 import { applyTileEntries, recordTileDiff } from '../world/tile-diff';
+import { RELAY_PROBLEM_STATUS } from '../ui/connection-status';
 import { uiStore } from '../ui/store';
 import type { EnemySim } from './enemies';
 import type { WorldGrid } from './world-grid';
@@ -288,12 +289,12 @@ export function createSession(deps: GameSessionDeps): GameSession {
           setConnectionStatus('Peer left');
         },
         onRoomFull(){
-          connectionIssue = 'Room full';
+          connectionIssue = RELAY_PROBLEM_STATUS.roomFull;
           setConnectionStatus(connectionIssue);
         },
         onMessage: handleMessage,
         onError(){
-          connectionIssue = 'Connection error';
+          connectionIssue = RELAY_PROBLEM_STATUS.socket;
           setConnectionStatus(connectionIssue);
         },
         onClose(){

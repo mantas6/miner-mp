@@ -129,17 +129,26 @@
   color: #ffd65c;
   font: inherit;
 }
+/* A real <button>, so it carries the poster styling instead of the HUD's button
+   recipe: same gold pill the splash always had, no inset highlight, no shadow. */
 .cta {
   display: inline-block;
   margin: 18px 0 0;
   padding: 10px 18px;
   border-radius: 999px;
   background: #ffd65c;
+  box-shadow: none;
   color: #6e120f;
+  font-size: var(--fs-lg);
   font-weight: 1000;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  text-shadow: none;
   animation: startPulse 0.85s ease-in-out infinite alternate;
+}
+.cta:focus-visible {
+  outline: 3px solid #fff4d7;
+  outline-offset: 3px;
 }
 @keyframes startPulse {
   from {

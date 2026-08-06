@@ -23,6 +23,13 @@
 .warning.show {
   display: block;
 }
+/* The banner is the warning; the pulse is only there to catch the eye. Someone who
+   asked for less motion keeps the banner and loses the throb. */
+@media (prefers-reduced-motion: reduce) {
+  .warning {
+    animation: none;
+  }
+}
 @keyframes lowFuelPulse {
   from {
     filter: brightness(0.95);

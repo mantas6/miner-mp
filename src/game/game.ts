@@ -36,10 +36,12 @@ import { cargoCost, tankCost, hullCost, drillCost, visibilityCost, cargoValue } 
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from '../core/hud-alerts';
 import { formatExpeditionObjective } from '../core/objective';
 import { load, save } from '../persistence';
+import { formatShipStatusAnnouncement } from '../core/ship-status';
 import { formatExpeditionStats } from '../core/stats';
 import { formatSurfaceActionHint } from '../core/surface-hint';
 import { rand } from '../world/world';
 import { resetUiCommands, setUiCommands } from '../ui/commands';
+import { RELAY_PROBLEM_STATUS } from '../ui/connection-status';
 import { buildCargoRows, pushToast as toast, uiStore, type HudSnapshot, type PlayerSnapshot } from '../ui/store';
 
 import { formatExtractionPresentation } from '../core/extraction-presentation';
@@ -222,7 +224,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       startIntroVoice: () => introVoice.start(),
       stopIntroVoice: () => introVoice.stop(),
       connect: url => {
-        if (!url) { session.setConnectionStatus('Enter a server URL'); return; }
+        if (!url) { session.setConnectionStatus(RELAY_PROBLEM_STATUS.noUrl); return; }
         saveServerUrl(url);
         session.startOnline(url);
       },
@@ -381,6 +383,15 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       hull: p.hull,
       hullMax: p.hullMax
     });
+    // The canvas, spoken: the one HUD field that exists for the live region rather
+    // than the layout. Thresholds only, so it changes when the ship crosses one and
+    // is byte-identical (and therefore silent) on every frame in between.
+    hudScratch.announcement = formatShipStatusAnnouncement({
+      gameOver: state.gameOver,
+      atSurface: surf,
+      cargoFull: hudScratch.cargoAlert,
+      hullCritical: hudScratch.hullAlert
+    });
     // Scanner line, return-fuel forecast, and depth landmark, each recomputed only
     // when its own inputs moved. Milestone crossings toast from in here.
     readouts.sync(hudScratch);
@@ -427,9 +438,28 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       isTrusted: event?.isTrusted
     })) audio.enable();
   }
+  /**
+   * Put the keyboard on the mine. The canvas is the surface's only tab stop, so
+   * this is also what makes the focus ring land on the thing the keys drive; while
+   * a modal dialog is up the rest of the page is inert and the call does nothing,
+   * which is exactly what should happen.
+   */
   function focusGame(){
-    try { surface.panel.focus({preventScroll:true}); }
-    catch { try { surface.panel.focus(); } catch { /* focus is best-effort */ } }
+    try { surface.canvas.focus({preventScroll:true}); }
+    catch { try { surface.canvas.focus(); } catch { /* focus is best-effort */ } }
+  }
+  /**
+   * Take the keyboard for a run that has just started. `focusGame()` cannot do it
+   * on the spot: the lobby is a modal `<dialog>` until React commits the phase
+   * change, and everything outside a modal dialog is inert — so the call would be
+   * a silent no-op and the run would begin with focus on `<body>`. Retrying for a
+   * few frames covers both the synchronous flush React gives a click and the
+   * scheduled one it gives a relay message.
+   */
+  function claimFocusForRun(attempts = 4){
+    focusGame();
+    if (document.activeElement === surface.canvas || attempts <= 0) return;
+    scope.timeout(() => claimFocusForRun(attempts - 1), 16);
   }
   /** Whether the run is live. The simulation and the keyboard both hang off this. */
   function isPlaying(){
@@ -455,7 +485,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     const store = uiStore.getState();
     if (store.phase === 'playing') return;
     store.setPhase('playing');
-    focusGame();
+    claimFocusForRun();
     tryAutoAudio(event);
     toast('Drill ready. Mine ore, sell it, and watch your fuel.');
   }

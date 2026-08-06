@@ -74,11 +74,18 @@ body {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  outline: none;
 }
-canvas:focus,
-#game-panel:focus {
-  outline: none;
+/* One visible focus indicator for the whole app. `:focus-visible` rather than
+   `:focus` is what makes it affordable: the runtime puts focus back on the canvas
+   at boot, on every window focus, and after each dialog closes, so a ring on
+   plain `:focus` would draw itself around the mine after every mouse click. */
+:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+/* Inside the frame, so the ring is not lost against the page behind it. */
+#game:focus-visible {
+  outline-offset: -5px;
 }
 canvas {
   width: 100%;

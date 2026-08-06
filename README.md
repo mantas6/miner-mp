@@ -110,7 +110,7 @@ miner-mp/
 | `shared/tile-key.ts` | Canonical `"x,y"` coordinate key used by tile maps on both sides. |
 | `src/main.tsx` | Vite entry point: imports global styles and renders the app inside `<StrictMode>` and an error boundary, handing the game-runtime factory to it. |
 | `src/persistence.ts` | Local save/load of player progress, the ship's parked tile, explored tiles, and the solo world's tile diff (`localStorage`). |
-| `src/core/` | Pure gameplay rules and types: balance, economy, upgrades, shop catalog, movement, weapon, dynamite, teleporter, enemies, objectives, extraction, scanner, fuel reserve, depth milestones, stats, danger, fixed-step clock, developer tools. |
+| `src/core/` | Pure gameplay rules and types: balance, economy, upgrades, shop catalog, movement, weapon, dynamite, teleporter, enemies, objectives, extraction, scanner, fuel reserve, depth milestones, spoken ship status, stats, danger, fixed-step clock, developer tools. |
 | `src/world/` | World generation, the tile diff that turns a saved or relayed world back into terrain (`tile-diff.ts`), shared world-state reset, and visible tile range. |
 | `src/game/` | Gameplay orchestration (`game.ts`, the `createGameRuntime()` factory) plus its feature modules — `session.ts` (relay session), `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `zoom.ts` (wheel/pinch camera zoom maths), `readouts.ts` — the canvas surface factory (`dom.ts`) and the teardown registry every side effect registers with (`disposal.ts`). |
 | `src/net/` | Relay client (partysocket, auto-reconnect), wire protocol codec, and multiplayer settings. |
@@ -127,8 +127,8 @@ miner-mp/
 | `soundtrack/render_voice.sh` | espeak-ng + ffmpeg pipeline that renders the robot lyric voice-overs into `public/assets/voice/`. |
 | `public/assets/music/` | The shipped soundtrack assets (`golden-signal.mp3`, `golden-signal.ogg`) — build products of `soundtrack/render.py`, copied verbatim into `dist/` by Vite. |
 | `public/assets/voice/` | The shipped lyric voice-overs (`golden-signal-line-1..4.{mp3,ogg}`) — build products of `soundtrack/render_voice.sh`, copied verbatim into `dist/` by Vite. |
-| `src/ui/` | React components, the zustand UI store (`store.ts`), the command table the buttons dispatch into (`commands.ts`), the effect that owns the runtime's lifetime (`useGameRuntime.ts`), the boot/crash notices (`Failure.tsx`), and co-located CSS modules. |
-| `src/styles/base.css` | Design tokens plus element-level styling (`button`, `ul`, `kbd`, `meter`, `canvas`, `#shell`, `#game-panel`). |
+| `src/ui/` | React components, the zustand UI store (`store.ts`), the command table the buttons dispatch into (`commands.ts`), the effect that owns the runtime's lifetime (`useGameRuntime.ts`), the relay status vocabulary both layers share (`connection-status.ts`), the boot/crash notices (`Failure.tsx`), and co-located CSS modules. |
+| `src/styles/base.css` | Design tokens plus element-level styling (`button`, `ul`, `kbd`, `meter`, `canvas`, `#shell`, `#game-panel`) and the app-wide `:focus-visible` ring. |
 | `src/styles/icons.css` | Global equipment sprite sheet (`icon-*`), addressed by name from the shop catalog. |
 | `src/styles/intro-art.css` | Global intro badge art. |
 | `vite.config.ts` | Vite build config (relative `base`, React Fast Refresh) and Vitest test config. |
@@ -313,6 +313,25 @@ zooming the camera with the wheel or a trackpad.
 | Restart after game over | `R` | Click/tap outside the dialogs |
 | Toggle sound | — | 🔊 button; a trusted pointer/touch gesture may auto-enable |
 | Reset shared world (development opt-in only) | — | Info / Cargo -> Dev tools (local) -> Reset World State |
+
+## Accessibility
+
+- **One keyboard target.** The `#game` canvas is the game surface's only tab stop
+  (`role="application"`, so a screen reader hands the arrow keys through), named and
+  described by a visually hidden instruction paragraph. `#game-panel` is layout
+  only. The runtime focuses the canvas at boot, when the window regains focus, and
+  once a run starts.
+- **Focus is visible when it was asked for.** One app-wide `:focus-visible` ring in
+  `base.css`; programmatic focus after a click or a closing dialog draws nothing.
+- **State outside the canvas.** The meters and readouts are text, the toast and the
+  fuel banner are live regions, and `#game-status` politely announces the ship's
+  situation — at the depot, in the mine, holds full, hull critical, ship lost. It is
+  driven by thresholds, so the 60 Hz HUD sync never makes it talk.
+- **Native dialogs.** The intro prompt is a `<button>`; the lobby, shop and info
+  overlays are modal `<dialog>`s, so the browser contains Tab, makes the rest of the
+  page inert, and each close returns focus to the control that opened it.
+- **`prefers-reduced-motion`.** The looping start-prompt, low-fuel and HUD-alert
+  animations stop; the alert colours stay.
 
 ## Gameplay notes
 

@@ -108,9 +108,14 @@ describe('booting the game', () => {
     click('soloBtn');
     expect(document.getElementById('lobby-screen')).toBeNull();
     expect(text('toast')).toContain('Drill ready');
+    // The run takes the keyboard, and the canvas is the surface that holds it.
+    expect(document.activeElement?.id).toBe('game');
   });
 
   it('runs the whole input → move → terrain → HUD chain on a keypress', () => {
+    // The spoken status starts where the ship does, at the depot.
+    expect(text('game-status')).toBe('At the surface depot.');
+
     press('s');
     renderFrame();
 
@@ -123,6 +128,8 @@ describe('booting the game', () => {
 
     expect(text('depth')).toBe('10 m');
     expect(text('fuelLabel')).not.toBe('100/100');
+    // Leaving the depot is a state change nothing outside the canvas showed before.
+    expect(text('game-status')).toBe('In the mine.');
   });
 
   it('opens and closes the info dialog through the bound controls', () => {
