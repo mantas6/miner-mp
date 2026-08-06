@@ -82,7 +82,8 @@ function createDebouncedSave(flush: () => void, delayMs: number) {
     cancel(){ clearTimeout(timer); }
   };
 }
-const explorationSave = createDebouncedSave(saveProgress, 500);
+/** Cheap progress the ship changes constantly: its tile and the fog it reveals. */
+const progressSave = createDebouncedSave(saveProgress, 500);
 
 // Fog is cached per chunk, so every newly explored tile has to mark its chunk dirty.
 function invalidateFogTiles(indexes: number[]) {
@@ -93,7 +94,7 @@ function revealAtPlayer(broadcast=true) {
   if (!added.length) return;
   invalidateFogTiles(added);
   if (broadcast) session.broadcastExploration();
-  explorationSave.schedule();
+  progressSave.schedule();
 }
 
 function addCash(amount: number) {
@@ -203,13 +204,13 @@ function registerUiCommands(){
     resetPlayerData: () => {
       if (!developerToolsEnabled) return;
       if (!confirmPlayerDataReset(message => window.confirm(message))) return;
-      explorationSave.cancel();
+      progressSave.cancel();
       session.resetForPlayerData();
       gameInput.clearKeys();
       resetPlayerData(state);
       readouts.reset();
       revealAtPlayer(false);
-      explorationSave.cancel();
+      progressSave.cancel();
       saveProgress();
       session.setConnectionStatus('Solo');
       closeInfoScreen();
@@ -488,6 +489,7 @@ function wireModules(){
     audio,
     toast,
     saveProgress,
+    scheduleSave: () => progressSave.schedule(),
     addCash,
     revealAtPlayer,
     atSurface,
@@ -539,13 +541,15 @@ export function initGame(options: { developerToolsEnabled?: boolean } = {}){
   gameInput.attach();
   addEventListener('focus', focusGame);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) return;
+    // Mobile browsers routinely discard a hidden tab without ever firing
+    // `beforeunload`, so hiding is the last reliable chance to keep the run.
+    if (document.hidden) { progressSave.cancel(); saveProgress(); return; }
     // Animation frames stop while hidden; discard the gap instead of fast-forwarding.
     stepper.reset();
     focusGame();
   });
   addEventListener('pointerdown', tryAutoAudio);
-  registerUiCommands(); run.generate(); setInterval(saveProgress, 60000); addEventListener('beforeunload', saveProgress); focusGame(); setTimeout(focusGame, 60); loop();
+  registerUiCommands(); run.resume(); setInterval(saveProgress, 60000); addEventListener('beforeunload', saveProgress); focusGame(); setTimeout(focusGame, 60); loop();
   // The splash is mounted before this module is even imported, so its own
   // start command may have landed on the placeholder no-op. Starting here too
   // makes the order irrelevant: `start()` on a running loop does nothing.

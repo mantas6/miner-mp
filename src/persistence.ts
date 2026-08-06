@@ -1,3 +1,4 @@
+import { MAX_WORLD_ROW, START_Y, WORLD_W } from '../shared/constants';
 import { ECONOMY, LIMITS, STARTING } from './core/balance';
 import { createDefaultStats } from './core/state';
 import { encodeExploration, mergeExploration } from '../shared/exploration-codec';
@@ -15,12 +16,16 @@ import type { GameState, GameStats } from './core/types';
 //   * v2: rebalanced cargo capacity.
 //   * v3: run-length encoded explored tiles.
 //   * v4: `tiles`, the solo world's tile diff.
-// Older blobs still load; they just restore a pristine mine.
+//   * v5: `x`/`y`, the tile the ship was parked on.
+// Older blobs still load; they just restore a pristine mine, and pre-v5 saves
+// start at the depot the way they always did.
 
 /** The persisted save file. Every field is re-validated on load. */
 interface SavedProgress {
   version?: unknown;
   tiles?: unknown;
+  x?: unknown;
+  y?: unknown;
   cash?: unknown;
   fuelMax?: unknown;
   hullMax?: unknown;
@@ -36,7 +41,7 @@ interface SavedProgress {
 }
 
 export const SAVE_KEY = 'moleload-progress-v1';
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 const LEGACY_CARGO_STEP = 10;
 const CARGO_BALANCE_SAVE_VERSION = 2;
 
@@ -66,9 +71,15 @@ export function load(state: GameState): void {
     p.gunOwned = save.gunOwned === true;
     p.bullets = Math.floor(numeric(save.bullets, p.bullets, LIMITS.bullets.min, LIMITS.bullets.max));
     p.visibility = Math.floor(numeric(save.visibility, p.visibility, LIMITS.visibility.min, LIMITS.visibility.max));
+    // The ship resumes on the tile it parked on, render position included so it
+    // appears there instead of easing in from the depot. The clamps are the ones
+    // `movementDestination` enforces, so no save can park a miner in a wall.
+    const x = Math.floor(numeric(save.x, p.x, 1, WORLD_W - 2));
+    const y = Math.floor(numeric(save.y, p.y, START_Y, MAX_WORLD_ROW));
+    Object.assign(p, {x, y, drawX: x, drawY: y});
     mergeExploration(state.exploredTiles, typeof save.explored === 'string' ? save.explored : '');
     // Saves written before version 4 carry no terrain, so they simply restore an
-    // untouched mine. `run.generate()` lays these entries back over it.
+    // untouched mine. `run.resume()` lays these entries back over it.
     state.soloTileDiff = createTileDiff(parseTileEntries(save.tiles));
     const defaultStats = createDefaultStats();
     const savedStats = save.stats || {};
@@ -86,6 +97,8 @@ export function save(state: GameState): void {
   const progress = {
     version: SAVE_VERSION,
     cash: Math.floor(state.cash),
+    x: p.x,
+    y: p.y,
     fuelMax: p.fuelMax,
     hullMax: p.hullMax,
     cargoMax: p.cargoMax,

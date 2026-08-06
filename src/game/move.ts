@@ -63,6 +63,8 @@ export interface GameMovementDeps {
   audio: AudioController;
   toast(message: string): void;
   saveProgress(): void;
+  /** Queue a debounced save; every step moves the ship's persisted position. */
+  scheduleSave(): void;
   addCash(amount: number): void;
   /** Reveal the sensor footprint around the ship's new position. */
   revealAtPlayer(): void;
@@ -217,6 +219,9 @@ export function createMovement(deps: GameMovementDeps): GameMovement {
   function advanceShip(nx: number, ny: number): void {
     const p = state.player;
     p.x = nx; p.y = ny; p.bob = 1;
+    // The save remembers where the ship parked, so every step is progress worth
+    // writing — debounced, because a sprint down a tunnel is one step per frame.
+    deps.scheduleSave();
     deps.revealAtPlayer();
     state.stats.maxDepth = Math.max(state.stats.maxDepth, Math.max(0, p.y - START_Y) * 10);
     enemies.wakeEnemiesNear(p.x, p.y);

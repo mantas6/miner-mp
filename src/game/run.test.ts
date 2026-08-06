@@ -222,6 +222,58 @@ describe('restarting after a death', () => {
   });
 });
 
+describe('resuming a saved run', () => {
+  it('parks the ship on the saved tile with a fresh tank, hull and cargo bay', () => {
+    const h = harness();
+    h.state.soloTileDiff = createTileDiff([{x: 12, y: 60, tile: {type: 'air'}}]);
+
+    h.run.resume();
+
+    expect(h.state.player).toMatchObject({
+      x: 12, y: 60,
+      fuel: STARTING.fuelMax + ECONOMY.tank.step,
+      hull: STARTING.hullMax,
+      cargo: []
+    });
+    expect(h.state.cash).toBe(900);
+    expect(h.toasts.saw('580 m')).toBe(true);
+    // The camera opens on the ship instead of panning down from the depot.
+    expect(h.state.camY).toBeGreaterThan(0);
+  });
+
+  it('digs the saved tunnels back out before placing the ship in them', () => {
+    const h = harness();
+    const dug = {x: 40, y: 60, tile: {type: 'air'} as const};
+    h.state.soloTileDiff = createTileDiff([dug]);
+
+    h.run.resume();
+
+    expect(h.state.world[dug.y][dug.x]).toEqual(dug.tile);
+  });
+
+  it('returns a ship the mine has swallowed to the depot', () => {
+    const h = harness();
+    // No diff: a capped or quota-dropped save leaves the parked tile solid, and
+    // a buried ship cannot drill upward out of it.
+    expect(makeTile(12, 60).type).not.toBe('air');
+
+    h.run.resume();
+
+    expect(h.state.player).toMatchObject({x: Math.floor(WORLD_W / 2), y: START_Y, drawY: START_Y});
+    expect(h.toasts.saw('Fresh drill deployed')).toBe(true);
+  });
+
+  it('boots a save with no position at the depot, as a new game always did', () => {
+    const h = harness();
+    Object.assign(h.state.player, {x: Math.floor(WORLD_W / 2), y: START_Y});
+
+    h.run.resume();
+
+    expect(h.state.player).toMatchObject({x: Math.floor(WORLD_W / 2), y: START_Y});
+    expect(h.toasts.messages).toEqual(['Fresh drill deployed.']);
+  });
+});
+
 describe('a full player reset', () => {
   it('returns every upgrade, the wallet, the fog and the stats to their starting values', () => {
     const h = harness();

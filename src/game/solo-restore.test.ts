@@ -3,7 +3,9 @@
 // Booting into a mine somebody already dug. `game.test.ts` covers a fresh world;
 // this covers the other half of a refresh — terrain regenerates from its seed,
 // so the saved tile diff has to be layered back on before the first keypress,
-// or every tunnel would be filled in again.
+// or every tunnel would be filled in again. The ship comes back with it: a save
+// records the tile it parked on, so a refresh resumes down the shaft rather than
+// at the depot.
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import React from 'react';
@@ -52,6 +54,8 @@ describe('booting into a saved solo mine', () => {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       version: SAVE_VERSION,
       cash: 500,
+      x: SHAFT_X,
+      y: DUG_ROWS[0],
       tiles: DUG_ROWS.map(y => ({x: SHAFT_X, y, tile: {type: 'air'}}))
     }));
 
@@ -69,6 +73,14 @@ describe('booting into a saved solo mine', () => {
   afterAll(() => {
     vi.unstubAllGlobals();
     localStorage.clear();
+  });
+
+  it('opens the run on the tile the last session parked on', () => {
+    renderFrame();
+
+    // A ship that ignored the save, or one buried by terrain it failed to
+    // restore, would be sitting at the depot instead.
+    expect(depthMeters()).toBe(10);
   });
 
   it('drops the ship down the saved shaft without drilling it again', () => {
@@ -97,7 +109,7 @@ describe('booting into a saved solo mine', () => {
 
     const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
     const air = saved.tiles.filter((entry: {tile: {type: string}}) => entry.tile.type === 'air');
-    expect(saved.version).toBe(SAVE_VERSION);
+    expect(saved).toMatchObject({version: SAVE_VERSION, x: SHAFT_X, y: DUG_ROWS.at(-1)! + 1});
     expect(air.map((entry: {y: number}) => entry.y)).toEqual(
       [...DUG_ROWS, DUG_ROWS.at(-1)! + 1]
     );

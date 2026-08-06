@@ -5,12 +5,15 @@
 // The rules worth remembering:
 //   * hull damage that empties the hull ends the run exactly once;
 //   * death keeps cash, upgrades and stats, and loses cargo and position;
+//   * a boot keeps the position the save recorded, because only dying costs it;
 //   * an online reset replaces only this miner's ship, never the shared world.
 
+import { START_Y } from '../../shared/constants';
 import { STARTING } from '../core/balance';
 import { cancelExtraction } from '../core/extraction-phase';
-import { createDefaultStats, respawnPlayer } from '../core/state';
+import { createDefaultStats, placeAtSurfaceSpawn, respawnPlayer } from '../core/state';
 import { applyTileEntries, tileDiffEntries } from '../world/tile-diff';
+import { ensureWorldRow } from '../world/world';
 import { resetWorldTerrain } from '../world/world-state';
 import type { AudioController, GameState } from '../core/types';
 import type { EnemySim } from './enemies';
@@ -21,6 +24,8 @@ import { viewport } from './viewport';
 export interface GameRun {
   /** Discard the generated world and deploy a fresh miner (offline reset). */
   generate(): void;
+  /** Boot into the loaded save: its mine, and its ship where it was parked. */
+  resume(): void;
   /** Regenerate terrain in place, keeping all player progress. */
   clearWorldRuntime(): void;
   /** Redeploy the ship; `full` also wipes cash, upgrades, stats, and fog. */
@@ -57,6 +62,12 @@ export interface GameRunDeps {
 export function createRun(deps: GameRunDeps): GameRun {
   const {state, session, audio, toast, saveProgress, spawnExplosion} = deps;
 
+  /** Snap the camera onto the ship, so a run never opens mid-pan. */
+  function centreCameraOnShip(): void {
+    state.camX = Math.max(0, state.player.x - Math.floor(viewport.tilesX/2));
+    state.camY = Math.max(0, state.player.y - Math.floor(viewport.tilesY/2));
+  }
+
   function resetPlayer(full = true): void {
     state.extractionPhase = cancelExtraction();
     state.teleportEffect = null;
@@ -82,21 +93,43 @@ export function createRun(deps: GameRunDeps): GameRun {
     }
     respawnPlayer(state.player);
     deps.revealAtPlayer();
-    state.camX = Math.max(0, state.player.x - Math.floor(viewport.tilesX/2));
-    state.camY = 0;
+    centreCameraOnShip();
     state.particles.length = 0;
     state.gameOver = false;
     toast('Fresh drill deployed.');
   }
 
-  function generate(): void {
+  /** The solo mine rebuilt from its seed, with the saved diff dug back out. */
+  function buildSoloWorld(): void {
     state.enemies = [];
     state.world = [];
     // Terrain comes back from the seed, so the dug-out blocks have to be layered
     // on again: a death or a refresh must not refill the tunnels behind you.
     applyTileEntries(state.world, tileDiffEntries(state.soloTileDiff));
+  }
+
+  function generate(): void {
+    buildSoloWorld();
     resetPlayer(false);
     deps.enemies().resetExposure();
+  }
+
+  function resume(): void {
+    buildSoloWorld();
+    const p = state.player;
+    // The save carries a tile, not a guarantee: a capped or quota-dropped diff
+    // can leave that coordinate solid again, and a position last written in
+    // co-op means nothing in this world. Anything but open air returns to the
+    // depot, because a ship buried in dirt cannot drill its way back up.
+    if (ensureWorldRow(state.world, p.y)?.[p.x]?.type !== 'air') placeAtSurfaceSpawn(p);
+    // Fuel, hull and cargo are never saved, so a resumed run is a fresh ship
+    // parked where the last one left off.
+    Object.assign(p, {fuel: p.fuelMax, hull: p.hullMax, cargo: []});
+    deps.revealAtPlayer();
+    centreCameraOnShip();
+    state.gameOver = false;
+    deps.enemies().resetExposure();
+    toast(p.y > START_Y ? `Ship recovered at ${(p.y - START_Y) * 10} m.` : 'Fresh drill deployed.');
   }
 
   function clearWorldRuntime(): void {
@@ -143,5 +176,5 @@ export function createRun(deps: GameRunDeps): GameRun {
     if (p.hull <= 0) gameOver('Ship destroyed. Tap anywhere to restart.');
   }
 
-  return {generate, clearWorldRuntime, resetPlayer, restartGame, gameOver, damage};
+  return {generate, resume, clearWorldRuntime, resetPlayer, restartGame, gameOver, damage};
 }

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeExploration, explorationIndex } from '../../shared/exploration-codec';
-import { createInitialState } from '../core/state';
+import { START_Y } from '../../shared/constants';
+import { SURFACE_SPAWN_X, createInitialState } from '../core/state';
 import type { Enemy, GameState } from '../core/types';
 import type { NetCallbacks, NetClient } from '../net/net';
 import type { EnemySnapshotEntry, NetMessage } from '../net/net-protocol';
@@ -184,6 +185,20 @@ describe('world hydration', () => {
     });
 
     expect(mocks.net.sent).toEqual([]);
+  });
+
+  it('brings a ship resumed deep in the solo mine back to the shared depot', () => {
+    const h = harness();
+    Object.assign(h.state.player, {x: 12, y: 640, drawX: 12, drawY: 640});
+
+    h.receive({
+      type: 'worldState', version: 1, revision: 2, initialized: true,
+      tiles: [], enemies: [], explored: ''
+    });
+
+    expect(h.state.player).toMatchObject({
+      x: SURFACE_SPAWN_X, y: START_Y, drawX: SURFACE_SPAWN_X, drawY: START_Y
+    });
   });
 
   it('rebuilds the local world on a newer reset and ignores a stale one', () => {

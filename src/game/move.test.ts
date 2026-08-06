@@ -26,6 +26,7 @@ interface Harness {
   damage: ReturnType<typeof vi.fn>;
   gameOver: ReturnType<typeof vi.fn>;
   saveProgress: ReturnType<typeof vi.fn>;
+  scheduleSave: ReturnType<typeof vi.fn>;
   addCash: ReturnType<typeof vi.fn>;
   revealAtPlayer: ReturnType<typeof vi.fn>;
   /** Mutable so a test can put the ship at the depot. */
@@ -46,6 +47,7 @@ function harness(): Harness {
     damage: vi.fn(),
     gameOver: vi.fn(),
     saveProgress: vi.fn(),
+    scheduleSave: vi.fn(),
     addCash: vi.fn(),
     revealAtPlayer: vi.fn(),
     flags: {atSurface: false}
@@ -57,6 +59,7 @@ function harness(): Harness {
     audio,
     toast: toasts.toast,
     saveProgress: context.saveProgress,
+    scheduleSave: context.scheduleSave,
     addCash: context.addCash,
     revealAtPlayer: context.revealAtPlayer,
     atSurface: () => context.flags.atSurface,

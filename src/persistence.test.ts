@@ -1,10 +1,10 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { SAVE_KEY, SAVE_VERSION, load, numeric, save } from './persistence';
-import { createInitialState } from './core/state';
+import { SURFACE_SPAWN_X, createInitialState } from './core/state';
 import { ECONOMY } from './core/balance';
 import { cargoCost } from './core/economy';
 import { claimArtifact } from './core/artifacts';
-import { ARTIFACTS, MAX_SAVED_TILE_ENTRIES } from '../shared/constants';
+import { ARTIFACTS, MAX_SAVED_TILE_ENTRIES, START_Y } from '../shared/constants';
 import { explorationIndex } from '../shared/exploration-codec';
 import type { TileEntry } from '../shared/world-schema';
 import { createTileDiff, tileDiffEntries } from './world/tile-diff';
@@ -125,6 +125,45 @@ describe('carried item persistence', () => {
     load(state);
 
     expect(state.player).toMatchObject(empty);
+  });
+});
+
+describe('ship position persistence', () => {
+  it('round-trips the tile the ship parked on, render position included', () => {
+    const stored = stubStorage();
+    const state = createInitialState();
+    Object.assign(state.player, {x: 12, y: 640, drawX: 12, drawY: 640});
+
+    save(state);
+
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({version: SAVE_VERSION, x: 12, y: 640});
+
+    const restored = createInitialState();
+    load(restored);
+    expect(restored.player).toMatchObject({x: 12, y: 640, drawX: 12, drawY: 640});
+  });
+
+  it('leaves a save written before positions were kept at the depot', () => {
+    stubStorage({ version: 4, cash: 90 });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(state.player).toMatchObject({x: SURFACE_SPAWN_X, y: START_Y});
+  });
+
+  it.each([
+    ['a position outside the side walls', {x: -40, y: 30}, {x: 1, y: 30}],
+    ['a position above the surface airspace', {x: 12, y: -9}, {x: 12, y: START_Y}],
+    ['a fractional position', {x: 12.7, y: 30.7}, {x: 12, y: 30}],
+    ['a nonsense position', {x: 'deep', y: null}, {x: SURFACE_SPAWN_X, y: START_Y}]
+  ])('refuses to park a ship at %s', (_name, saved, expected) => {
+    stubStorage({ version: SAVE_VERSION, ...saved });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(state.player).toMatchObject(expected);
   });
 });
 

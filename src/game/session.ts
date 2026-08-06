@@ -10,6 +10,7 @@
 
 import { encodeExploration, mergeExploration } from '../../shared/exploration-codec';
 import { getEnemyType } from '../core/enemy-types';
+import { placeAtSurfaceSpawn } from '../core/state';
 import type { AudioController, GameState } from '../core/types';
 import { createNet, type NetClient } from '../net/net';
 import {
@@ -137,6 +138,10 @@ export function createSession(deps: GameSessionDeps): GameSession {
   /** Adopt the relay's world wholesale: terrain, enemies, and exploration. */
   function applyAuthoritativeWorld(msg: WorldStateMsg): void {
     worldRevision = msg.revision;
+    // The ship may have resumed deep inside the solo mine, and the shared one is
+    // rock wherever the relay says it is. Every miner enters a shared world at
+    // the depot rather than wherever their own save happened to park them.
+    placeAtSurfaceSpawn(state.player);
     state.world = [];
     applyTileEntries(state.world, msg.tiles);
     deps.enemies().applyEntries(msg.enemies);
