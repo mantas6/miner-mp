@@ -262,18 +262,18 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     if (!atSurface()) return toast('Shop is at the surface depot.');
     state.input.gunArmed = false;
     syncPlayerSnapshot();
-    uiStore.getState().setShopOpen(true);
+    uiStore.getState().setActiveOverlay('shop');
   }
   function closeShopScreen(){
-    uiStore.getState().setShopOpen(false);
+    uiStore.getState().closeOverlay('shop');
   }
   function openInfoScreen(){
     syncPlayerSnapshot();
     syncInfoDetails();
-    uiStore.getState().setInfoOpen(true);
+    uiStore.getState().setActiveOverlay('info');
   }
   function closeInfoScreen(){
-    uiStore.getState().setInfoOpen(false);
+    uiStore.getState().closeOverlay('info');
   }
   /**
    * Reused scratch snapshots. The loop fills them every frame and the store copies
@@ -387,8 +387,8 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
 
     const store = uiStore.getState();
     store.syncHud(hudScratch);
-    if (store.shopOpen || store.infoOpen) syncPlayerSnapshot();
-    if (store.infoOpen) syncInfoDetails();
+    if (store.activeOverlay !== null) syncPlayerSnapshot();
+    if (store.activeOverlay === 'info') syncInfoDetails();
 
     if (lowFuel && !surf && performance.now() - audio.lastLowFuel > FUEL.lowFuelWarnMs) { audio.lowFuel(); audio.lastLowFuel = performance.now(); }
   }

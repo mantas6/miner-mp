@@ -33,6 +33,16 @@ async function bootMain(runtime: ReturnType<typeof stubRuntime>): Promise<void> 
   await act(async () => { await import('./main'); });
 }
 
+/**
+ * Bring the developer chrome on screen the only way a player can: it is a tab of
+ * the Info overlay, and neither the overlay nor an unselected tab is mounted.
+ */
+async function openDeveloperTab(): Promise<void> {
+  const { uiStore } = await import('./ui/store');
+  await act(async () => { uiStore.getState().setActiveOverlay('info'); });
+  await act(async () => { uiStore.getState().setInfoTab('info-developer'); });
+}
+
 describe('browser startup', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -51,6 +61,8 @@ describe('browser startup', () => {
     expect(mounted.canvas.isConnected).toBe(true);
     expect(mounted.developerToolsEnabled).toBe(false);
     // Developer chrome is absent without the flag, whatever the runtime does.
+    await openDeveloperTab();
+    expect(document.getElementById('info-tab-developer')).toBeNull();
     expect(document.getElementById('info-developer')).toBeNull();
   });
 
@@ -80,6 +92,7 @@ describe('browser startup', () => {
     await bootMain(runtime);
 
     expect(runtime.calls.at(-1)?.developerToolsEnabled).toBe(true);
+    await openDeveloperTab();
     expect(document.getElementById('info-developer')).toBeInstanceOf(HTMLElement);
     expect(document.getElementById('resetPlayerDataBtn')).toBeInstanceOf(HTMLButtonElement);
   });

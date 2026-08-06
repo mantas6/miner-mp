@@ -172,7 +172,7 @@ describe('game runtime lifecycle', () => {
 
     // And a button press cannot reach the discarded runtime either.
     act(() => { uiCommands.openInfo(); });
-    expect(uiStore.getState().infoOpen).toBe(false);
+    expect(uiStore.getState().activeOverlay).toBeNull();
   });
 
   it('boots again cleanly after a dispose, exactly like a StrictMode remount', () => {
@@ -191,7 +191,7 @@ describe('game runtime lifecycle', () => {
 
     // The live runtime is the second one, and it is fully wired.
     act(() => { uiCommands.openInfo(); });
-    expect(uiStore.getState().infoOpen).toBe(true);
+    expect(uiStore.getState().activeOverlay).toBe('info');
     act(() => { uiCommands.closeInfo(); });
 
     second.dispose();

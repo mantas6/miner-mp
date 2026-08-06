@@ -17,12 +17,26 @@ const DOM_CONTRACT = [
   'hud', 'musicBtn', 'sfxBtn', 'connectionStatus', 'cash', 'depth', 'depthTarget', 'scanner',
   'fuel', 'fuelLabel', 'fuelReturn', 'fuelSurplus', 'hull', 'hullLabel', 'cargo', 'cargoLabel', 'extractionStatus',
   'surfaceHint', 'sell', 'shopBtn', 'dynamiteBtn', 'teleporterBtn', 'gunBtn', 'infoBtn',
-  'shop-screen', 'shop-card', 'shopCloseBtn',
-  'fuelBtn', 'repairBtn', 'cargoBtn', 'tankBtn', 'hullBtn', 'drillBtn', 'visibilityBtn',
-  'shopDynamiteBtn', 'shopTeleporterBtn', 'shopGunBtn', 'shopBulletsBtn',
-  'info-screen', 'info-card', 'infoCloseBtn', 'objectiveInfoStatus', 'extractionInfoStatus',
-  'cargoList', 'expeditionStats', 'prospectingGuide', 'dangerGuide',
+  // Both overlays keep their dialog shell mounted; their contents do not.
+  'shop-screen', 'info-screen',
   'fuel-warning', 'toast'
+];
+
+/** Ids that exist only while the shop is the overlay on screen. */
+const SHOP_CONTRACT = [
+  'shop-card', 'shopCloseBtn',
+  'fuelBtn', 'repairBtn', 'cargoBtn', 'tankBtn', 'hullBtn', 'drillBtn', 'visibilityBtn',
+  'shopDynamiteBtn', 'shopTeleporterBtn', 'shopGunBtn', 'shopBulletsBtn'
+];
+
+/** Ids that exist only while the info screen is up, on the tab it opens with. */
+const INFO_CONTRACT = ['info-card', 'infoCloseBtn', 'objectiveInfoStatus', 'extractionInfoStatus', 'cargoList'];
+
+/** The remaining panel ids, and the tab that mounts each of them. */
+const INFO_TAB_CONTRACT = [
+  {tabId: 'info-tab-stats', ids: ['expeditionStats']},
+  {tabId: 'info-tab-prospecting', ids: ['prospectingGuide']},
+  {tabId: 'info-tab-hazards', ids: ['dangerGuide']}
 ];
 
 /** Ids that only exist in the lobby phase, step by step: mode first, relay second. */
@@ -48,7 +62,22 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   setUiCommands(pristineCommands);
+  vi.restoreAllMocks();
 });
+
+/** The overlay commands the running game installs, in store terms. */
+function installOverlayCommands(): void {
+  setUiCommands({
+    openShop: () => uiStore.getState().setActiveOverlay('shop'),
+    closeShop: () => uiStore.getState().closeOverlay('shop'),
+    openInfo: () => uiStore.getState().setActiveOverlay('info'),
+    closeInfo: () => uiStore.getState().closeOverlay('info')
+  });
+}
+
+function dialog(id: string): HTMLDialogElement {
+  return document.getElementById(id) as HTMLDialogElement;
+}
 
 describe('app shell', () => {
   it('renders every DOM hook the game runtime still addresses', () => {
@@ -60,18 +89,18 @@ describe('app shell', () => {
   it('uses native modal dialogs for the shop and info overlays', () => {
     render(<MinerApp />);
 
-    const shop = document.getElementById('shop-screen') as HTMLDialogElement;
-    const info = document.getElementById('info-screen') as HTMLDialogElement;
+    const shop = dialog('shop-screen');
+    const info = dialog('info-screen');
     expect(shop.tagName).toBe('DIALOG');
     expect(info.tagName).toBe('DIALOG');
     expect(shop.open).toBe(false);
     expect(info.open).toBe(false);
 
-    act(() => { uiStore.getState().setShopOpen(true); });
+    act(() => { uiStore.getState().setActiveOverlay('shop'); });
     expect(shop.open).toBe(true);
     expect(document.activeElement?.id).toBe('shopCloseBtn');
 
-    act(() => { uiStore.getState().setInfoOpen(true); });
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
     expect(info.open).toBe(true);
   });
 
@@ -83,13 +112,118 @@ describe('app shell', () => {
 
     // What Escape reaching the UA does: the dialog closes without the store or
     // the close button being involved at all.
-    act(() => { uiStore.getState().setShopOpen(true); });
-    act(() => { (document.getElementById('shop-screen') as HTMLDialogElement).close(); });
+    act(() => { uiStore.getState().setActiveOverlay('shop'); });
+    act(() => { dialog('shop-screen').close(); });
     expect(closeShop).toHaveBeenCalled();
 
-    act(() => { uiStore.getState().setInfoOpen(true); });
-    act(() => { (document.getElementById('info-screen') as HTMLDialogElement).close(); });
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
+    act(() => { dialog('info-screen').close(); });
     expect(closeInfo).toHaveBeenCalled();
+  });
+});
+
+describe('one overlay at a time', () => {
+  it('puts the shop away when info is opened, and restores focus for it', () => {
+    installOverlayCommands();
+    render(<MinerApp />);
+
+    act(() => { fireEvent.click(document.getElementById('shopBtn')!); });
+    expect(dialog('shop-screen').open).toBe(true);
+
+    act(() => { fireEvent.click(document.getElementById('infoBtn')!); });
+
+    expect(uiStore.getState().activeOverlay).toBe('info');
+    expect(dialog('shop-screen').open).toBe(false);
+    expect(dialog('info-screen').open).toBe(true);
+    expect(document.activeElement?.id).toBe('infoCloseBtn');
+  });
+
+  it('ignores the close request the replaced dialog fires on its way out', () => {
+    installOverlayCommands();
+    render(<MinerApp />);
+
+    // Swapping overlays closes the shop's `<dialog>`, whose `close` event asks the
+    // game to clear the overlay state that info has already claimed.
+    act(() => { uiStore.getState().setActiveOverlay('shop'); });
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
+
+    expect(uiStore.getState().activeOverlay).toBe('info');
+    expect(dialog('info-screen').open).toBe(true);
+  });
+
+  it('reopens info on its first tab and closes it from the close button', () => {
+    installOverlayCommands();
+    render(<MinerApp />);
+
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
+    fireEvent.click(document.getElementById('info-tab-controls')!);
+    expect(uiStore.getState().infoTab).toBe('info-controls');
+
+    act(() => { fireEvent.click(document.getElementById('infoCloseBtn')!); });
+    expect(uiStore.getState().activeOverlay).toBeNull();
+    expect(dialog('info-screen').open).toBe(false);
+    expect(document.activeElement?.id).toBe('infoBtn');
+
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
+    expect(uiStore.getState().infoTab).toBe('info-objective');
+  });
+});
+
+describe('closed overlays', () => {
+  it('builds overlay contents only while that overlay is on screen', () => {
+    render(<MinerApp />);
+
+    for (const id of [...SHOP_CONTRACT, ...INFO_CONTRACT]) expect(document.getElementById(id), id).toBeNull();
+
+    act(() => { uiStore.getState().setActiveOverlay('shop'); });
+    for (const id of SHOP_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
+    for (const id of INFO_CONTRACT) expect(document.getElementById(id), id).toBeNull();
+
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
+    for (const id of SHOP_CONTRACT) expect(document.getElementById(id), id).toBeNull();
+    for (const id of INFO_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
+
+    act(() => { uiStore.getState().setActiveOverlay(null); });
+    for (const id of [...SHOP_CONTRACT, ...INFO_CONTRACT]) expect(document.getElementById(id), id).toBeNull();
+  });
+
+  it('mounts only the selected info panel', () => {
+    render(<MinerApp />);
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
+
+    for (const {tabId, ids} of INFO_TAB_CONTRACT) {
+      for (const id of ids) expect(document.getElementById(id), id).toBeNull();
+      act(() => { fireEvent.click(document.getElementById(tabId)!); });
+      for (const id of ids) expect(document.getElementById(id), id).not.toBeNull();
+      // The panel that was up is gone, not merely hidden.
+      expect(document.getElementById('cargoList')).toBeNull();
+    }
+  });
+
+  /**
+   * The point of unmounting: a shut overlay must not be listening to the store at
+   * all, so the 60 Hz sync behind it has nothing to notify.
+   */
+  it('leaves no store subscriptions behind a closed overlay', () => {
+    const subscribe = uiStore.subscribe;
+    let live = 0;
+    vi.spyOn(uiStore, 'subscribe').mockImplementation(listener => {
+      live++;
+      const unsubscribe = subscribe(listener);
+      return () => { live--; unsubscribe(); };
+    });
+
+    render(<MinerApp />);
+    const closed = live;
+
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
+    expect(live).toBeGreaterThan(closed);
+
+    act(() => { uiStore.getState().setActiveOverlay('shop'); });
+    expect(live).toBeGreaterThan(closed);
+
+    act(() => { uiStore.getState().setActiveOverlay(null); });
+    expect(live).toBe(closed);
   });
 });
 
@@ -288,10 +422,10 @@ describe('store-driven HUD', () => {
     expect(hint.textContent).toBe('Space: sell & refuel');
 
     // The shop is modal and covers the HUD, so the prompt stands down under it.
-    act(() => { uiStore.getState().setShopOpen(true); });
+    act(() => { uiStore.getState().setActiveOverlay('shop'); });
     expect(hint.hidden).toBe(true);
 
-    act(() => { uiStore.getState().setShopOpen(false); });
+    act(() => { uiStore.getState().setActiveOverlay(null); });
     expect(hint.hidden).toBe(false);
 
     // Underground and after a loss the game clears the line itself.
@@ -447,15 +581,15 @@ describe('store-driven HUD', () => {
 describe('info dialog tabs', () => {
   it('shows one panel at a time and moves selection on click', () => {
     render(<MinerApp />);
-    act(() => { uiStore.getState().setInfoOpen(true); });
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
 
-    expect(document.getElementById('info-objective')?.hidden).toBe(false);
-    expect(document.getElementById('info-stats')?.hidden).toBe(true);
+    expect(document.getElementById('info-objective')).not.toBeNull();
+    expect(document.getElementById('info-stats')).toBeNull();
 
-    fireEvent.click(document.getElementById('info-tab-stats')!);
+    act(() => { fireEvent.click(document.getElementById('info-tab-stats')!); });
 
-    expect(document.getElementById('info-stats')?.hidden).toBe(false);
-    expect(document.getElementById('info-objective')?.hidden).toBe(true);
+    expect(document.getElementById('info-stats')).not.toBeNull();
+    expect(document.getElementById('info-objective')).toBeNull();
     expect(document.getElementById('info-tab-stats')?.getAttribute('aria-selected')).toBe('true');
     expect(document.getElementById('info-tab-objective')?.getAttribute('tabindex')).toBe('-1');
     expect(document.activeElement?.id).toBe('info-tab-stats');
@@ -463,34 +597,19 @@ describe('info dialog tabs', () => {
 
   it('roves focus with the arrow keys and selects with Enter', () => {
     render(<MinerApp />);
-    act(() => { uiStore.getState().setInfoOpen(true); });
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
 
     const first = document.getElementById('info-tab-objective')!;
     fireEvent.keyDown(first, {key: 'ArrowRight'});
     expect(document.activeElement?.id).toBe('info-tab-stats');
     // Roving focus alone must not change the visible panel.
-    expect(document.getElementById('info-objective')?.hidden).toBe(false);
+    expect(document.getElementById('info-objective')).not.toBeNull();
 
-    fireEvent.keyDown(document.activeElement!, {key: 'Enter'});
-    expect(document.getElementById('info-stats')?.hidden).toBe(false);
+    act(() => { fireEvent.keyDown(document.activeElement!, {key: 'Enter'}); });
+    expect(document.getElementById('info-stats')).not.toBeNull();
 
     fireEvent.keyDown(document.activeElement!, {key: 'End'});
     expect(document.activeElement?.id).toBe('info-tab-controls');
-  });
-
-  it('reopens on the first tab and dispatches close from the close button', () => {
-    const closeInfo = vi.fn(() => { uiStore.getState().setInfoOpen(false); });
-    setUiCommands({closeInfo});
-    render(<MinerApp />);
-
-    act(() => { uiStore.getState().setInfoOpen(true); });
-    fireEvent.click(document.getElementById('info-tab-controls')!);
-    fireEvent.click(document.getElementById('infoCloseBtn')!);
-    expect(closeInfo).toHaveBeenCalled();
-
-    act(() => { uiStore.getState().setInfoOpen(true); });
-    expect(document.getElementById('info-objective')?.hidden).toBe(false);
-    expect(uiStore.getState().infoTab).toBe('info-objective');
   });
 });
 
@@ -511,9 +630,13 @@ describe('developer tooling gate', () => {
     const runDeveloperService = vi.fn();
     setUiCommands({grantDeveloperUpgrade, runDeveloperService});
     render(<MinerApp developerToolsEnabled />);
-    act(() => { uiStore.getState().setInfoOpen(true); });
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
 
     expect(document.getElementById('info-tab-developer')).not.toBeNull();
+    // The panel is a tab of its own, so nothing of it exists until it is selected.
+    expect(document.getElementById('resetPlayerDataBtn')).toBeNull();
+    act(() => { fireEvent.click(document.getElementById('info-tab-developer')!); });
+
     expect(document.getElementById('resetPlayerDataBtn')).not.toBeNull();
     expect(document.getElementById('resetWorldStateBtn')).not.toBeNull();
     // Reset actions stay inside the developer panel, after the cheat controls.
@@ -533,6 +656,7 @@ describe('developer tooling gate', () => {
 
   it('adds the developer tab to the navigation without disturbing the others', () => {
     render(<MinerApp developerToolsEnabled />);
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
 
     const tabs = [...document.querySelectorAll('[role="tab"]')].map(tab => tab.id);
     expect(tabs).toEqual([

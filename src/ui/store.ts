@@ -23,7 +23,7 @@ import { createInitialState } from '../core/state';
 import { formatExpeditionStats, type ExpeditionStatRow } from '../core/stats';
 import { formatSurfaceActionHint } from '../core/surface-hint';
 import type { Ore, Player } from '../core/types';
-import { INFO_NAVIGATION_SECTIONS } from './info-navigation';
+import { DEFAULT_INFO_TAB, type InfoTab } from './info-navigation';
 
 /** Everything the HUD paints every frame. Primitives only, so diffing is cheap. */
 export interface HudSnapshot {
@@ -124,14 +124,24 @@ export type UiPhase = 'intro' | 'lobby' | 'playing';
  */
 export type RuntimeStatus = 'booting' | 'ready' | 'failed';
 
+/** The modal overlays that cover the mine. Exactly one of them, or none. */
+export type OverlayId = 'shop' | 'info';
+
+/**
+ * Which overlay is up. One field rather than a flag per overlay, because
+ * "shop and info at the same time" is not a state the game has any answer for:
+ * they are both modal `<dialog>`s over the same canvas, so the second one to open
+ * would steal focus while the first still claimed the top of the stack.
+ */
+export type ActiveOverlay = OverlayId | null;
+
 export interface UiState {
   hud: HudSnapshot;
   player: PlayerSnapshot;
   cargoRows: CargoRow[];
   statRows: ExpeditionStatRow[];
-  shopOpen: boolean;
-  infoOpen: boolean;
-  infoTab: string;
+  activeOverlay: ActiveOverlay;
+  infoTab: InfoTab;
   phase: UiPhase;
   runtimeStatus: RuntimeStatus;
   /** Why the runtime failed, when it did. Shown verbatim in the failure notice. */
@@ -150,9 +160,11 @@ export interface UiState {
   syncPlayer(next: Readonly<PlayerSnapshot>): void;
   setCargoRows(rows: CargoRow[]): void;
   setStatRows(rows: ExpeditionStatRow[]): void;
-  setShopOpen(open: boolean): void;
-  setInfoOpen(open: boolean): void;
-  setInfoTab(tab: string): void;
+  /** Show one overlay, replacing whatever was up; `null` closes them all. */
+  setActiveOverlay(overlay: ActiveOverlay): void;
+  /** Close an overlay, but only while it is the one on screen. */
+  closeOverlay(overlay: OverlayId): void;
+  setInfoTab(tab: InfoTab): void;
   setPhase(phase: UiPhase): void;
   setRuntimeStatus(status: RuntimeStatus, error?: string | null): void;
   setConnection(status: string, showInHud: boolean): void;
@@ -271,9 +283,8 @@ export const uiStore = createStore<UiState>((set, get) => ({
   player: initialPlayer(),
   cargoRows: [],
   statRows: formatExpeditionStats({}),
-  shopOpen: false,
-  infoOpen: false,
-  infoTab: INFO_NAVIGATION_SECTIONS[0].id,
+  activeOverlay: null,
+  infoTab: DEFAULT_INFO_TAB,
   phase: 'intro',
   runtimeStatus: 'booting',
   runtimeError: null,
@@ -307,13 +318,20 @@ export const uiStore = createStore<UiState>((set, get) => ({
     set({statRows: rows});
   },
 
-  setShopOpen(open) {
-    if (get().shopOpen !== open) set({shopOpen: open});
+  setActiveOverlay(overlay) {
+    if (get().activeOverlay === overlay) return;
+    // Info always opens on its first tab, as the imperative version did.
+    set(overlay === 'info' ? {activeOverlay: 'info', infoTab: DEFAULT_INFO_TAB} : {activeOverlay: overlay});
   },
 
-  setInfoOpen(open) {
-    if (get().infoOpen === open) return;
-    set(open ? {infoOpen: true, infoTab: INFO_NAVIGATION_SECTIONS[0].id} : {infoOpen: false});
+  /**
+   * Swapping overlays closes the outgoing `<dialog>`, and that close request comes
+   * back as a request to clear the state — after the incoming overlay already
+   * claimed it. Ignoring a close for an overlay that is no longer up keeps the
+   * swap from closing both.
+   */
+  closeOverlay(overlay) {
+    if (get().activeOverlay === overlay) set({activeOverlay: null});
   },
 
   setInfoTab(tab) {

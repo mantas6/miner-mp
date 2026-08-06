@@ -144,13 +144,13 @@ export function createInput(deps: GameInputDeps): GameInput {
     const ui = uiStore.getState();
     // The splash and the lobby are React's; they handle their own keys.
     if (ui.phase !== 'playing') return;
-    if (ui.shopOpen) {
+    if (ui.activeOverlay === 'shop') {
       // Escape is handled here so the dialog closes through the same path as the
       // buttons; preventDefault keeps the UA from also firing its close request.
       if (key === 'escape') { deps.closeShopScreen(); e.preventDefault(); e.stopPropagation(); }
       return;
     }
-    if (ui.infoOpen) {
+    if (ui.activeOverlay === 'info') {
       if (key === 'escape') { deps.closeInfoScreen(); e.preventDefault(); e.stopPropagation(); }
       return;
     }
@@ -189,8 +189,7 @@ export function createInput(deps: GameInputDeps): GameInput {
    */
   function handleWheel(e: WheelEvent): void {
     if (!isPlaying()) return;
-    const ui = uiStore.getState();
-    if (ui.shopOpen || ui.infoOpen) return;
+    if (uiStore.getState().activeOverlay !== null) return;
     const target = e.target as Element | null;
     if (!target?.closest || target.closest(DIALOG_SURFACES) || !target.closest(ZOOM_SURFACE)) return;
     e.preventDefault();

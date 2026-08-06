@@ -20,7 +20,7 @@ function open(patch: {cash?: number; atSurface?: boolean; player?: Partial<Playe
     const store = uiStore.getState();
     store.syncHud({...store.hud, cash: patch.cash ?? 60, atSurface: patch.atSurface ?? true});
     store.syncPlayer({...store.player, ...patch.player});
-    store.setShopOpen(true);
+    store.setActiveOverlay('shop');
   });
   return rendered.container.querySelector('dialog')!;
 }
@@ -57,12 +57,22 @@ describe('shop dialog', () => {
     expect(document.querySelector('[data-shop-location]')?.textContent).toBe('Surface depot');
   });
 
-  it('closes when the store flag clears', () => {
+  it('closes and drops its catalog when the overlay state clears', () => {
     const dialog = open();
 
-    act(() => { uiStore.getState().setShopOpen(false); });
+    act(() => { uiStore.getState().setActiveOverlay(null); });
 
     expect(dialog.open).toBe(false);
+    // Nothing is left to reprice itself off the wallet while the shop is shut.
+    expect(document.getElementById('shop-card')).toBeNull();
+    expect(document.querySelector('[data-shop-cash]')).toBeNull();
+  });
+
+  it('is not built at all until it is opened', () => {
+    render(<ShopScreen />);
+
+    expect(document.getElementById('shop-screen')).not.toBeNull();
+    expect(document.getElementById('shop-card')).toBeNull();
   });
 
   it('dispatches close from the close button and from a backdrop press', () => {

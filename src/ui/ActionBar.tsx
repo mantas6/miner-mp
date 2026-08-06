@@ -20,7 +20,7 @@ export function ActionBar() {
   // The depot keyboard prompt rides above the surface buttons it stands in for.
   // The overlays are modal, so it would only be prompting at a backdrop.
   const surfaceHint = useUiStore(state => state.hud.surfaceHint);
-  const overlayOpen = useUiStore(state => state.shopOpen || state.infoOpen);
+  const overlayOpen = useUiStore(state => state.activeOverlay !== null);
 
   const teleportLabel = atSurface
     ? 'Return (T)'

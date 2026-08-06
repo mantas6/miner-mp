@@ -41,9 +41,6 @@
 .card [role="tabpanel"] {
   min-width: 0;
 }
-.card [role="tabpanel"][hidden] {
-  display: none;
-}
 .card [role="tabpanel"]:focus {
   outline: 2px solid rgba(92, 200, 255, 0.78);
   outline-offset: 6px;

@@ -1,16 +1,26 @@
-export interface InfoNavigationSection {
-  id: string;
-  label: string;
-  tabId: string;
-}
+// The sections are declared as literals rather than as a `string`-keyed list so
+// the ids form a closed union: the store's `infoTab` can then only ever hold a
+// panel that exists, and adding a section without rendering it fails to compile.
 
-export const INFO_NAVIGATION_SECTIONS: readonly InfoNavigationSection[] = [
+export const INFO_NAVIGATION_SECTIONS = [
   { id: 'info-objective', label: 'Objective & Cargo', tabId: 'info-tab-objective' },
   { id: 'info-stats', label: 'Stats', tabId: 'info-tab-stats' },
   { id: 'info-prospecting', label: 'Prospecting', tabId: 'info-tab-prospecting' },
   { id: 'info-hazards', label: 'Hazards', tabId: 'info-tab-hazards' },
   { id: 'info-controls', label: 'Controls', tabId: 'info-tab-controls' }
 ] as const;
+
+/** Every panel the Info overlay can show, including the opt-in developer one. */
+export type InfoTab = (typeof INFO_NAVIGATION_SECTIONS)[number]['id'] | 'info-developer';
+
+/** Where the Info overlay always opens. */
+export const DEFAULT_INFO_TAB: InfoTab = INFO_NAVIGATION_SECTIONS[0].id;
+
+export interface InfoNavigationSection {
+  id: InfoTab;
+  label: string;
+  tabId: string;
+}
 
 export const DEVELOPER_INFO_SECTION: InfoNavigationSection = {
   id: 'info-developer', label: 'Dev tools (local)', tabId: 'info-tab-developer'

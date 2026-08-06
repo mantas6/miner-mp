@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import {
   SHOP_ITEMS,
   SHOP_SERVICES,
@@ -50,31 +50,30 @@ function ShopItem({row, buttonId, hint, onBuy, marker}: ShopItemProps) {
   );
 }
 
-/** Depot services, permanent upgrades and consumables, priced from one catalog. */
+/**
+ * The dialog shell. It owns the element the browser opens and closes and nothing
+ * else, so a shut shop subscribes to one boolean and the catalog below — which
+ * reprices itself off the wallet and the ship on every purchase — does not exist
+ * at all while the player is underground.
+ */
 export function ShopScreen() {
-  const open = useUiStore(state => state.shopOpen);
-  const cash = useUiStore(state => state.hud.cash);
-  const atSurface = useUiStore(state => state.hud.atSurface);
-  const player = useUiStore(state => state.player);
+  const open = useUiStore(state => state.activeOverlay === 'shop');
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
     if (open && !dialog.open) {
+      // The card mounts with the dialog, so it is already scrolled to the top and
+      // needs no reset here.
       dialog.showModal();
-      if (cardRef.current) cardRef.current.scrollTop = 0;
       closeRef.current?.focus({preventScroll: true});
     } else if (!open && dialog.open) {
       dialog.close();
       document.getElementById('shopBtn')?.focus({preventScroll: true});
     }
   }, [open]);
-
-  const summary = shopSummary(cash, atSurface);
-  const rowArgs = [player, cash, atSurface] as const;
 
   return (
     <dialog
@@ -87,87 +86,101 @@ export function ShopScreen() {
       onClose={() => uiCommands.closeShop()}
       onPointerDown={event => { if (event.target === dialogRef.current) uiCommands.closeShop(); }}
     >
-      <div id="shop-card" ref={cardRef} className={styles.card}>
-        <div className={styles.header}>
-          <div>
-            <p className={styles.kicker}>Depot supply counter</p>
-            <h2 id="shop-title">Shop &amp; Equipment</h2>
-          </div>
-          <button
-            id="shopCloseBtn"
-            ref={closeRef}
-            className={styles.closeBtn}
-            aria-label="Close shop"
-            onClick={event => { event.stopPropagation(); uiCommands.closeShop(); }}
-          >×</button>
-        </div>
-        <div className={styles.summary} aria-live="polite">
-          <strong data-shop-cash>{summary.cash}</strong>
-          <span data-shop-location>{summary.location}</span>
-        </div>
-
-        <section className={styles.section} aria-labelledby="shop-services-title">
-          <div className={styles.sectionHeading}><h3 id="shop-services-title">Depot Services</h3><span>Pay what you have for a proportional partial service</span></div>
-          <div className={styles.grid}>
-            {SHOP_SERVICES.map(service => (
-              <ShopItem
-                key={service.id}
-                row={serviceRowState(service.id, ...rowArgs)}
-                buttonId={service.id === 'fuel' ? 'fuelBtn' : 'repairBtn'}
-                marker={{'data-shop-service': service.id}}
-                onBuy={() => (service.id === 'fuel' ? uiCommands.refuel() : uiCommands.repair())}
-              />
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.section} aria-labelledby="shop-upgrades-title">
-          <div className={styles.sectionHeading}><h3 id="shop-upgrades-title">Permanent Upgrades</h3><span>Installed permanently · prices rise by level</span></div>
-          <div className={styles.grid}>
-            {SHOP_UPGRADES.map(upgrade => (
-              <ShopItem
-                key={upgrade.id}
-                row={upgradeRowState(upgrade.id, ...rowArgs)}
-                buttonId={`${upgrade.id}Btn`}
-                marker={{'data-shop-upgrade': upgrade.id}}
-                onBuy={() => uiCommands.buyUpgrade(upgrade.id)}
-              />
-            ))}
-          </div>
-          <div className={`${styles.grid} ${styles.gunGrid}`}>
-            <ShopItem
-              row={gunRowState(...rowArgs)}
-              buttonId="shopGunBtn"
-              hint={HINTS.gun}
-              marker={{'data-shop-gun': true}}
-              onBuy={() => uiCommands.buyGun()}
-            />
-          </div>
-        </section>
-
-        <section className={styles.section} aria-labelledby="shop-equipment-title">
-          <div className={styles.sectionHeading}><h3 id="shop-equipment-title">Consumable Equipment</h3><span>Each use spends one carried item</span></div>
-          <div className={styles.grid}>
-            {SHOP_ITEMS.map(item => (
-              <ShopItem
-                key={item.id}
-                row={itemRowState(item.id, ...rowArgs)}
-                buttonId={item.id === 'dynamite' ? 'shopDynamiteBtn' : 'shopTeleporterBtn'}
-                hint={HINTS[item.id]}
-                marker={{'data-shop-item': item.id}}
-                onBuy={() => (item.id === 'dynamite' ? uiCommands.buyDynamite() : uiCommands.buyTeleporter())}
-              />
-            ))}
-            <ShopItem
-              row={ammoRowState(...rowArgs)}
-              buttonId="shopBulletsBtn"
-              hint={HINTS.bullets}
-              marker={{'data-shop-item': 'bullets'}}
-              onBuy={() => uiCommands.buyBullets()}
-            />
-          </div>
-        </section>
-      </div>
+      {open && <ShopCard closeRef={closeRef} />}
     </dialog>
+  );
+}
+
+/** Depot services, permanent upgrades and consumables, priced from one catalog. */
+function ShopCard({closeRef}: {closeRef: RefObject<HTMLButtonElement | null>}) {
+  const cash = useUiStore(state => state.hud.cash);
+  const atSurface = useUiStore(state => state.hud.atSurface);
+  const player = useUiStore(state => state.player);
+
+  const summary = shopSummary(cash, atSurface);
+  const rowArgs = [player, cash, atSurface] as const;
+
+  return (
+    <div id="shop-card" className={styles.card}>
+      <div className={styles.header}>
+        <div>
+          <p className={styles.kicker}>Depot supply counter</p>
+          <h2 id="shop-title">Shop &amp; Equipment</h2>
+        </div>
+        <button
+          id="shopCloseBtn"
+          ref={closeRef}
+          className={styles.closeBtn}
+          aria-label="Close shop"
+          onClick={event => { event.stopPropagation(); uiCommands.closeShop(); }}
+        >×</button>
+      </div>
+      <div className={styles.summary} aria-live="polite">
+        <strong data-shop-cash>{summary.cash}</strong>
+        <span data-shop-location>{summary.location}</span>
+      </div>
+
+      <section className={styles.section} aria-labelledby="shop-services-title">
+        <div className={styles.sectionHeading}><h3 id="shop-services-title">Depot Services</h3><span>Pay what you have for a proportional partial service</span></div>
+        <div className={styles.grid}>
+          {SHOP_SERVICES.map(service => (
+            <ShopItem
+              key={service.id}
+              row={serviceRowState(service.id, ...rowArgs)}
+              buttonId={service.id === 'fuel' ? 'fuelBtn' : 'repairBtn'}
+              marker={{'data-shop-service': service.id}}
+              onBuy={() => (service.id === 'fuel' ? uiCommands.refuel() : uiCommands.repair())}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.section} aria-labelledby="shop-upgrades-title">
+        <div className={styles.sectionHeading}><h3 id="shop-upgrades-title">Permanent Upgrades</h3><span>Installed permanently · prices rise by level</span></div>
+        <div className={styles.grid}>
+          {SHOP_UPGRADES.map(upgrade => (
+            <ShopItem
+              key={upgrade.id}
+              row={upgradeRowState(upgrade.id, ...rowArgs)}
+              buttonId={`${upgrade.id}Btn`}
+              marker={{'data-shop-upgrade': upgrade.id}}
+              onBuy={() => uiCommands.buyUpgrade(upgrade.id)}
+            />
+          ))}
+        </div>
+        <div className={`${styles.grid} ${styles.gunGrid}`}>
+          <ShopItem
+            row={gunRowState(...rowArgs)}
+            buttonId="shopGunBtn"
+            hint={HINTS.gun}
+            marker={{'data-shop-gun': true}}
+            onBuy={() => uiCommands.buyGun()}
+          />
+        </div>
+      </section>
+
+      <section className={styles.section} aria-labelledby="shop-equipment-title">
+        <div className={styles.sectionHeading}><h3 id="shop-equipment-title">Consumable Equipment</h3><span>Each use spends one carried item</span></div>
+        <div className={styles.grid}>
+          {SHOP_ITEMS.map(item => (
+            <ShopItem
+              key={item.id}
+              row={itemRowState(item.id, ...rowArgs)}
+              buttonId={item.id === 'dynamite' ? 'shopDynamiteBtn' : 'shopTeleporterBtn'}
+              hint={HINTS[item.id]}
+              marker={{'data-shop-item': item.id}}
+              onBuy={() => (item.id === 'dynamite' ? uiCommands.buyDynamite() : uiCommands.buyTeleporter())}
+            />
+          ))}
+          <ShopItem
+            row={ammoRowState(...rowArgs)}
+            buttonId="shopBulletsBtn"
+            hint={HINTS.bullets}
+            marker={{'data-shop-item': 'bullets'}}
+            onBuy={() => uiCommands.buyBullets()}
+          />
+        </div>
+      </section>
+    </div>
   );
 }

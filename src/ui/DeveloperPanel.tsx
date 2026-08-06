@@ -4,12 +4,16 @@ import { uiCommands } from './commands';
 import { useUiStore } from './store';
 import styles from './DeveloperPanel.module.css';
 
-/** Local-only cheats. Rendered only when the explicit Vite opt-in is set. */
-export function DeveloperPanel({hidden}: {hidden: boolean}) {
+/**
+ * Local-only cheats. Rendered only when the explicit Vite opt-in is set *and* the
+ * tab is selected, so the ship snapshot it prices its buttons from is not
+ * subscribed to while the panel is out of sight.
+ */
+export function DeveloperPanel() {
   const player = useUiStore(state => state.player);
 
   return (
-    <section id="info-developer" className={styles.section} role="tabpanel" aria-labelledby="info-tab-developer" tabIndex={-1} hidden={hidden}>
+    <section id="info-developer" className={styles.section} role="tabpanel" aria-labelledby="info-tab-developer" tabIndex={-1}>
       <h3 id="developer-title">Development-only tooling</h3>
       <p className={styles.warning}><strong>Local non-player tools:</strong> grant local-player cash, restore fuel or hull, or permanently grant normal player upgrades for exactly $0. These controls work above or below the surface and do not change shop prices.</p>
       <div id="developerUpgrades" className={styles.upgrades} aria-label="Free developer upgrade controls">

@@ -86,8 +86,7 @@ function pointerDown(target: EventTarget = document.body): void {
 
 beforeEach(() => {
   uiStore.getState().setPhase('intro');
-  uiStore.getState().setShopOpen(false);
-  uiStore.getState().setInfoOpen(false);
+  uiStore.getState().setActiveOverlay(null);
   document.body.innerHTML = '';
 });
 
@@ -141,15 +140,17 @@ describe('phase gating', () => {
     const h = harness();
     uiStore.getState().setPhase('playing');
 
-    uiStore.getState().setShopOpen(true);
+    uiStore.getState().setActiveOverlay('shop');
     press('Escape');
     expect(h.closeShopScreen).toHaveBeenCalledOnce();
     expect(h.actions.sell).not.toHaveBeenCalled();
 
-    uiStore.getState().setShopOpen(false);
-    uiStore.getState().setInfoOpen(true);
+    // Opening the other overlay replaces the shop rather than stacking on it, so
+    // Escape only ever reaches one of them.
+    uiStore.getState().setActiveOverlay('info');
     press('Escape');
     expect(h.closeInfoScreen).toHaveBeenCalledOnce();
+    expect(h.closeShopScreen).toHaveBeenCalledOnce();
   });
 });
 
@@ -276,11 +277,11 @@ describe('wheel zoom', () => {
     expect(viewport.targetZoom).toBe(1);
 
     uiStore.getState().setPhase('playing');
-    uiStore.getState().setShopOpen(true);
+    uiStore.getState().setActiveOverlay('shop');
     wheel(document.getElementById('shopBody')!, {deltaY: -120});
     expect(viewport.targetZoom).toBe(1);
 
-    uiStore.getState().setShopOpen(false);
+    uiStore.getState().setActiveOverlay(null);
     wheel(document.body, {deltaY: -120});
     expect(viewport.targetZoom).toBe(1);
 
