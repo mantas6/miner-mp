@@ -1,2 +1,1 @@
 - Avoid unnecessary UI clutter
-- Use `playwright` to verify game visually
