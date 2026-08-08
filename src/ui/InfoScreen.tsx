@@ -10,10 +10,9 @@
 // re-render a tab nobody is looking at.
 
 import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react';
-import { ARTIFACTS, START_Y } from '../../shared/constants';
 import { ECONOMY } from '../core/balance';
 import { buildDangerGuideRows } from '../core/danger';
-import { PROSPECTING_TIP, buildProspectingGuideRows } from '../core/prospecting';
+import { PROSPECTING_TIP, buildArtifactGuideRows, buildProspectingGuideRows } from '../core/prospecting';
 import { DeveloperPanel } from './DeveloperPanel';
 import { getInfoNavigationSections, getInfoTabFocusTarget, type InfoTab } from './info-navigation';
 import { uiCommands } from './commands';
@@ -21,6 +20,7 @@ import { uiStore, useUiStore } from './store';
 import styles from './InfoScreen.module.css';
 
 const prospectingRows = buildProspectingGuideRows();
+const artifactRows = buildArtifactGuideRows();
 const dangerRows = buildDangerGuideRows();
 
 /** The dialog shell: open/close mechanics and focus restoration, no content. */
@@ -183,13 +183,13 @@ function ProspectingPanel() {
       <h3 id="prospecting-title">Prospecting Guide</h3>
       <p className={styles.prospectingTip}>{PROSPECTING_TIP}</p>
       <p className={styles.prospectingTip}><strong>Rare artifacts:</strong> drill them for immediate cash. They never use cargo, need no surface sale, and dynamite destroys them without payout.</p>
-      <ul className={styles.prospectingGuide} aria-label="Rare artifact values and depth bands">
-        {ARTIFACTS.map(artifact => (
-          <li key={artifact.name}>
-            <span className={styles.oreIcon} style={{background: artifact.color}} aria-hidden="true"></span>
-            <span className={styles.oreName}>{artifact.name}</span>
-            <span className={styles.oreValue}>${artifact.value} cash now</span>
-            <span className={styles.oreDepth}>{(artifact.min - START_Y) * 10}-{(artifact.max - START_Y) * 10} m</span>
+      <ul id="artifactGuide" className={styles.prospectingGuide} aria-label="Rare artifact values and approximate depth bands">
+        {artifactRows.map(row => (
+          <li key={row.name}>
+            <span className={styles.oreIcon} style={{background: row.color}} aria-hidden="true"></span>
+            <span className={styles.oreName}>{row.name}</span>
+            <span className={styles.oreValue}>{row.valueLabel}</span>
+            <span className={styles.oreDepth}>{row.depthLabel}</span>
           </li>
         ))}
       </ul>
