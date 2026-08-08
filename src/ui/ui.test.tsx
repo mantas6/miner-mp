@@ -37,7 +37,8 @@ const INFO_CONTRACT = ['info-card', 'infoCloseBtn', 'objectiveInfoStatus', 'extr
 const INFO_TAB_CONTRACT = [
   {tabId: 'info-tab-stats', ids: ['expeditionStats']},
   {tabId: 'info-tab-prospecting', ids: ['prospectingGuide']},
-  {tabId: 'info-tab-hazards', ids: ['dangerGuide']}
+  {tabId: 'info-tab-hazards', ids: ['dangerGuide']},
+  {tabId: 'info-tab-settings', ids: ['settingsMusicBtn', 'settingsSfxBtn', 'resetGameBtn']}
 ];
 
 /** Ids that only exist in the lobby phase, which is the relay panel and nothing else. */
@@ -805,7 +806,81 @@ describe('info dialog tabs', () => {
     expect(document.getElementById('info-stats')).not.toBeNull();
 
     fireEvent.keyDown(document.activeElement!, {key: 'End'});
-    expect(document.activeElement?.id).toBe('info-tab-controls');
+    expect(document.activeElement?.id).toBe('info-tab-settings');
+  });
+});
+
+describe('settings tab', () => {
+  function openSettings(): void {
+    render(<MinerApp />);
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
+    act(() => { fireEvent.click(document.getElementById('info-tab-settings')!); });
+  }
+
+  /** The same two commands the HUD buttons dispatch, not a second audio path. */
+  it('mutes music and sound effects through the shared audio commands', () => {
+    const toggleMusic = vi.fn();
+    const toggleSfx = vi.fn();
+    setUiCommands({toggleMusic, toggleSfx});
+    openSettings();
+
+    const music = document.getElementById('settingsMusicBtn') as HTMLButtonElement;
+    const sfx = document.getElementById('settingsSfxBtn') as HTMLButtonElement;
+    expect(music.getAttribute('aria-pressed')).toBe('false');
+    expect(music.textContent).toBe('Muted');
+
+    fireEvent.click(music);
+    expect(toggleMusic).toHaveBeenCalledOnce();
+    expect(toggleSfx).not.toHaveBeenCalled();
+
+    fireEvent.click(sfx);
+    expect(toggleSfx).toHaveBeenCalledOnce();
+
+    // The HUD switch and this one read the same slice, so muting is one state.
+    act(() => { uiStore.getState().setMusic(true, 'Mute music'); });
+    expect(music.getAttribute('aria-pressed')).toBe('true');
+    expect(music.textContent).toBe('On');
+    expect(music.getAttribute('aria-label')).toBe('Mute music');
+    expect(document.getElementById('musicBtn')?.getAttribute('aria-pressed')).toBe('true');
+    expect(sfx.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('never resets on the first press, and only resets once confirmed', () => {
+    const resetGame = vi.fn();
+    setUiCommands({resetGame});
+    openSettings();
+
+    act(() => { fireEvent.click(document.getElementById('resetGameBtn')!); });
+    expect(resetGame).not.toHaveBeenCalled();
+
+    // The trigger is gone, and what replaces it in that spot — and on the
+    // keyboard — is Cancel, not the button that goes through with it.
+    expect(document.getElementById('resetGameBtn')).toBeNull();
+    expect(document.activeElement?.id).toBe('resetGameCancelBtn');
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain('permanently deletes');
+
+    act(() => { fireEvent.click(document.getElementById('resetGameConfirmBtn')!); });
+    expect(resetGame).toHaveBeenCalledOnce();
+  });
+
+  it('cancels the pending confirm from the Cancel button and by leaving the tab', () => {
+    const resetGame = vi.fn();
+    setUiCommands({resetGame});
+    openSettings();
+
+    act(() => { fireEvent.click(document.getElementById('resetGameBtn')!); });
+    act(() => { fireEvent.click(document.getElementById('resetGameCancelBtn')!); });
+    expect(document.getElementById('resetGameConfirmBtn')).toBeNull();
+    expect(document.getElementById('resetGameBtn')).not.toBeNull();
+
+    // An armed confirm must not be waiting when the tab is opened again.
+    act(() => { fireEvent.click(document.getElementById('resetGameBtn')!); });
+    act(() => { fireEvent.click(document.getElementById('info-tab-controls')!); });
+    act(() => { fireEvent.click(document.getElementById('info-tab-settings')!); });
+
+    expect(document.getElementById('resetGameConfirmBtn')).toBeNull();
+    expect(document.getElementById('resetGameBtn')).not.toBeNull();
+    expect(resetGame).not.toHaveBeenCalled();
   });
 });
 
@@ -861,7 +936,8 @@ describe('developer tooling gate', () => {
       'info-tab-developer',
       'info-tab-prospecting',
       'info-tab-hazards',
-      'info-tab-controls'
+      'info-tab-controls',
+      'info-tab-settings'
     ]);
     expect(uiCommands.openInfo).toBeTypeOf('function');
   });

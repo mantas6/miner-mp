@@ -43,6 +43,11 @@ export interface UiCommands {
   grantDeveloperUpgrade(id: PlayerUpgradeId): void;
   resetPlayerData(): void;
   resetWorldState(): void;
+  /**
+   * Wipe every stored key and reload. The Settings tab asks for confirmation
+   * first; by the time this is called the player has already agreed.
+   */
+  resetGame(): void;
 }
 
 function noop(): void {
@@ -83,7 +88,8 @@ function noopCommands(): UiCommands {
     runDeveloperService: noop,
     grantDeveloperUpgrade: noop,
     resetPlayerData: noop,
-    resetWorldState: noop
+    resetWorldState: noop,
+    resetGame: noop
   };
 }
 

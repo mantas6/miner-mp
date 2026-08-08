@@ -7,7 +7,8 @@ export const INFO_NAVIGATION_SECTIONS = [
   { id: 'info-stats', label: 'Stats', tabId: 'info-tab-stats' },
   { id: 'info-prospecting', label: 'Prospecting', tabId: 'info-tab-prospecting' },
   { id: 'info-hazards', label: 'Hazards', tabId: 'info-tab-hazards' },
-  { id: 'info-controls', label: 'Controls', tabId: 'info-tab-controls' }
+  { id: 'info-controls', label: 'Controls', tabId: 'info-tab-controls' },
+  { id: 'info-settings', label: 'Settings', tabId: 'info-tab-settings' }
 ] as const;
 
 /** Every panel the Info overlay can show, including the opt-in developer one. */

@@ -37,6 +37,7 @@ import { cargoCost, tankCost, hullCost, drillCost, visibilityCost, cargoValue } 
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from '../core/hud-alerts';
 import { formatExpeditionObjective } from '../core/objective';
 import { load, save } from '../persistence';
+import { clearPersistedGameData } from '../persistence-reset';
 import { formatShipStatusAnnouncement } from '../core/ship-status';
 import { formatExpeditionStats } from '../core/stats';
 import { formatSurfaceActionHint } from '../core/surface-hint';
@@ -105,7 +106,16 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
 
   function loadProgress() { load(state); renderer?.invalidateFog(); }
 
-  function saveProgress() { save(state); }
+  /**
+   * Set by a full reset, and never cleared: the page is on its way out, and
+   * `beforeunload`, the minute interval and the visibility handler would
+   * otherwise write the keys straight back before the reload takes effect.
+   */
+  let persistenceCleared = false;
+
+  function saveProgress() { if (!persistenceCleared) save(state); }
+
+  function persistZoom() { if (!persistenceCleared) saveZoomLevel(viewport.targetZoom); }
 
   /** A trailing-edge debounce, so a long tunnel does not save on every tile. */
   function createDebouncedSave(flush: () => void, delayMs: number) {
@@ -123,8 +133,8 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
    * frames, and `localStorage` is synchronous, so only the level the view settles
    * on is written.
    */
-  const zoomSave = createDebouncedSave(() => saveZoomLevel(viewport.targetZoom), 500);
-  function flushZoomSave() { zoomSave.cancel(); saveZoomLevel(viewport.targetZoom); }
+  const zoomSave = createDebouncedSave(persistZoom, 500);
+  function flushZoomSave() { zoomSave.cancel(); persistZoom(); }
 
   // Fog is cached per chunk, so every newly explored tile has to mark its chunk dirty.
   function invalidateFogTiles(indexes: number[]) {
@@ -266,6 +276,16 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
           toast('World state reset locally. Player progress preserved.');
         }
         closeInfoScreen();
+      },
+      resetGame: () => {
+        // Order matters: silence every writer *before* the keys go, or a pending
+        // debounce — or the unload save the reload itself triggers — would put
+        // the run back on disk between the wipe and the fresh boot.
+        persistenceCleared = true;
+        progressSave.cancel();
+        zoomSave.cancel();
+        clearPersistedGameData();
+        window.location.reload();
       }
     });
   }

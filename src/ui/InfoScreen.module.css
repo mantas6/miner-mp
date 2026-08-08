@@ -231,6 +231,63 @@
   text-align: center;
 }
 
+.settingsList {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.settingsList li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid var(--hairline-2);
+  color: #eef4ff;
+  font-weight: 900;
+}
+.settingsList button {
+  min-width: 84px;
+  font-size: var(--fs-xs);
+}
+.settingsList button[aria-pressed="false"] {
+  color: var(--muted);
+}
+.resetGame {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(255, 93, 115, 0.42);
+  background: rgba(105, 14, 29, 0.18);
+}
+.resetGame p {
+  margin: 0 0 10px;
+  color: #ffdce2;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+.resetGame button {
+  min-height: 44px;
+}
+.resetGame > button {
+  width: 100%;
+  background: linear-gradient(#9b3349, #5e1b2b);
+  color: #fff5f7;
+}
+/* Cancel keeps the wide slot the trigger had; the destructive answer does not. */
+.resetGameActions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+.resetGameActions button:last-child {
+  padding: 0 16px;
+  background: linear-gradient(#9b3349, #5e1b2b);
+  color: #fff5f7;
+}
+
 @media (max-width: 760px) {
   .screen {
     padding: 10px;

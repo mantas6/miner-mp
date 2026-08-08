@@ -9,10 +9,11 @@
 // slices the visible tab actually paints, and the 60 Hz cargo/stat sync cannot
 // re-render a tab nobody is looking at.
 
-import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react';
 import { ECONOMY } from '../core/balance';
 import { buildDangerGuideRows } from '../core/danger';
 import { PROSPECTING_TIP, buildArtifactGuideRows, buildProspectingGuideRows } from '../core/prospecting';
+import { GAME_RESET_CONFIRMATION } from '../persistence-reset';
 import { DeveloperPanel } from './DeveloperPanel';
 import { getInfoNavigationSections, getInfoTabFocusTarget, type InfoTab } from './info-navigation';
 import { uiCommands } from './commands';
@@ -127,6 +128,7 @@ function InfoCard({closeRef, developerToolsEnabled}: InfoCardProps) {
       {activeTab === 'info-prospecting' && <ProspectingPanel />}
       {activeTab === 'info-hazards' && <HazardsPanel />}
       {activeTab === 'info-controls' && <ControlsPanel />}
+      {activeTab === 'info-settings' && <SettingsPanel />}
     </div>
   );
 }
@@ -239,6 +241,84 @@ function ControlsPanel() {
         <li><kbd>G</kbd> / <kbd>Arm Gun</kbd> then a direction key<span>Fire one bullet up to {ECONOMY.gun.range} tiles; press G or Escape to cancel aiming. Shots destroy the first eligible block or enemy, but valuables give no cargo or artifact cash.</span></li>
         <li><kbd>R</kbd> then <kbd>R</kbd><span>Confirm reset while alive</span></li>
       </ul>
+    </section>
+  );
+}
+
+/**
+ * The audio switches and the one destructive action.
+ *
+ * The switches are the HUD's, not a second set: they dispatch the same commands
+ * and read the same store slices, so muting here moves the HUD button too.
+ *
+ * Reset asks first, and it asks inline rather than through `window.confirm()`.
+ * The panel is inside a modal `<dialog>`, so a native prompt would be a second
+ * modal stacked on the first, and the two developer resets that do use it are
+ * behind a build flag no player ever sets. The confirm state is local and the
+ * panel unmounts with the tab, so leaving Settings always cancels it.
+ *
+ * Cancel takes the trigger's place and the keyboard, and the button that goes
+ * through with it is elsewhere in the row: the second half of a double-click, or
+ * an Enter still held from the first press, must not be able to answer the
+ * question the first press only just asked.
+ */
+function SettingsPanel() {
+  const musicOn = useUiStore(state => state.musicOn);
+  const musicLabel = useUiStore(state => state.musicLabel);
+  const sfxOn = useUiStore(state => state.sfxOn);
+  const sfxLabel = useUiStore(state => state.sfxLabel);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (confirmingReset) cancelRef.current?.focus({preventScroll: true});
+  }, [confirmingReset]);
+
+  return (
+    <section id="info-settings" role="tabpanel" aria-labelledby="info-tab-settings" tabIndex={-1}>
+      <h3 id="settings-audio-title">Audio</h3>
+      <ul className={styles.settingsList} aria-labelledby="settings-audio-title">
+        <li>
+          <span>Music</span>
+          <button
+            id="settingsMusicBtn"
+            type="button"
+            aria-label={musicLabel}
+            aria-pressed={musicOn}
+            onClick={() => uiCommands.toggleMusic()}
+          >{musicOn ? 'On' : 'Muted'}</button>
+        </li>
+        <li>
+          <span>Sound effects</span>
+          <button
+            id="settingsSfxBtn"
+            type="button"
+            aria-label={sfxLabel}
+            aria-pressed={sfxOn}
+            onClick={() => uiCommands.toggleSfx()}
+          >{sfxOn ? 'On' : 'Muted'}</button>
+        </li>
+      </ul>
+
+      <h3 id="settings-reset-title">Reset game</h3>
+      <div className={styles.resetGame} aria-labelledby="settings-reset-title">
+        {confirmingReset
+          ? (
+            <>
+              <p role="alert">{GAME_RESET_CONFIRMATION}</p>
+              <div className={styles.resetGameActions}>
+                <button id="resetGameCancelBtn" ref={cancelRef} type="button" onClick={() => setConfirmingReset(false)}>Cancel</button>
+                <button id="resetGameConfirmBtn" type="button" onClick={() => uiCommands.resetGame()}>Delete everything</button>
+              </div>
+            </>
+          )
+          : (
+            <>
+              <p>Delete the saved run and every stored setting, then start over from a fresh mine.</p>
+              <button id="resetGameBtn" type="button" onClick={() => setConfirmingReset(true)}>Reset game…</button>
+            </>
+          )}
+      </div>
     </section>
   );
 }
