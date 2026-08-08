@@ -508,6 +508,25 @@ describe('store-driven HUD', () => {
     expect(document.getElementById('fuel-warning')?.className).toMatch(/show/);
   });
 
+  // The three bars only line up because none of them is a native `<meter>`: an
+  // engine draws that one at whatever height it likes (Chrome 151 uses half the
+  // element box and ignores `height` on the shadow parts), so a meter next to the
+  // fuel gauge's div is a different bar in every browser.
+  it('draws all three bars as the same author-owned track', () => {
+    render(<MinerApp />);
+
+    expect(document.querySelectorAll('#hud meter')).toHaveLength(0);
+    const bars = ['fuel', 'hull', 'cargo'].map(id => document.getElementById(id)!);
+    // Same first class on each: one `.gauge` rule, so one height for all three.
+    const track = bars[0]!.classList[0];
+    expect(track).toBeTruthy();
+    for (const bar of bars) {
+      expect(bar.classList[0]).toBe(track);
+      expect(bar.getAttribute('role')).toBe('meter');
+      expect(bar.getAttribute('aria-valuemax')).toBeTruthy();
+    }
+  });
+
   it('hides surface actions underground and dispatches the ones it shows', () => {
     const detonateDynamite = vi.fn();
     setUiCommands({detonateDynamite});

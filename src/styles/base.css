@@ -16,6 +16,9 @@
   --r-md: 13px;
   --r-lg: 18px;
   --r-xl: 22px;
+  /* The height of every HUD meter track, and of the text cells beside them, so
+     the three bars are one number rather than four literals that can drift. */
+  --bar-h: 18px;
   /* type scale: collapses drifted 9-25px values */
   --fs-3xs: 10px;
   --fs-2xs: 11px;
@@ -98,10 +101,6 @@ canvas {
     inset 0 0 0 1px var(--hairline-1);
   touch-action: none;
 }
-meter {
-  width: 100%;
-  height: 18px;
-}
 button {
   margin: 0;
   padding: 11px 10px;
@@ -148,8 +147,8 @@ kbd {
   color: #fff;
 }
 @media (max-width: 760px) {
-  meter {
-    height: 15px;
+  :root {
+    --bar-h: 15px;
   }
   button {
     padding: 7px 6px;

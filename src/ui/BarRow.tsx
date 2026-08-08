@@ -1,7 +1,53 @@
 import clsx from 'clsx';
+import type { ReactNode } from 'react';
 import { getFuelGaugeSegments } from '../core/fuel-reserve';
 import { useUiStore } from './store';
 import styles from './BarRow.module.css';
+
+interface GaugeProps {
+  id: string;
+  name: string;
+  value: number;
+  max: number;
+  status?: string;
+  /** Hover text, for the one gauge that has more to say than its caption. */
+  title?: string;
+  children: ReactNode;
+}
+
+/**
+ * The track every bar is drawn in: a box this file owns, filled by its children.
+ *
+ * Hull and cargo used to be native `<meter>`s, which is why the three bars were
+ * never the same height. A meter's painted bar belongs to the engine, not to the
+ * page: Chrome 151 draws it at half the element's height, centred, and ignores
+ * `height` on `::-webkit-meter-bar` and `::-webkit-meter-optimum-value` even with
+ * `!important`, while Gecko's `::-moz-meter-bar` fills the box. So an 18px meter
+ * showed a 9px bar next to the fuel gauge's 18px one in Chrome and an 18px bar in
+ * Firefox — the box was deterministic all along, the paint was not.
+ *
+ * Drawing all three the same way is the only way to make them agree. `role="meter"`
+ * keeps the semantics the element carried; the cost is that a div is not labelable,
+ * so the caption is a plain `<span>` and the name comes from `aria-label`, exactly
+ * as the fuel gauge has always done.
+ */
+function Gauge({id, name, value, max, status, title, children}: GaugeProps) {
+  return (
+    <div
+      id={id}
+      className={clsx(styles.gauge, status && styles[status])}
+      data-status={status}
+      role="meter"
+      aria-valuemin={0}
+      aria-valuemax={max}
+      aria-valuenow={value}
+      aria-label={name}
+      title={title}
+    >
+      {children}
+    </div>
+  );
+}
 
 interface BarProps {
   id: string;
@@ -13,16 +59,17 @@ interface BarProps {
 }
 
 /**
- * One labelled meter. `<meter>` is a labelable element, so the caption is a real
- * `<label for>`: without the association the label was three words of decoration
- * next to an unnamed gauge, and the reading ("70 out of 100") never said of what.
- * The value text repeats the numbers for the eye, so it stays out of the name.
+ * One labelled meter. The caption is the whole accessible name — the numbers are
+ * already in the gauge's value, so repeating them there would have a screen reader
+ * read "hull 70/100, 70 out of 100". The value text is for the eye only.
  */
 function Bar({id, label, value, max, text, alert}: BarProps) {
   return (
     <div className={clsx(styles.bar, alert && styles.alert)}>
-      <label htmlFor={id}>{label}</label>
-      <meter id={id} min={0} max={max} value={value}></meter>
+      <span className={styles.barCaption}>{label}</span>
+      <Gauge id={id} name={label} value={value} max={max}>
+        <span className={styles.gaugeFill} style={{width: `${max > 0 ? Math.min(1, value / max) * 100 : 0}%`}} />
+      </Gauge>
       <span id={`${id}Label`} className={styles.barValue}>{text}</span>
     </div>
   );
@@ -59,23 +106,13 @@ function FuelBar() {
 
   return (
     <div className={clsx(styles.bar, alert && styles.alert)}>
-      {/* A plain caption, not a <label>: the gauge is a div, so there is no
-          labelable control to point a `for` at — its name lives in aria-label. */}
       <span className={styles.barCaption}>Fuel</span>
-      <div
-        id="fuel"
-        className={clsx(styles.gauge, styles[status])}
-        data-status={status}
-        role="meter"
-        aria-valuemin={0}
-        aria-valuemax={fuelMax}
-        aria-valuenow={value}
-        aria-label={label}
-        title={label}
-      >
+      {/* The one bar whose name carries numbers: the forecast is a sentence, and
+          the gauge's value alone cannot say how much of it the climb home owes. */}
+      <Gauge id="fuel" name={label} value={value} max={fuelMax} status={status} title={label}>
         <span id="fuelReturn" className={styles.gaugeReturn} style={{width: `${returnFraction * 100}%`}} />
         <span id="fuelSurplus" className={styles.gaugeSurplus} style={{width: `${surplusFraction * 100}%`}} />
-      </div>
+      </Gauge>
       <span id="fuelLabel" className={styles.barValue}>{text}</span>
     </div>
   );

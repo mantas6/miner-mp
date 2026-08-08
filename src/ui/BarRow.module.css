@@ -9,20 +9,25 @@
   display: grid;
   gap: 8px;
 }
+/* One row exactly one track tall. Left implicit, the row would be as tall as
+   whichever cell won, and the text cells are only as tall as the font's own
+   metrics make them — `Inter` is named in the stack but never loaded, so the
+   winner differs per machine and per browser. */
 .bar {
   display: grid;
   grid-template-columns: 58px 1fr 72px;
+  grid-auto-rows: var(--bar-h);
   gap: 10px;
   align-items: center;
   border-radius: var(--r-md);
   padding: 2px 4px;
   margin: -2px -4px;
 }
-.bar label,
 .barCaption,
 .barValue {
   color: var(--muted);
   font-size: var(--fs-xs);
+  line-height: var(--bar-h);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 800;
@@ -51,22 +56,30 @@
   color: #fff0bb;
 }
 
-/* The fuel gauge carries the return-fuel forecast instead of a second widget:
-   the left slice is the fuel the climb home owes, the right slice is what would
-   survive it. Hull and cargo have one number to tell and stay native <meter>. */
+/* One track for all three bars, exactly `--bar-h` tall in every engine because
+   nothing about it is a native widget. `overflow: hidden` is what cuts the pill
+   ends, so the fills themselves stay square. */
 .gauge {
   display: flex;
+  box-sizing: border-box;
   width: 100%;
-  height: 18px;
+  height: var(--bar-h);
   border-radius: 999px;
   overflow: hidden;
   background: rgba(6, 10, 18, 0.6);
   box-shadow: inset 0 0 0 1px var(--hairline-2);
 }
+.gaugeFill,
 .gaugeReturn,
 .gaugeSurplus {
   height: 100%;
 }
+.gaugeFill {
+  background: linear-gradient(180deg, #8ce99a, var(--green));
+}
+/* The fuel gauge carries the return-fuel forecast instead of a second widget:
+   the left slice is the fuel the climb home owes, the right slice is what would
+   survive it. */
 .gaugeReturn {
   background: linear-gradient(180deg, #6f5a2c, #4a3a17);
 }
@@ -91,13 +104,11 @@
 .bar.alert {
   animation: hudBarFlash 0.7s ease-in-out infinite alternate;
 }
-.bar.alert label,
 .bar.alert .barCaption,
 .bar.alert .barValue {
   color: #fff1a3;
   text-shadow: 0 0 10px rgba(255, 205, 76, 0.72);
 }
-.bar.alert meter,
 .bar.alert .gauge {
   filter: drop-shadow(0 0 9px rgba(255, 80, 80, 0.9)) brightness(1.2);
 }
@@ -134,15 +145,9 @@
     grid-template-columns: 42px minmax(0, 1fr) 48px;
     gap: 6px;
   }
-  .bar label,
-  .barCaption {
-    font-size: var(--fs-3xs);
-  }
+  .barCaption,
   .barValue {
     font-size: var(--fs-3xs);
-  }
-  .gauge {
-    height: 15px;
   }
   .extractionStatus {
     padding: 6px 7px;
