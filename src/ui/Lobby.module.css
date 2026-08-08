@@ -69,53 +69,6 @@
   background: linear-gradient(90deg, #ffd65c, rgba(255, 214, 92, 0.08));
 }
 
-/* Step 1: two poster-sized choices, nothing else to read. */
-.modes {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-.modeBtn {
-  display: grid;
-  justify-items: start;
-  gap: 4px;
-  padding: 18px 16px;
-  border: 2px solid rgba(255, 214, 92, 0.5);
-  border-radius: var(--r-lg);
-  background: linear-gradient(160deg, rgba(146, 24, 24, 0.9), rgba(48, 12, 12, 0.9));
-  text-align: left;
-}
-.modeBtn:focus-visible {
-  outline: none;
-  border-color: #ffd65c;
-  box-shadow:
-    0 0 0 4px rgba(255, 216, 88, 0.24),
-    inset 0 1px 0 var(--hairline-3);
-}
-.modeMark {
-  color: #ffd65c;
-  font-size: 30px;
-  line-height: 1;
-  text-shadow: 0 3px 0 #5e120f;
-}
-.modeName {
-  color: #ffd65c;
-  font-size: var(--fs-lg);
-  font-weight: 1000;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.modeCopy {
-  color: #ffe9c4;
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  line-height: 1.35;
-  text-transform: none;
-  text-shadow: none;
-}
-
-/* Step 2: the relay panel. */
 .connectForm {
   display: grid;
   gap: 14px;
@@ -188,15 +141,6 @@
   .card {
     gap: 12px;
     padding: 22px 18px;
-  }
-  .modes {
-    grid-template-columns: 1fr;
-  }
-  .modeBtn {
-    padding: 14px;
-  }
-  .modeName {
-    font-size: var(--fs-md);
   }
   .actions {
     grid-template-columns: 1fr;

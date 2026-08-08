@@ -6,8 +6,8 @@ import { expect, test } from '@playwright/test';
 import {
   activeElementId,
   collectPageFailures,
-  dismissIntro,
   openIntro,
+  openMultiplayer,
   openOverlayDirectly,
   startSoloRun
 } from './support/game';
@@ -137,35 +137,56 @@ test.describe('overlay exclusivity', () => {
 });
 
 test.describe('lobby dialog', () => {
-  test('cannot be dismissed with Escape', async ({page}) => {
+  test('contains Tab inside the relay panel', async ({page}) => {
     await openIntro(page);
-    await dismissIntro(page);
+    await openMultiplayer(page);
 
-    // Escape is taken out of the browser's hands entirely here: there is no screen
-    // underneath a lobby, so a second press must not close it either (a `cancel`
-    // refusal alone stops being honoured once user activation goes stale).
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#lobby-screen')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#lobby-screen')).toBeVisible();
-    await expect(page.locator('#soloBtn')).toBeFocused();
+    // The URL, Connect and Back are the whole tab ring: the HUD of a run that has
+    // not started is behind an inert page, and Tab must not reach it. (Chromium
+    // routes the wrap-around through the document itself, as in the shop above.)
+    await page.keyboard.press('Tab');
+    expect(await activeElementId(page)).toBe('connectBtn');
+    await page.keyboard.press('Tab');
+    expect(await activeElementId(page)).toBe('lobbyBackBtn');
+
+    const visited: string[] = [];
+    for (let step = 0; step < 8; step++) {
+      await page.keyboard.press('Tab');
+      visited.push(await page.evaluate(() => {
+        const active = document.activeElement;
+        if (!active || active === document.body || active === document.documentElement) return ':wrap';
+        return active.closest('#lobby-screen') ? `lobby:${active.id}` : `outside:${active.id}`;
+      }));
+    }
+
+    expect(visited.filter(stop => stop.startsWith('outside:'))).toEqual([]);
   });
 
-  test('contains Tab, and Escape steps the relay panel back to the mode picker', async ({page}) => {
+  /**
+   * Escape is taken out of the browser's hands here: left alone it is a close
+   * request, which would drop the card behind the phase machine's back and leave a
+   * mine that has not started on screen. It steps back to the splash instead — and
+   * the splash still starts a run, so nothing is stranded.
+   */
+  test('Escape steps back to the splash, which still starts a run', async ({page}) => {
     await openIntro(page);
-    await dismissIntro(page);
-
-    // One Tab reaches Multiplayer; the run's HUD behind the dialog is inert.
-    await page.keyboard.press('Tab');
-    expect(await activeElementId(page)).toBe('multiplayerBtn');
-    await page.keyboard.press('Enter');
-
-    await expect(page.locator('#serverUrl')).toBeFocused();
-    await expect(page.locator('#connectBtn')).toBeVisible();
+    await openMultiplayer(page);
 
     await page.keyboard.press('Escape');
-    // Back on step one — the dialog itself is still up.
-    await expect(page.locator('#lobby-screen')).toBeVisible();
-    await expect(page.locator('#soloBtn')).toBeFocused();
+    await expect(page.locator('#lobby-screen')).toHaveCount(0);
+    await expect(page.locator('#intro')).toBeVisible();
+
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#intro')).toHaveCount(0);
+    await expect(page.locator('#game')).toBeFocused();
+  });
+
+  test('the Back button leaves multiplayer the same way', async ({page}) => {
+    await openIntro(page);
+    await openMultiplayer(page);
+
+    await page.locator('#lobbyBackBtn').click();
+    await expect(page.locator('#lobby-screen')).toHaveCount(0);
+    await expect(page.locator('#intro')).toBeVisible();
   });
 });

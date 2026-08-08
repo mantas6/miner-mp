@@ -74,7 +74,6 @@ describe('booting into a saved solo mine', () => {
         panel: document.getElementById('game-panel') as HTMLElement
       });
     });
-    act(() => { uiCommands.dismissIntro(); });
     act(() => { uiCommands.playSolo(); });
   });
 

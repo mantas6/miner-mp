@@ -1,33 +1,44 @@
-// The boot flow, which is the one path every other spec depends on: splash →
-// lobby → live run, with the keyboard landing on the canvas and no complaint from
-// the browser along the way.
+// The boot flow, which is the one path every other spec depends on: splash → live
+// run on a single press, with the keyboard landing on the canvas and no complaint
+// from the browser along the way. Multiplayer is the one detour, behind MP.
 
 import { expect, test } from '@playwright/test';
-import { activeElementId, collectPageFailures, dismissIntro, openIntro, startSoloRun } from './support/game';
+import { activeElementId, collectPageFailures, openIntro, openMultiplayer, startSoloRun } from './support/game';
 
 test.describe('boot', () => {
-  test('renders the title card with its start prompt', async ({page}) => {
+  test('renders the title card with its start prompt and the MP button', async ({page}) => {
     await openIntro(page);
     await expect(page.locator('#intro')).toContainText('Stalinload');
     await expect(page.locator('#introStartBtn')).toBeVisible();
+    await expect(page.locator('#introMpBtn')).toBeVisible();
     // The canvas takes the keyboard immediately, which is what makes Enter on the
     // splash work without anything having been clicked first.
     await expect(page.locator('#game')).toBeFocused();
   });
 
-  test('Enter dismisses the splash and opens the lobby', async ({page}) => {
-    await openIntro(page);
-    await dismissIntro(page, 'keyboard');
-    await expect(page.locator('#lobby-screen')).toContainText('Choose your shift');
-    await expect(page.locator('#multiplayerBtn')).toBeVisible();
+  test('Enter starts the run straight from the splash', async ({page}) => {
+    await startSoloRun(page, 'keyboard');
   });
 
-  test('a press anywhere on the card also dismisses it', async ({page}) => {
-    await openIntro(page);
-    await dismissIntro(page, 'click');
+  test('a press anywhere on the card starts it too', async ({page}) => {
+    await startSoloRun(page, 'click');
   });
 
-  test('solo starts the run, focuses the canvas and shows the HUD', async ({page}) => {
+  /**
+   * The button sits inside the card's own "press anywhere" area, so the press that
+   * activates it must not also start a solo run — which is what a `pointerdown`
+   * allowed to bubble would do, before the click ever landed on the button.
+   */
+  test('MP opens the relay panel instead of starting a run', async ({page}) => {
+    await openIntro(page);
+    await openMultiplayer(page);
+    await expect(page.locator('#lobby-screen')).toContainText('Relay connection');
+    await expect(page.locator('#connectBtn')).toBeVisible();
+    // The run has not started behind the panel: it is still the boot toast up.
+    await expect(page.locator('#toast')).not.toContainText('Drill ready');
+  });
+
+  test('the press starts the run, focuses the canvas and shows the HUD', async ({page}) => {
     await startSoloRun(page);
     await expect(page.locator('#intro')).toHaveCount(0);
     await expect(page.locator('#lobby-screen')).toHaveCount(0);

@@ -96,16 +96,16 @@ describe('booting the game', () => {
     expect(document.getElementById('lobby-screen')).toBeNull();
   });
 
-  it('walks the splash → lobby → run phases, one overlay at a time', () => {
-    act(() => { fireEvent.pointerDown(document.getElementById('intro')!); });
-    expect(document.getElementById('intro')).toBeNull();
-    expect(document.getElementById('lobby-screen')).not.toBeNull();
-    // Keys still belong to the lobby, so the ship has not moved.
+  it('walks the splash straight into the run on one press', () => {
+    // Keys belong to the splash, so nothing has moved before the press.
     press('s');
     renderFrame();
     expect(text('depth')).toBe('0 m');
 
-    click('soloBtn');
+    act(() => { fireEvent.pointerDown(document.getElementById('intro')!); });
+
+    // No mode picker in between: the press is the whole answer.
+    expect(document.getElementById('intro')).toBeNull();
     expect(document.getElementById('lobby-screen')).toBeNull();
     expect(text('toast')).toContain('Drill ready');
     // The run takes the keyboard, and the canvas is the surface that holds it.

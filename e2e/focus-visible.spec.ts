@@ -14,8 +14,8 @@
 // interesting claim is therefore about what a click does, and that is what is
 // pinned here.
 
-import { expect, test, type Locator, type Page } from '@playwright/test';
-import { dismissIntro, isFocusVisible, openIntro } from './support/game';
+import { expect, test, type Locator } from '@playwright/test';
+import { isFocusVisible, startSoloRun } from './support/game';
 
 /** The computed ring, so the assertions cover the CSS and not just the selector. */
 function outline(locator: Locator): Promise<{style: string; width: string; offset: string}> {
@@ -25,14 +25,8 @@ function outline(locator: Locator): Promise<{style: string; width: string; offse
   });
 }
 
-/** Splash → lobby → run, without a single keystroke. */
-async function startSoloRunByPointer(page: Page): Promise<void> {
-  await openIntro(page);
-  await dismissIntro(page, 'click');
-  await page.locator('#soloBtn').click();
-  await expect(page.locator('#hud')).toBeVisible();
-  await expect(page.locator('#game')).toBeFocused();
-}
+/** Splash → run, without a single keystroke. */
+const startSoloRunByPointer = (page: Parameters<typeof startSoloRun>[0]) => startSoloRun(page, 'click');
 
 test.describe('focus ring', () => {
   test('appears when Tab moves focus, on the HUD and back on the canvas', async ({page}) => {

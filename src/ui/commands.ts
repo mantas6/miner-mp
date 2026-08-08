@@ -28,14 +28,15 @@ export interface UiCommands {
   closeInfo(): void;
   toggleMusic(): void;
   toggleSfx(): void;
-  /** Leave the splash for the lobby; the press doubles as the audio gesture. */
-  dismissIntro(event?: Event): void;
+  /** Leave the splash for the relay panel; the press doubles as the audio gesture. */
+  openMultiplayer(event?: Event): void;
   /** Begin the lyric voice-over that loops for as long as the splash is up. */
   startIntroVoice(): void;
   stopIntroVoice(): void;
   connect(url: string): void;
-  /** Abandon a pending relay connection when the player leaves the connect panel. */
-  cancelConnect(): void;
+  /** Leave the relay panel for the splash, dropping any pending connection. */
+  leaveMultiplayer(): void;
+  /** Start the run alone. The splash's default: any press on the card lands here. */
   playSolo(event?: Event): void;
   grantDeveloperCash(): void;
   runDeveloperService(id: DeveloperServiceId): void;
@@ -72,11 +73,11 @@ function noopCommands(): UiCommands {
     closeInfo: noop,
     toggleMusic: noop,
     toggleSfx: noop,
-    dismissIntro: noop,
+    openMultiplayer: noop,
     startIntroVoice: noop,
     stopIntroVoice: noop,
     connect: noop,
-    cancelConnect: noop,
+    leaveMultiplayer: noop,
     playSolo: noop,
     grantDeveloperCash: noop,
     runDeveloperService: noop,

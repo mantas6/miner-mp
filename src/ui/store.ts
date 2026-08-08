@@ -111,11 +111,14 @@ export interface ToastMessage {
 /**
  * Which screen the player is on. The whole boot flow is this one field:
  *
- *   intro --(any press)--> lobby --(solo | paired)--> playing
+ *   intro --(any press)---> playing
+ *         --(MP button)---> lobby --(paired)--> playing
+ *                                 --(back)----> intro
  *
- * React renders the overlay for the current phase and nothing else, so the
- * splash and the lobby can never be on screen at the same time, and the game
- * only takes input once the run is live.
+ * Solo is what a press on the splash does, so there is no mode picker between the
+ * two: `lobby` is the relay panel and nothing else. React renders the overlay for
+ * the current phase and nothing else, so the splash and the relay panel can never
+ * be on screen at the same time, and the game only takes input once the run is live.
  */
 export type UiPhase = 'intro' | 'lobby' | 'playing';
 

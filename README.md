@@ -9,7 +9,8 @@ A small browser-based Motherload-style mining game. Mine ore, return to the surf
 The client is React + TypeScript around a canvas: React paints the chrome from a
 zustand store, the canvas renders the mine, and the simulation runs in fixed
 60 Hz steps so tick-based tuning behaves the same on any refresh rate. Booting
-walks a UI phase machine — intro splash → lobby (solo or co-op) → playing.
+walks a UI phase machine — intro splash → playing, or splash → lobby (the relay
+panel, behind the splash's MP button) → playing.
 Co-op adds a Node WebSocket relay in `server/` that owns the shared mine.
 
 A solo mine is persistent. Terrain is never stored tile by tile — it regenerates
@@ -312,8 +313,8 @@ zooming the camera with the wheel or a trackpad.
 
 | Action | Keyboard | UI (click/tap) |
 |---|---|---|
-| Leave the intro | `Enter` or `Space` | Click/tap intro screen |
-| Pick solo or co-op | — | Lobby: Play solo / Connect |
+| Start a solo run | `Enter` or `Space` | Click/tap intro screen |
+| Play co-op instead | — | Intro: MP → Connect |
 | Move / fly / dig | `WASD` or arrow keys | — |
 | Sprint through open space | Hold `Shift` + direction | — |
 | Zoom the camera (0.5x–2x) | — | Wheel scroll or trackpad pinch over the mine |
@@ -345,7 +346,7 @@ zooming the camera with the wheel or a trackpad.
   fuel banner are live regions, and `#game-status` politely announces the ship's
   situation — at the depot, in the mine, holds full, hull critical, ship lost. It is
   driven by thresholds, so the 60 Hz HUD sync never makes it talk.
-- **Native dialogs.** The intro prompt is a `<button>`; the lobby, shop and info
+- **Native dialogs.** The intro prompt and its MP button are `<button>`s; the lobby, shop and info
   overlays are modal `<dialog>`s, so the browser contains Tab, makes the rest of the
   page inert, and each close returns focus to the control that opened it.
 - **`prefers-reduced-motion`.** The looping start-prompt, low-fuel and HUD-alert
@@ -506,8 +507,9 @@ aim.
 
 The loop is scoped to the overlay: `Intro.tsx` calls `startIntroVoice()` on
 mount and `stopIntroVoice()` on unmount (`src/ui/commands.ts`), and
-`dismissIntro()` stops it before the gesture starts the soundtrack, so a line
-can never talk over the first bar or leak into the lobby. Because the splash is
+`playSolo()`/`openMultiplayer()` stop it before the gesture starts the
+soundtrack, so a line can never talk over the first bar or leak into the run.
+Because the splash is
 mounted before the runtime is built, `createGameRuntime()` also starts the loop if
 the phase is still `intro`; `start()` on a running loop does nothing, and the
 runtime's `dispose()` stops it, so a StrictMode remount leaves one voice, not two.
@@ -581,9 +583,9 @@ the boot flow gets from the splash to a live run without the browser complaining
 
 | Spec | Covers |
 |---|---|
-| `e2e/boot.spec.ts` | The title card and its start button; `Enter` and "press anywhere" both reaching the lobby; solo starting the run with the canvas focused, the HUD painted and the scanner reading real terrain; the canvas being the surface's only tab stop; the whole flow producing no console errors and no page errors. |
+| `e2e/boot.spec.ts` | The title card, its start button and its MP button; `Enter` and "press anywhere" both starting a solo run with the canvas focused, the HUD painted and the scanner reading real terrain; MP opening the relay panel instead of starting a run; the canvas being the surface's only tab stop; the whole flow producing no console errors and no page errors. |
 | `e2e/gameplay.spec.ts` | One keypress charged exactly once and clearing exactly one tile (the fence against a doubled input/step pipeline); depth rising and fuel falling over a descent; the depot actions swapping for the underground ones, live region included; focus staying on the canvas while mining. |
-| `e2e/dialogs.spec.ts` | Shop and info opening with focus inside the dialog; `Escape`, the × button and the backdrop each closing it and restoring focus to the trigger; Tab never escaping into the HUD behind; the info tablist's click and arrow-key navigation; the two overlays handing the screen over rather than stacking; the lobby refusing `Escape` (twice) while the relay panel's own `Escape` still steps back. |
+| `e2e/dialogs.spec.ts` | Shop and info opening with focus inside the dialog; `Escape`, the × button and the backdrop each closing it and restoring focus to the trigger; Tab never escaping into the HUD behind; the info tablist's click and arrow-key navigation; the two overlays handing the screen over rather than stacking; the relay panel containing Tab, and its `Escape` and Back button both stepping back to the splash. |
 | `e2e/focus-visible.spec.ts` | The ring drawn for `Tab` (3px, and inset on the canvas) and gone for a click that moves focus, including the focus a clicked-shut dialog restores. |
 | `e2e/failure.spec.ts` | A refused 2D context — stubbed with an init script — surfacing as the "Mine offline" notice with its detail line, its `role="alert"` and a working Reload, while the crash boundary stays out of it. |
 

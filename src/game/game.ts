@@ -220,7 +220,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       closeInfo: closeInfoScreen,
       toggleMusic: () => { void audio.toggleMusic(); },
       toggleSfx: () => { void audio.toggleSfx(); },
-      dismissIntro: event => dismissIntro(event),
+      openMultiplayer: event => openMultiplayer(event),
       startIntroVoice: () => introVoice.start(),
       stopIntroVoice: () => introVoice.stop(),
       connect: url => {
@@ -228,8 +228,8 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
         saveServerUrl(url);
         session.startOnline(url);
       },
-      cancelConnect: () => session.cancelOnline(),
-      playSolo: event => session.playSolo(event),
+      leaveMultiplayer: () => leaveMultiplayer(),
+      playSolo: event => playSolo(event),
       grantDeveloperCash: grantDeveloperMoney,
       runDeveloperService,
       grantDeveloperUpgrade,
@@ -465,16 +465,38 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   function isPlaying(){
     return uiStore.getState().phase === 'playing';
   }
-  /** Splash → lobby. The press that got us here is the audio-unlock gesture. */
-  function dismissIntro(event?: Event){
+  /**
+   * Splash → solo run. The splash's default: any press on the title card, and the
+   * Enter or Space that reaches it from the canvas, comes here.
+   *
+   * The press that got us here is also the audio-unlock gesture, spent by
+   * `startGame()` at the end of `session.playSolo()`. Silence the lyric voice-over
+   * before it does, so the last line cannot talk over the first bar. Unmounting
+   * the overlay would stop it anyway; this just makes the hand-off ordered.
+   */
+  function playSolo(event?: Event){
+    if (uiStore.getState().phase !== 'intro') return;
+    introVoice.stop();
+    session.playSolo(event);
+  }
+  /** Splash → relay panel, the one thing on the card that is not "start". */
+  function openMultiplayer(event?: Event){
     const store = uiStore.getState();
     if (store.phase !== 'intro') return;
-    // Silence the lyric voice-over before the gesture starts the soundtrack, so
-    // the last line cannot talk over the first bar. Unmounting the overlay would
-    // stop it anyway; this just makes the hand-off explicit and ordered.
     introVoice.stop();
     tryAutoAudio(event);
     store.setPhase('lobby');
+  }
+  /**
+   * Relay panel → splash. The panel is the whole `lobby` phase now, so backing out
+   * of it is backing out of multiplayer: the pending socket goes with it, because a
+   * host left waiting would otherwise drag the player into a run from a screen that
+   * offers no multiplayer at all.
+   */
+  function leaveMultiplayer(){
+    session.cancelOnline();
+    const store = uiStore.getState();
+    if (store.phase === 'lobby') store.setPhase('intro');
   }
   /**
    * The one way into the run: solo play, a host whose partner arrived, and a guest

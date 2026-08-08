@@ -40,9 +40,8 @@ const INFO_TAB_CONTRACT = [
   {tabId: 'info-tab-hazards', ids: ['dangerGuide']}
 ];
 
-/** Ids that only exist in the lobby phase, step by step: mode first, relay second. */
-const LOBBY_MODE_CONTRACT = ['lobby-screen', 'soloBtn', 'multiplayerBtn'];
-const LOBBY_CONNECT_CONTRACT = ['lobby-screen', 'serverUrl', 'lobbyConnectionStatus', 'connectBtn', 'lobbyBackBtn'];
+/** Ids that only exist in the lobby phase, which is the relay panel and nothing else. */
+const LOBBY_CONTRACT = ['lobby-screen', 'serverUrl', 'lobbyConnectionStatus', 'connectBtn', 'lobbyBackBtn'];
 
 const pristine = {...uiStore.getState()};
 const pristineCommands = {...uiCommands};
@@ -272,7 +271,7 @@ describe('closed overlays', () => {
 });
 
 describe('boot phase machine', () => {
-  it('mounts the intro alone, then the lobby alone, then neither', () => {
+  it('mounts the intro alone, then the relay panel alone, then neither', () => {
     render(<MinerApp />);
 
     expect(document.getElementById('intro')).not.toBeNull();
@@ -280,7 +279,7 @@ describe('boot phase machine', () => {
 
     act(() => { uiStore.getState().setPhase('lobby'); });
     expect(document.getElementById('intro')).toBeNull();
-    for (const id of LOBBY_MODE_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
+    for (const id of LOBBY_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
     // A real modal, so the browser contains Tab instead of letting it walk into the
     // HUD of a run that has not started.
     expect(dialog('lobby-screen').tagName).toBe('DIALOG');
@@ -291,7 +290,7 @@ describe('boot phase machine', () => {
     expect(document.getElementById('lobby-screen')).toBeNull();
   });
 
-  it('keeps the splash copy to the title, one tagline, and the start prompt', () => {
+  it('keeps the splash copy to the title, one tagline, the start prompt and MP', () => {
     render(<MinerApp />);
 
     const intro = document.getElementById('intro')!;
@@ -299,17 +298,20 @@ describe('boot phase machine', () => {
     expect(intro.textContent).toContain('Press Enter to start');
     // The rules live in Info / Cargo now: a wall of text here buries the prompt.
     expect(intro.querySelectorAll('li')).toHaveLength(0);
+    // Two buttons and no third offer: start, and the way out to a relay.
+    expect([...intro.querySelectorAll('button')].map(button => button.id)).toEqual(['introStartBtn', 'introMpBtn']);
+    expect(document.getElementById('introMpBtn')?.getAttribute('aria-label')).toBe('Multiplayer');
   });
 
-  it('dismisses the intro on a press, forwarding the gesture for audio unlock', () => {
-    const dismissIntro = vi.fn();
-    setUiCommands({dismissIntro});
+  it('starts a solo run on a press anywhere, forwarding the gesture for audio unlock', () => {
+    const playSolo = vi.fn();
+    setUiCommands({playSolo});
     render(<MinerApp />);
 
     fireEvent.pointerDown(document.getElementById('intro')!);
 
-    expect(dismissIntro).toHaveBeenCalledTimes(1);
-    expect(dismissIntro.mock.calls[0][0]).toBeInstanceOf(Event);
+    expect(playSolo).toHaveBeenCalledTimes(1);
+    expect(playSolo.mock.calls[0][0]).toBeInstanceOf(Event);
   });
 
   /**
@@ -317,9 +319,9 @@ describe('boot phase machine', () => {
    * so the click a screen reader synthesises fell on the floor. The prompt is a
    * real button now, and a click is all it takes.
    */
-  it('dismisses the intro from the start button a screen reader can click', () => {
-    const dismissIntro = vi.fn();
-    setUiCommands({dismissIntro});
+  it('starts a solo run from the start button a screen reader can click', () => {
+    const playSolo = vi.fn();
+    setUiCommands({playSolo});
     render(<MinerApp />);
 
     const start = document.getElementById('introStartBtn') as HTMLButtonElement;
@@ -327,20 +329,43 @@ describe('boot phase machine', () => {
     expect(document.getElementById('intro')?.getAttribute('role')).toBeNull();
 
     fireEvent.click(start);
-    expect(dismissIntro).toHaveBeenCalledTimes(1);
+    expect(playSolo).toHaveBeenCalledTimes(1);
   });
 
-  it('dismisses the intro on Enter or Space wherever focus happens to be', () => {
-    const dismissIntro = vi.fn();
-    setUiCommands({dismissIntro});
+  it('starts a solo run on Enter or Space wherever focus happens to be', () => {
+    const playSolo = vi.fn();
+    setUiCommands({playSolo});
     render(<MinerApp />);
 
     fireEvent.keyDown(document.body, {key: 'x'});
-    expect(dismissIntro).not.toHaveBeenCalled();
+    expect(playSolo).not.toHaveBeenCalled();
 
     fireEvent.keyDown(document.body, {key: 'Enter'});
     fireEvent.keyDown(document.body, {key: ' '});
-    expect(dismissIntro).toHaveBeenCalledTimes(2);
+    expect(playSolo).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * The card's own handlers cover the whole screen, so both of them have to leave
+   * the MP button alone — a press that bubbled, or an Enter answered for the
+   * focused button, would start the solo run the player was steering away from.
+   */
+  it('opens the relay panel from MP without starting a run', () => {
+    const playSolo = vi.fn();
+    const openMultiplayer = vi.fn();
+    setUiCommands({playSolo, openMultiplayer});
+    render(<MinerApp />);
+    const mp = document.getElementById('introMpBtn')!;
+
+    fireEvent.keyDown(mp, {key: 'Enter'});
+    expect(playSolo).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(mp);
+    fireEvent.click(mp);
+
+    expect(playSolo).not.toHaveBeenCalled();
+    expect(openMultiplayer).toHaveBeenCalledTimes(1);
+    expect(openMultiplayer.mock.calls[0][0]).toBeInstanceOf(Event);
   });
 
   it('runs the lyric voice-over for exactly as long as the intro is mounted', () => {
@@ -358,47 +383,31 @@ describe('boot phase machine', () => {
     expect(startIntroVoice).toHaveBeenCalledTimes(1);
   });
 
-  it('stops listening for the intro keys once the lobby takes over', () => {
-    const dismissIntro = vi.fn();
-    setUiCommands({dismissIntro});
+  it('stops listening for the intro keys once the relay panel takes over', () => {
+    const playSolo = vi.fn();
+    setUiCommands({playSolo});
     render(<MinerApp />);
 
     act(() => { uiStore.getState().setPhase('lobby'); });
     fireEvent.keyDown(document.body, {key: 'Enter'});
 
-    expect(dismissIntro).not.toHaveBeenCalled();
+    expect(playSolo).not.toHaveBeenCalled();
   });
 
-  it('starts a solo run straight from the mode picker, forwarding the gesture', () => {
-    const playSolo = vi.fn();
-    setUiCommands({playSolo});
+  /** The lobby phase is the relay panel outright: the mode picker it used to open behind is gone. */
+  it('mounts the relay panel with the URL focused, and nothing else', () => {
     render(<MinerApp />);
     act(() => { uiStore.getState().setPhase('lobby'); });
 
-    // The relay panel is a step away, not a control on this screen.
-    expect(document.getElementById('serverUrl')).toBeNull();
-    expect(document.activeElement?.id).toBe('soloBtn');
-
-    fireEvent.click(document.getElementById('soloBtn')!);
-    expect(playSolo).toHaveBeenCalledTimes(1);
-    expect(playSolo.mock.calls[0][0]).toBeInstanceOf(Event);
-  });
-
-  it('opens the relay panel only after multiplayer is chosen, and focuses the URL', () => {
-    render(<MinerApp />);
-    act(() => { uiStore.getState().setPhase('lobby'); });
-
-    act(() => { fireEvent.click(document.getElementById('multiplayerBtn')!); });
-
-    for (const id of LOBBY_CONNECT_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
+    for (const id of LOBBY_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
     expect(document.getElementById('soloBtn')).toBeNull();
+    expect(document.getElementById('multiplayerBtn')).toBeNull();
     expect(document.activeElement?.id).toBe('serverUrl');
   });
 
   it('describes the relay field with its status line, and marks it invalid on failure', () => {
     render(<MinerApp />);
     act(() => { uiStore.getState().setPhase('lobby'); });
-    act(() => { fireEvent.click(document.getElementById('multiplayerBtn')!); });
     const field = document.getElementById('serverUrl') as HTMLInputElement;
 
     expect(field.getAttribute('aria-describedby')).toBe('lobbyConnectionStatus');
@@ -413,36 +422,35 @@ describe('boot phase machine', () => {
   });
 
   /**
-   * The lobby is the one modal with nothing behind it, so a close request must not
-   * be honoured — and `onCancel` alone cannot promise that, because a browser stops
-   * honouring a refusal once the page's user activation is stale.
+   * Escape steps back to the splash, and it must be the phase machine that does it:
+   * left to the browser the key is a close request, which would drop the card
+   * without telling anyone and leave a mine that has not started underneath.
    */
-  it('refuses to let Escape dismiss the lobby', () => {
+  it('takes Escape out of the browser\'s hands and steps back to the splash', () => {
+    setUiCommands({leaveMultiplayer: () => uiStore.getState().setPhase('intro')});
     render(<MinerApp />);
     act(() => { uiStore.getState().setPhase('lobby'); });
 
-    for (let press = 0; press < 3; press++) {
-      const event = new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true});
-      act(() => { window.dispatchEvent(event); });
-      // Refused before the browser can turn the key into a close request at all.
-      expect(event.defaultPrevented).toBe(true);
-    }
+    const event = new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true});
+    act(() => { window.dispatchEvent(event); });
 
-    expect(dialog('lobby-screen').open).toBe(true);
-    expect(document.getElementById('soloBtn')).not.toBeNull();
+    // Refused before the browser can turn the key into a close request at all.
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.getElementById('lobby-screen')).toBeNull();
+    expect(document.getElementById('intro')).not.toBeNull();
   });
 
   it('keeps the keyboard on the card when the dimmed area is pressed', () => {
     render(<MinerApp />);
     act(() => { uiStore.getState().setPhase('lobby'); });
-    expect(document.activeElement?.id).toBe('soloBtn');
+    expect(document.activeElement?.id).toBe('serverUrl');
 
     const press = new PointerEvent('pointerdown', {bubbles: true, cancelable: true});
     act(() => { dialog('lobby-screen').dispatchEvent(press); });
 
     // Cancelling the press is what stops the dialog itself from taking focus.
     expect(press.defaultPrevented).toBe(true);
-    expect(document.activeElement?.id).toBe('soloBtn');
+    expect(document.activeElement?.id).toBe('serverUrl');
   });
 
   it('connects with the entered relay URL from the button and from Enter', () => {
@@ -450,7 +458,6 @@ describe('boot phase machine', () => {
     setUiCommands({connect});
     render(<MinerApp />);
     act(() => { uiStore.getState().setPhase('lobby'); });
-    act(() => { fireEvent.click(document.getElementById('multiplayerBtn')!); });
 
     fireEvent.change(document.getElementById('serverUrl')!, {target: {value: ' ws://relay.test '}});
     fireEvent.click(document.getElementById('connectBtn')!);
@@ -462,28 +469,22 @@ describe('boot phase machine', () => {
     expect(connect).toHaveBeenCalledTimes(2);
   });
 
-  it('backs out of the relay panel from the button or Escape, cancelling the attempt', () => {
-    const cancelConnect = vi.fn();
-    setUiCommands({cancelConnect});
+  it('leaves multiplayer from the Back button and from Escape', () => {
+    const leaveMultiplayer = vi.fn();
+    setUiCommands({leaveMultiplayer});
     render(<MinerApp />);
     act(() => { uiStore.getState().setPhase('lobby'); });
 
-    act(() => { fireEvent.click(document.getElementById('multiplayerBtn')!); });
     act(() => { fireEvent.click(document.getElementById('lobbyBackBtn')!); });
-    expect(cancelConnect).toHaveBeenCalledTimes(1);
-    expect(document.getElementById('soloBtn')).not.toBeNull();
-    expect(document.getElementById('serverUrl')).toBeNull();
+    expect(leaveMultiplayer).toHaveBeenCalledTimes(1);
 
-    act(() => { fireEvent.click(document.getElementById('multiplayerBtn')!); });
     act(() => { fireEvent.keyDown(document.body, {key: 'Escape'}); });
-    expect(cancelConnect).toHaveBeenCalledTimes(2);
-    expect(document.getElementById('soloBtn')).not.toBeNull();
+    expect(leaveMultiplayer).toHaveBeenCalledTimes(2);
   });
 
   it('keeps reporting connection progress while the host waits in the lobby', () => {
     render(<MinerApp />);
     act(() => { uiStore.getState().setPhase('lobby'); });
-    act(() => { fireEvent.click(document.getElementById('multiplayerBtn')!); });
 
     act(() => { uiStore.getState().setConnection('Host - waiting for player', true); });
 
