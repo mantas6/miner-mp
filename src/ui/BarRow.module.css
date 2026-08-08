@@ -79,18 +79,22 @@
 }
 /* The fuel gauge carries the return-fuel forecast instead of a second widget:
    the left slice is the fuel the climb home owes, the right slice is what would
-   survive it. */
+   survive it. The owed slice is the estimate, so it is blue — `--blue` is the
+   palette's one non-status hue, which is the point: green, gold and red all mean
+   "how bad is it", and a projection is not a verdict. Blue also separates the two
+   slices in every status, where the old dark olive only separated them by
+   lightness against the bright fill above it. */
 .gaugeReturn {
-  background: linear-gradient(180deg, #6f5a2c, #4a3a17);
+  background: linear-gradient(180deg, var(--blue), #2f7fbf);
 }
 .gaugeSurplus {
   background: linear-gradient(180deg, #8ce99a, var(--green));
 }
-/* Caution: the surplus is thin enough to be worth staring at. Urgent: there is
-   no surplus left, so the whole fill is debt and reads like the banner. */
-.caution .gaugeReturn {
-  background: linear-gradient(180deg, #ffd98d, var(--gold));
-}
+/* Caution: the surplus is thin enough to be worth staring at — the estimate stays
+   blue because the shrinking gold slice is what carries the warning. Urgent is the
+   exception: the surplus is empty, so this slice is the entire fill, and leaving it
+   blue would leave the gauge with nothing to alarm with. It goes red to read like
+   the banner. */
 .caution .gaugeSurplus {
   background: linear-gradient(180deg, #ffe9b5, #ffd166);
 }
