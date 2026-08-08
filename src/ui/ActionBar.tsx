@@ -17,10 +17,6 @@ export function ActionBar() {
   const gunOwned = useUiStore(state => state.hud.gunOwned);
   const gunArmed = useUiStore(state => state.hud.gunArmed);
   const bullets = useUiStore(state => state.hud.bullets);
-  // The depot keyboard prompt rides above the surface buttons it stands in for.
-  // The overlays are modal, so it would only be prompting at a backdrop.
-  const surfaceHint = useUiStore(state => state.hud.surfaceHint);
-  const overlayOpen = useUiStore(state => state.activeOverlay !== null);
 
   const teleportLabel = atSurface
     ? 'Return (T)'
@@ -30,7 +26,6 @@ export function ActionBar() {
 
   return (
     <div className={styles.actionBar}>
-      <div id="surfaceHint" className={styles.surfaceHint} aria-live="polite" hidden={!surfaceHint || overlayOpen}>{surfaceHint}</div>
       {/* `hidden` is the only gate on where a button applies (the CSS hides it and
           the UA takes it out of the tab order); `disabled` only says why an
           otherwise-visible button cannot fire, so the two never repeat a term. */}

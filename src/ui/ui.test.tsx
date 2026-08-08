@@ -556,6 +556,11 @@ describe('store-driven HUD', () => {
     expect(hint.hidden).toBe(false);
     expect(hint.textContent).toBe('Space: sell & refuel');
 
+    // It reads over the mine, not out of the button cluster: the prompt is about
+    // a key, so it belongs where the other mid-run line (the fuel banner) is.
+    expect(hint.closest('#hud')).toBeNull();
+    expect(hint.parentElement).toBe(document.getElementById('fuel-warning')?.parentElement);
+
     // The shop is modal and covers the HUD, so the prompt stands down under it.
     act(() => { uiStore.getState().setActiveOverlay('shop'); });
     expect(hint.hidden).toBe(true);
@@ -634,6 +639,26 @@ describe('store-driven HUD', () => {
     // A disabled ship is always 'urgent'; the banner is not the place to say so.
     patchHud({fuelAlert: false, gameOver: true});
     expect(banner.className).not.toMatch(/show/);
+  });
+
+  /** Both lines claim the same spot, and the one that names the cure wins it. */
+  it('yields the banner slot to the depot prompt', () => {
+    render(<MinerApp />);
+    const banner = document.getElementById('fuel-warning') as HTMLElement;
+    const hint = document.getElementById('surfaceHint') as HTMLElement;
+
+    patchHud({fuelAlert: true, surfaceHint: 'Space: refuel'});
+    expect(hint.hidden).toBe(false);
+    expect(banner.className).not.toMatch(/show/);
+
+    // Under a modal the prompt stands down, so the warning is free to speak again.
+    act(() => { uiStore.getState().setActiveOverlay('shop'); });
+    expect(hint.hidden).toBe(true);
+    expect(banner.className).toMatch(/show/);
+
+    act(() => { uiStore.getState().setActiveOverlay(null); });
+    patchHud({surfaceHint: null});
+    expect(banner.className).toMatch(/show/);
   });
 
   it('captions the depth readout with the next landmark', () => {
