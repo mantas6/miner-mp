@@ -126,7 +126,7 @@ miner-mp/
 | `src/persistence.ts` | Local save/load of player progress, the ship's parked tile, explored tiles, and the solo world's tile diff (`localStorage`). |
 | `src/core/` | Pure gameplay rules and types: balance, economy, upgrades, shop catalog, movement, weapon, dynamite, teleporter, enemies, objectives, extraction, scanner, fuel reserve, depth milestones, spoken ship status, stats, danger, fixed-step clock, developer tools. |
 | `src/world/` | World generation, the tile diff that turns a saved or relayed world back into terrain (`tile-diff.ts`), shared world-state reset, and visible tile range. |
-| `src/game/` | Gameplay orchestration (`game.ts`, the `createGameRuntime()` factory) plus its feature modules — `session.ts` (relay session), `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `zoom.ts` (wheel/pinch camera zoom maths), `readouts.ts` — the canvas surface factory (`dom.ts`) and the teardown registry every side effect registers with (`disposal.ts`). |
+| `src/game/` | Gameplay orchestration (`game.ts`, the `createGameRuntime()` factory) plus its feature modules — `session.ts` (relay session), `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `zoom.ts` (wheel/pinch camera zoom maths), `zoom-settings.ts` (the remembered zoom level), `readouts.ts` — the canvas surface factory (`dom.ts`) and the teardown registry every side effect registers with (`disposal.ts`). |
 | `src/net/` | Relay client (partysocket, auto-reconnect), wire protocol codec, and multiplayer settings. |
 | `src/render/` | Canvas drawing, terrain/fog chunk cache policy, and partner indicator. |
 | `src/audio/` | Web Audio graph, sound effects, soundtrack playback, the intro voice-over, and autoplay permission. |
@@ -317,7 +317,7 @@ zooming the camera with the wheel or a trackpad.
 | Play co-op instead | — | Intro: MP → Connect |
 | Move / fly / dig | `WASD` or arrow keys | — |
 | Sprint through open space | Hold `Shift` + direction | — |
-| Zoom the camera (0.5x–2x) | — | Wheel scroll or trackpad pinch over the mine |
+| Zoom the camera (0.5x–2x, remembered) | — | Wheel scroll or trackpad pinch over the mine |
 | Sell cargo at the depot | `Enter` | Sell button |
 | Depot service | `Space` (sells cargo first, then refuels, then repairs) | Shop & Equipment -> Refuel / Repair |
 | Detonate dynamite | `E` | Detonate button |
@@ -377,6 +377,10 @@ zooming the camera with the wheel or a trackpad.
 - Progress (cash, upgrades, stats, explored tiles, the mine you dug, and where you
   parked) is saved locally; death keeps all of it and costs you the cargo and your
   position.
+- The camera zoom is remembered too, but as a preference rather than progress:
+  it is stored under `moleload:zoom-settings:v1` (`src/game/zoom-settings.ts`),
+  clamped back into the 0.5x–2x range on load, and survives a death, a fresh
+  world, and a player-data reset.
 
 ## Soundtrack
 

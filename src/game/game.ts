@@ -24,8 +24,9 @@
 import { START_Y, SURFACE_HEIGHT, WORLD_W } from '../../shared/constants';
 import { createDisposalScope } from './disposal';
 import { createGameSurface, type GameSurfaceRefs } from './dom';
-import { advanceViewportZoom, viewport } from './viewport';
+import { advanceViewportZoom, setViewportZoom, viewport } from './viewport';
 import { recenteredCamera } from './zoom';
+import { loadZoomLevel, saveZoomLevel } from './zoom-settings';
 import { createAudio } from '../audio/audio';
 import { shouldAttemptAutoAudio } from '../audio/audio-permission';
 import { createIntroVoice, type IntroVoice } from '../audio/intro-voice';
@@ -116,6 +117,14 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   }
   /** Cheap progress the ship changes constantly: its tile and the fog it reveals. */
   const progressSave = createDebouncedSave(saveProgress, 500);
+  /**
+   * The camera framing, saved apart from the run. Debounced against the glide
+   * rather than the wheel: one scroll is dozens of events and dozens of eased
+   * frames, and `localStorage` is synchronous, so only the level the view settles
+   * on is written.
+   */
+  const zoomSave = createDebouncedSave(() => saveZoomLevel(viewport.targetZoom), 500);
+  function flushZoomSave() { zoomSave.cancel(); saveZoomLevel(viewport.targetZoom); }
 
   // Fog is cached per chunk, so every newly explored tile has to mark its chunk dirty.
   function invalidateFogTiles(indexes: number[]) {
@@ -318,6 +327,9 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     if (advanceViewportZoom()) {
       state.camX = Math.max(0, recenteredCamera(state.camX, previousTilesX, viewport.tilesX));
       state.camY = Math.max(0, recenteredCamera(state.camY, previousTilesY, viewport.tilesY));
+      // Trailing edge: the glide only stops moving once the wheel has, so this
+      // fires once per gesture, with the level that was actually landed on.
+      zoomSave.schedule();
     }
     const targetCamX = Math.max(0, Math.min(WORLD_W-viewport.tilesX, p.drawX - viewport.tilesX/2 + 0.5));
     const targetCamY = Math.max(0, p.drawY - viewport.tilesY/2 + 0.5);
@@ -617,6 +629,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     // concerned, so bank the run before anything is unwired.
     progressSave.cancel();
     saveProgress();
+    flushZoomSave();
     introVoice.stop();
     audio.stopMusic();
     // A leaked AudioContext survives the mount and browsers only allow a handful.
@@ -636,6 +649,10 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     // The lyrics are part of the song, so they follow the music switch.
     introVoice = createIntroVoice({wantsVoice: () => audio.musicEnabled});
     state.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    // Adopt the remembered framing before anything reads the viewport: the tile
+    // extents it derives feed the renderer's caches and the camera, and jumping
+    // straight to it (rather than easing) keeps the first frame from sliding.
+    setViewportZoom(loadZoomLevel());
     wireModules();
     renderer = createRenderer({
       state,
@@ -651,7 +668,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     scope.onDocument('visibilitychange', () => {
       // Mobile browsers routinely discard a hidden tab without ever firing
       // `beforeunload`, so hiding is the last reliable chance to keep the run.
-      if (document.hidden) { progressSave.cancel(); saveProgress(); return; }
+      if (document.hidden) { progressSave.cancel(); saveProgress(); flushZoomSave(); return; }
       // Animation frames stop while hidden; discard the gap instead of fast-forwarding.
       stepper.reset();
       focusGame();
@@ -660,7 +677,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     registerUiCommands();
     run.resume();
     scope.interval(saveProgress, 60000);
-    scope.onWindow('beforeunload', saveProgress);
+    scope.onWindow('beforeunload', () => { saveProgress(); flushZoomSave(); });
     focusGame();
     scope.timeout(focusGame, 60);
     scope.frameLoop(loop);
