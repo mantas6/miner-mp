@@ -97,7 +97,9 @@ test.describe('info dialog', () => {
     await expect(page.locator('#info-tab-controls')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#info-tab-objective')).toHaveAttribute('tabindex', '-1');
 
-    // Roving focus wraps: Controls is the last tab, so → lands back on the first.
+    // Roving focus wraps: End jumps to the last tab, so → lands back on the first.
+    // Going through End keeps this independent of how many tabs the panel has.
+    await page.keyboard.press('End');
     await page.keyboard.press('ArrowRight');
     expect(await activeElementId(page)).toBe('info-tab-objective');
     await page.keyboard.press('Enter');
