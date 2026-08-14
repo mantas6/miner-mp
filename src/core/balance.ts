@@ -9,7 +9,6 @@ export const STARTING = Object.freeze({
   hullMax: 100,
   cargoMax: 10,
   drill: 1,
-  dynamite: 0,
   teleporters: 0,
   gunOwned: false,
   bullets: 0,
@@ -21,6 +20,7 @@ export const LIMITS = Object.freeze({
   hullMax: Object.freeze({ min: 100, max: 2000 }),
   cargoMax: Object.freeze({ min: STARTING.cargoMax, max: 1000 }),
   drill: Object.freeze({ min: 1, max: 100 }),
+  /** Carried (not yet planted) sticks of dynamite; they live in the cargo bay. */
   dynamite: Object.freeze({ min: 0, max: 999 }),
   teleporters: Object.freeze({ min: 0, max: 999 }),
   /** Carried (not yet deployed) scanner devices; they live in the cargo bay. */
@@ -60,6 +60,12 @@ export const HULL = Object.freeze({
    * only once per run-up: the crash spends the sprint momentum that earned it.
    */
   sprintCrash: 6,
+  /**
+   * Standing at the centre of one's own blast. Roughly a third of a starting
+   * hull, halving toward the rim: survivable at full strength from any distance,
+   * and lethal to a ship that was already limping home.
+   */
+  dynamiteBlast: 35,
   hazardBase: 3.5,
   hazardDepthDivisor: 90,
   enemyBite: Object.freeze({

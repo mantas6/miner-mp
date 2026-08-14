@@ -4,6 +4,7 @@ import type { EnemyKind, Tile } from '../../shared/world-schema';
 // Type-only: neither the track registry nor the tile diff becomes a runtime
 // dependency of this module.
 import type { TrackId } from '../audio/tracks';
+import type { PlacedDynamite } from './dynamite';
 import type { Inventory } from './inventory';
 import type { ScannerDevice } from './scanner-device';
 import type { TileDiff } from '../world/tile-diff';
@@ -41,7 +42,6 @@ export interface Player {
   hullMax: number;
   cargoMax: number;
   drill: number;
-  dynamite: number;
   teleporters: number;
   gunOwned: boolean;
   bullets: number;
@@ -177,6 +177,13 @@ export interface GameState {
    * exploration message, but the hardware itself is one miner's business.
    */
   scannerDevices: ScannerDevice[];
+  /**
+   * Dynamite planted in the mine and still burning. Local to this client, like
+   * the scanners: the tiles a blast clears travel to a partner as ordinary tile
+   * updates, but the stick itself — and the hull damage it can do — belongs to
+   * the simulation that lit it.
+   */
+  placedDynamite: PlacedDynamite[];
 }
 
 export interface AudioController {

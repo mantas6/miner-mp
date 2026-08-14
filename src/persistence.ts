@@ -1,5 +1,6 @@
 import { MAX_WORLD_ROW, START_Y, SURFACE_HEIGHT, WORLD_W } from '../shared/constants';
 import { ECONOMY, LIMITS, STARTING } from './core/balance';
+import { DYNAMITE, DYNAMITE_ITEM, type PlacedDynamite } from './core/dynamite';
 import { addItem, countItem } from './core/inventory';
 import { SCANNER_DEVICE, SCANNER_ITEM, type ScannerDevice } from './core/scanner-device';
 import { createDefaultStats } from './core/state';
@@ -21,13 +22,16 @@ import type { GameState, GameStats } from './core/types';
 //   * v5: `x`/`y`, the tile the ship was parked on.
 //   * v6: `scanners` and `scannerDevices` — the survey scanners carried, and the
 //     ones left running in the mine.
+//   * v7: `dynamiteSticks`, the charges still burning in the mine. `dynamite`
+//     keeps its meaning — the number carried — but is now counted out of the
+//     cargo bay rather than off the ship.
 // Older blobs still load; they just restore a pristine mine, and pre-v5 saves
 // start at the depot the way they always did.
 //
 // The cargo bay itself is deliberately *not* saved: ore is lost with the run.
-// Scanners are equipment rather than cargo, so they are stored as a count and
-// re-stacked into the bay on load, the way dynamite and teleporters are stored
-// as counts on the ship.
+// Scanners and dynamite are equipment rather than cargo, so they are stored as
+// counts and re-stacked into the bay on load, the way teleporters are stored as
+// a count on the ship.
 
 /** The persisted save file. Every field is re-validated on load. */
 interface SavedProgress {
@@ -41,6 +45,7 @@ interface SavedProgress {
   cargoMax?: unknown;
   drill?: unknown;
   dynamite?: unknown;
+  dynamiteSticks?: unknown;
   teleporters?: unknown;
   scanners?: unknown;
   scannerDevices?: unknown;
@@ -52,7 +57,7 @@ interface SavedProgress {
 }
 
 export const SAVE_KEY = 'moleload-progress-v1';
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 const LEGACY_CARGO_STEP = 10;
 const CARGO_BALANCE_SAVE_VERSION = 2;
 
@@ -63,23 +68,52 @@ export function numeric(value: unknown, fallback: number, min=0, max=Number.MAX_
 }
 
 /**
- * Rebuild the deployed scanners, dropping anything a corrupt or hand-edited save
- * put outside the mine. The count is capped the way the game caps it, so a save
- * can never restore more hardware than the player could have placed.
+ * The tile a saved device sat on, or `null` when a corrupt or hand-edited save
+ * put it somewhere the mine does not reach.
+ */
+function parsePlacedTile(entry: unknown): {x: number; y: number} | null {
+  if (!entry || typeof entry !== 'object') return null;
+  const saved = entry as {x?: unknown; y?: unknown};
+  const x = Math.floor(numeric(saved.x, -1, -1, WORLD_W - 1));
+  const y = Math.floor(numeric(saved.y, -1, -1, MAX_WORLD_ROW));
+  if (x < 0 || y < SURFACE_HEIGHT) return null;
+  return {x, y};
+}
+
+/**
+ * Rebuild the deployed scanners. The count is capped the way the game caps it,
+ * so a save can never restore more hardware than the player could have placed.
  */
 export function parseScannerDevices(value: unknown): ScannerDevice[] {
   if (!Array.isArray(value)) return [];
   const devices: ScannerDevice[] = [];
   for (const entry of value) {
     if (devices.length >= SCANNER_DEVICE.maxPlaced) break;
-    if (!entry || typeof entry !== 'object') continue;
-    const saved = entry as {x?: unknown; y?: unknown; timer?: unknown};
-    const x = Math.floor(numeric(saved.x, -1, -1, WORLD_W - 1));
-    const y = Math.floor(numeric(saved.y, -1, -1, MAX_WORLD_ROW));
-    if (x < 0 || y < SURFACE_HEIGHT) continue;
-    devices.push({x, y, timer: Math.floor(numeric(saved.timer, 0, 0, SCANNER_DEVICE.intervalTicks))});
+    const tile = parsePlacedTile(entry);
+    if (!tile) continue;
+    const {timer} = entry as {timer?: unknown};
+    devices.push({...tile, timer: Math.floor(numeric(timer, 0, 0, SCANNER_DEVICE.intervalTicks))});
   }
   return devices;
+}
+
+/**
+ * Rebuild the burning sticks, fuses included: a charge planted before a reload
+ * is still a charge, and finding one already lit is the point of planting it.
+ * A fuse of zero would go off on the first step of the next run, so the clamp
+ * starts at one step.
+ */
+export function parsePlacedDynamite(value: unknown): PlacedDynamite[] {
+  if (!Array.isArray(value)) return [];
+  const sticks: PlacedDynamite[] = [];
+  for (const entry of value) {
+    if (sticks.length >= DYNAMITE.maxPlaced) break;
+    const tile = parsePlacedTile(entry);
+    if (!tile) continue;
+    const {fuse} = entry as {fuse?: unknown};
+    sticks.push({...tile, fuse: Math.floor(numeric(fuse, DYNAMITE.fuseTicks, 1, DYNAMITE.fuseTicks))});
+  }
+  return sticks;
 }
 
 export function load(state: GameState): void {
@@ -97,16 +131,18 @@ export function load(state: GameState): void {
       ? STARTING.cargoMax + cargoUpgradeLevel * ECONOMY.cargo.step
       : savedCargoMax;
     p.drill = numeric(save.drill, p.drill, LIMITS.drill.min, LIMITS.drill.max);
-    p.dynamite = Math.floor(numeric(save.dynamite, p.dynamite, LIMITS.dynamite.min, LIMITS.dynamite.max));
     p.teleporters = Math.floor(numeric(save.teleporters, p.teleporters, LIMITS.teleporters.min, LIMITS.teleporters.max));
     p.gunOwned = save.gunOwned === true;
     p.bullets = Math.floor(numeric(save.bullets, p.bullets, LIMITS.bullets.min, LIMITS.bullets.max));
     p.visibility = Math.floor(numeric(save.visibility, p.visibility, LIMITS.visibility.min, LIMITS.visibility.max));
-    // Scanners are equipment, so they come back into the bay the run starts with;
-    // `run.resume()` clears the ore around them and leaves them alone.
+    // Scanners and dynamite are equipment, so they come back into the bay the run
+    // starts with; `run.resume()` clears the ore around them and leaves them alone.
     const scanners = Math.floor(numeric(save.scanners, 0, LIMITS.scanners.min, LIMITS.scanners.max));
     if (scanners > 0) p.inventory = addItem(p.inventory, SCANNER_ITEM, scanners) ?? p.inventory;
+    const dynamite = Math.floor(numeric(save.dynamite, 0, LIMITS.dynamite.min, LIMITS.dynamite.max));
+    if (dynamite > 0) p.inventory = addItem(p.inventory, DYNAMITE_ITEM, dynamite) ?? p.inventory;
     state.scannerDevices = parseScannerDevices(save.scannerDevices);
+    state.placedDynamite = parsePlacedDynamite(save.dynamiteSticks);
     // The ship resumes on the tile it parked on, render position included so it
     // appears there instead of easing in from the depot. The clamps are the ones
     // `movementDestination` enforces, so no save can park a miner in a wall.
@@ -139,13 +175,14 @@ export function save(state: GameState): void {
     hullMax: p.hullMax,
     cargoMax: p.cargoMax,
     drill: p.drill,
-    dynamite: p.dynamite,
+    dynamite: countItem(p.inventory, DYNAMITE_ITEM.kind),
     teleporters: p.teleporters,
     gunOwned: p.gunOwned,
     bullets: p.bullets,
     visibility: p.visibility,
     scanners: countItem(p.inventory, SCANNER_ITEM.kind),
     scannerDevices: state.scannerDevices.slice(0, SCANNER_DEVICE.maxPlaced).map(({x, y, timer}) => ({x, y, timer})),
+    dynamiteSticks: state.placedDynamite.slice(0, DYNAMITE.maxPlaced).map(({x, y, fuse}) => ({x, y, fuse})),
     explored: encodeExploration(state.exploredTiles),
     tiles: capTileEntries(tileDiffEntries(state.soloTileDiff)),
     stats: state.stats,

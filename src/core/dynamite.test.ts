@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { ECONOMY } from './balance';
-import { SURFACE_HEIGHT } from '../../shared/constants';
-import { getDynamiteBlastTargets } from './dynamite';
+import { ECONOMY, HULL } from './balance';
+import { SURFACE_HEIGHT, WORLD_W } from '../../shared/constants';
+import { explorationIndex } from '../../shared/exploration-codec';
+import {
+  DYNAMITE,
+  createPlacedDynamite,
+  dynamiteHullDamage,
+  dynamitePlacementRefusal,
+  getDynamiteBlastTargets,
+  isDynamiteFuseLit,
+  tickPlacedDynamite
+} from './dynamite';
 import type { Tile } from './types';
 
 function dirt(): Tile {
@@ -69,5 +78,76 @@ describe('dynamite blast targets', () => {
     expect(surfaceTargets).not.toContainEqual({x: 0, y: SURFACE_HEIGHT + 1});
     expect(deepTargets).not.toContainEqual({x: 5, y: 5});
     expect(bottomTargets).toContainEqual({x: 5, y: 8});
+  });
+});
+
+describe('a planted stick', () => {
+  it('burns for exactly the fuse and then goes off once', () => {
+    const stick = createPlacedDynamite(10, 400);
+    expect(stick.fuse).toBe(DYNAMITE.fuseTicks);
+
+    let fired = 0;
+    for (let step = 0; step < DYNAMITE.fuseTicks; step++) if (tickPlacedDynamite(stick)) fired++;
+
+    expect(fired).toBe(1);
+    expect(stick.fuse).toBe(0);
+  });
+
+  it('blinks its fuse faster the closer it gets to going off', () => {
+    /** Flashes over a 120-step window ending `fuse` steps before the blast. */
+    const flashes = (fuse: number) => {
+      let count = 0;
+      for (let step = 0; step < 120; step++) {
+        if (isDynamiteFuseLit(fuse + step) && !isDynamiteFuseLit(fuse + step + 1)) count++;
+      }
+      return count;
+    };
+
+    expect(flashes(DYNAMITE.fuseTicks - 120)).toBeGreaterThan(0);
+    expect(flashes(DYNAMITE.fuseTicks - 120)).toBeLessThan(flashes(0));
+  });
+});
+
+describe('placing a stick', () => {
+  const explored = new Set([explorationIndex(40, 100)]);
+  const site = {explored, open: true, sticks: []};
+
+  it('accepts explored, cleared ground inside the mine', () => {
+    expect(dynamitePlacementRefusal(40, 100, site)).toBeNull();
+  });
+
+  it.each([
+    ['off the map', -1, 100, {...site}, 'underground'],
+    ['above the mine', 40, 0, {...site}, 'underground'],
+    ['past the far wall', WORLD_W, 100, {...site}, 'underground'],
+    ['under fog', 41, 100, {...site}, 'already explored'],
+    ['inside terrain', 40, 100, {...site, open: false}, 'cleared space'],
+    ['on another stick', 40, 100, {...site, sticks: [createPlacedDynamite(40, 100)]}, 'already burning']
+  ])('refuses %s', (_name, x, y, context, reason) => {
+    expect(dynamitePlacementRefusal(x, y, context)).toContain(reason);
+  });
+
+  it('refuses one more than the mine will hold', () => {
+    const sticks = Array.from({length: DYNAMITE.maxPlaced}, (_, index) => createPlacedDynamite(index, 500));
+
+    expect(dynamitePlacementRefusal(40, 100, {...site, sticks})).toContain(`${DYNAMITE.maxPlaced} sticks`);
+  });
+});
+
+describe('blast damage to a ship', () => {
+  it('hits hardest at the centre, halves toward the rim, and stops at the radius', () => {
+    const radius = ECONOMY.dynamite.radius;
+
+    expect(dynamiteHullDamage(0, 0)).toBe(HULL.dynamiteBlast);
+    expect(dynamiteHullDamage(1, 0)).toBeLessThan(HULL.dynamiteBlast);
+    expect(dynamiteHullDamage(radius, 0)).toBe(Math.round(HULL.dynamiteBlast / 2));
+    expect(dynamiteHullDamage(radius + 1, 0)).toBe(0);
+    // Diagonals are measured as distance, not as a square.
+    expect(dynamiteHullDamage(2, 2)).toBe(0);
+    expect(dynamiteHullDamage(1, 1)).toBeGreaterThan(0);
+  });
+
+  it('leaves a full-strength ship alive even at the centre', () => {
+    expect(HULL.dynamiteBlast).toBeLessThan(100);
   });
 });

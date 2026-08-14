@@ -16,6 +16,7 @@
 import { MAX_WORLD_ROW, SURFACE_HEIGHT, WORLD_W } from '../../shared/constants';
 import { explorationIndex } from '../../shared/exploration-codec';
 import type { InventoryItem } from './inventory';
+import { placementRefusal, type PlacementCopy } from './placement';
 
 export const SCANNER_DEVICE = Object.freeze({
   /** Side of the square it maps, centred on the device. */
@@ -118,24 +119,21 @@ export interface ScannerPlacementContext {
   devices: readonly ScannerDevice[];
 }
 
-/**
- * Why this tile cannot take a device, or `null` when it can. The refusals are
- * phrased as the toast the player sees, so the rule and its explanation cannot
- * drift apart.
- */
+/** How a scanner words each of the shared placement refusals. */
+const SCANNER_PLACEMENT_COPY: PlacementCopy = {
+  full: `Only ${SCANNER_DEVICE.maxPlaced} scanners can be deployed at once.`,
+  offMine: 'Scanners deploy underground, inside the mine.',
+  unexplored: 'Deploy the scanner on a tile you have already explored.',
+  blocked: 'Deploy the scanner in cleared space, not inside terrain.',
+  occupied: 'A scanner is already deployed on that tile.'
+};
+
+/** Why this tile cannot take a device, or `null` when it can. */
 export function scannerPlacementRefusal(x: number, y: number, context: ScannerPlacementContext): string | null {
-  if (context.devices.length >= SCANNER_DEVICE.maxPlaced) {
-    return `Only ${SCANNER_DEVICE.maxPlaced} scanners can be deployed at once.`;
-  }
-  if (x < 0 || x >= WORLD_W || y < SURFACE_HEIGHT || y > MAX_WORLD_ROW) {
-    return 'Scanners deploy underground, inside the mine.';
-  }
-  if (!context.explored.has(explorationIndex(x, y))) {
-    return 'Deploy the scanner on a tile you have already explored.';
-  }
-  if (!context.open) return 'Deploy the scanner in cleared space, not inside terrain.';
-  if (context.devices.some(device => device.x === x && device.y === y)) {
-    return 'A scanner is already deployed on that tile.';
-  }
-  return null;
+  return placementRefusal(x, y, {
+    explored: context.explored,
+    open: context.open,
+    occupied: context.devices.some(device => device.x === x && device.y === y),
+    full: context.devices.length >= SCANNER_DEVICE.maxPlaced
+  }, SCANNER_PLACEMENT_COPY);
 }

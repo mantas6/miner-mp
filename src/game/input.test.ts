@@ -25,7 +25,6 @@ function createActionsSpy() {
     surfaceService: vi.fn(),
     buyUpgrade: vi.fn(),
     buyDynamite: vi.fn(),
-    detonateDynamite: vi.fn(),
     buyTeleporter: vi.fn(),
     buyScanner: vi.fn(),
     buyGun: vi.fn(),
@@ -44,7 +43,8 @@ interface Harness {
   restartGame: ReturnType<typeof vi.fn>;
   closeShopScreen: ReturnType<typeof vi.fn>;
   closeInfoScreen: ReturnType<typeof vi.fn>;
-  cancelScannerPlacement: ReturnType<typeof vi.fn>;
+  cancelPlacement: ReturnType<typeof vi.fn>;
+  toggleDynamitePlacement: ReturnType<typeof vi.fn>;
   toast: ReturnType<typeof vi.fn>;
   tryAutoAudio: ReturnType<typeof vi.fn>;
 }
@@ -64,7 +64,8 @@ function harness(): Harness {
     closeShopScreen: vi.fn(),
     closeInfoScreen: vi.fn(),
     // Nothing armed by default, so Escape stays as unhandled as it ever was.
-    cancelScannerPlacement: vi.fn(() => false),
+    cancelPlacement: vi.fn(() => false),
+    toggleDynamitePlacement: vi.fn(),
     toast: vi.fn(),
     tryAutoAudio: vi.fn()
   };
@@ -155,6 +156,37 @@ describe('phase gating', () => {
     press('Escape');
     expect(h.closeInfoScreen).toHaveBeenCalledOnce();
     expect(h.closeShopScreen).toHaveBeenCalledOnce();
+  });
+});
+
+describe('deployable placement keys', () => {
+  it('arms dynamite on E, once per press, and only during a run', () => {
+    const h = harness();
+
+    press('e');
+    expect(h.toggleDynamitePlacement).not.toHaveBeenCalled();
+
+    uiStore.getState().setPhase('playing');
+    press('e');
+    expect(h.toggleDynamitePlacement).toHaveBeenCalledOnce();
+    // Holding the key down must not toggle it back off again.
+    window.dispatchEvent(new KeyboardEvent('keydown', {key: 'e', repeat: true, bubbles: true, cancelable: true}));
+    expect(h.toggleDynamitePlacement).toHaveBeenCalledOnce();
+  });
+
+  it('lets Escape stand an armed deployable down, and otherwise leaves it alone', () => {
+    const h = harness();
+    uiStore.getState().setPhase('playing');
+
+    const ignored = new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true});
+    window.dispatchEvent(ignored);
+    expect(h.cancelPlacement).toHaveBeenCalledOnce();
+    expect(ignored.defaultPrevented).toBe(false);
+
+    h.cancelPlacement.mockReturnValue(true);
+    const consumed = new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true});
+    window.dispatchEvent(consumed);
+    expect(consumed.defaultPrevented).toBe(true);
   });
 });
 

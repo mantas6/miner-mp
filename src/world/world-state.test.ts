@@ -13,7 +13,7 @@ describe('world state reset', () => {
 
   it('regenerates terrain/entities/view state while preserving player progression and inventory', () => {
     const state = createInitialState();
-    Object.assign(state.player, { fuel: 17, hull: 23, fuelMax: 400, hullMax: 300, cargoMax: 80, drill: 40, dynamite: 9, teleporters: 8, gunOwned: true, bullets: 70, visibility: 20 });
+    Object.assign(state.player, { fuel: 17, hull: 23, fuelMax: 400, hullMax: 300, cargoMax: 80, drill: 40, teleporters: 8, gunOwned: true, bullets: 70, visibility: 20 });
     state.cash = 9999;
     state.stats.maxDepth = 900;
     state.world = [[{type:'air'}]];

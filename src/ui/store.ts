@@ -24,6 +24,7 @@ import { createInitialState } from '../core/state';
 import { formatExpeditionStats, type ExpeditionStatRow } from '../core/stats';
 import { formatSurfaceActionHint } from '../core/surface-hint';
 import { countItem, createInventory, oreStacks, type Inventory, type InventoryItemKind } from '../core/inventory';
+import { DYNAMITE_ITEM } from '../core/dynamite';
 import { SCANNER_ITEM } from '../core/scanner-device';
 import type { Player } from '../core/types';
 import { DEFAULT_INFO_TAB, type InfoTab } from './info-navigation';
@@ -50,7 +51,6 @@ export interface HudSnapshot {
   gunArmed: boolean;
   gunOwned: boolean;
   bullets: number;
-  dynamite: number;
   teleporters: number;
   /** A stored underground return point exists. */
   teleportReturn: boolean;
@@ -82,7 +82,7 @@ export interface HudSnapshot {
 const HUD_KEYS = [
   'cash', 'depthMeters', 'fuel', 'fuelMax', 'hull', 'hullMax', 'cargo', 'cargoMax', 'cargoValue',
   'fuelAlert', 'hullAlert', 'cargoAlert', 'objective', 'extractionHud', 'extractionInfo',
-  'atSurface', 'gameOver', 'gunArmed', 'gunOwned', 'bullets', 'dynamite', 'teleporters',
+  'atSurface', 'gameOver', 'gunArmed', 'gunOwned', 'bullets', 'teleporters',
   'teleportReturn', 'teleportDepthReached', 'teleportUsable',
   'scanner', 'surfaceHint', 'fuelReserveStatus', 'fuelReserveNeeded', 'fuelReserveMargin',
   'depthTarget', 'depthTargetKind', 'depthTargetRemaining', 'announcement'
@@ -91,15 +91,16 @@ const HUD_KEYS = [
 /** The ship stats the shop and the developer panel price and label their rows from. */
 export type PlayerSnapshot = Pick<
   Player,
-  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility' | 'dynamite' | 'teleporters' | 'gunOwned' | 'bullets'
+  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility' | 'teleporters' | 'gunOwned' | 'bullets'
 > & {
-  /** Scanners in the cargo bay, counted out of the inventory for the shop row. */
+  /** Deployables in the cargo bay, counted out of the inventory for the shop rows. */
   scanners: number;
+  dynamite: number;
 };
 
 const PLAYER_KEYS = [
-  'fuel', 'fuelMax', 'hull', 'hullMax', 'cargoMax', 'drill', 'visibility', 'dynamite', 'teleporters', 'gunOwned', 'bullets',
-  'scanners'
+  'fuel', 'fuelMax', 'hull', 'hullMax', 'cargoMax', 'drill', 'visibility', 'teleporters', 'gunOwned', 'bullets',
+  'scanners', 'dynamite'
 ] as const satisfies readonly (keyof PlayerSnapshot)[];
 
 export interface CargoRow {
@@ -189,11 +190,16 @@ export interface UiState {
   /** Queue of transient status lines; the newest one is the one on screen. */
   toasts: ToastMessage[];
   /**
-   * A carried scanner is waiting for the player to pick a tile for it. The game
-   * owns that state — it is the game that consumes the click — so this is only
-   * the paint of it: the armed slot, and nothing else on screen, says so.
+   * The kind of deployable waiting for the player to pick a tile for it, or
+   * `null` when nothing is armed. The game owns that state — it is the game that
+   * consumes the click — so this is only the paint of it: the armed slot, and
+   * nothing else on screen, says so.
+   *
+   * One field rather than a flag per item, because only one press can be
+   * outstanding: arming the dynamite has to stand the scanner down, or a press on
+   * the mine would have two answers.
    */
-  scannerArmed: boolean;
+  armedPlacement: InventoryItemKind | null;
 
   syncHud(next: Readonly<HudSnapshot>): void;
   syncPlayer(next: Readonly<PlayerSnapshot>): void;
@@ -213,7 +219,7 @@ export interface UiState {
   pushToast(message: string): void;
   dismissToast(id: number): void;
   clearToasts(): void;
-  setScannerArmed(armed: boolean): void;
+  setArmedPlacement(kind: InventoryItemKind | null): void;
 }
 
 /** Visible lifetime of one toast, matching the pre-store CSS timing. */
@@ -256,7 +262,6 @@ function initialHud(): HudSnapshot {
     gunArmed: false,
     gunOwned: player.gunOwned,
     bullets: player.bullets,
-    dynamite: player.dynamite,
     teleporters: player.teleporters,
     teleportReturn: false,
     teleportDepthReached: false,
@@ -299,11 +304,11 @@ function initialPlayer(): PlayerSnapshot {
     cargoMax: player.cargoMax,
     drill: player.drill,
     visibility: player.visibility,
-    dynamite: player.dynamite,
     teleporters: player.teleporters,
     gunOwned: player.gunOwned,
     bullets: player.bullets,
-    scanners: countItem(player.inventory, SCANNER_ITEM.kind)
+    scanners: countItem(player.inventory, SCANNER_ITEM.kind),
+    dynamite: countItem(player.inventory, DYNAMITE_ITEM.kind)
   };
 }
 
@@ -352,7 +357,7 @@ export const uiStore = createStore<UiState>((set, get) => ({
   sfxOn: false,
   sfxLabel: 'Enable sound effects',
   toasts: [],
-  scannerArmed: false,
+  armedPlacement: null,
 
   syncHud(next) {
     const current = get().hud;
@@ -456,8 +461,8 @@ export const uiStore = createStore<UiState>((set, get) => ({
     if (get().toasts.length > 0) set({toasts: []});
   },
 
-  setScannerArmed(armed) {
-    if (get().scannerArmed !== armed) set({scannerArmed: armed});
+  setArmedPlacement(kind) {
+    if (get().armedPlacement !== kind) set({armedPlacement: kind});
   }
 }));
 

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { STARTING, ECONOMY } from './balance';
 import { ORES, START_Y, WORLD_W } from '../../shared/constants';
-import { INVENTORY_SLOTS, addOre, countOres, createInventory } from './inventory';
+import { DYNAMITE_ITEM } from './dynamite';
+import { INVENTORY_SLOTS, addItem, addOre, countItem, countOres, createInventory } from './inventory';
 import { createInitialState, respawnPlayer } from './state';
 
 describe('initial game state', () => {
@@ -11,7 +12,7 @@ describe('initial game state', () => {
     expect(state.player.cargoMax).toBe(STARTING.cargoMax);
     expect(state.player.inventory).toHaveLength(INVENTORY_SLOTS);
     expect(countOres(state.player.inventory)).toBe(0);
-    expect(state.player.dynamite).toBe(0);
+    expect(countItem(state.player.inventory, DYNAMITE_ITEM.kind)).toBe(0);
     expect(state.player.teleporters).toBe(0);
     expect(state.player.gunOwned).toBe(false);
     expect(state.player.bullets).toBe(0);
@@ -40,11 +41,11 @@ describe('player respawn', () => {
     player.fuelMax += ECONOMY.tank.step;
     player.cargoMax += ECONOMY.cargo.step;
     player.drill += ECONOMY.drill.step;
-    player.dynamite = 2;
     player.teleporters = 1;
     player.gunOwned = true;
     player.bullets = 9;
-    player.inventory = addOre(createInventory(), ORES[0], player.cargoMax)!;
+    // Ore and equipment share the bay, and only the ore is lost with the ship.
+    player.inventory = addItem(addOre(createInventory(), ORES[0], player.cargoMax)!, DYNAMITE_ITEM, 2)!;
 
     respawnPlayer(player);
 
@@ -56,11 +57,11 @@ describe('player respawn', () => {
       hull: player.hullMax,
       cargoMax: STARTING.cargoMax + ECONOMY.cargo.step,
       drill: STARTING.drill + ECONOMY.drill.step,
-      dynamite: 2,
       teleporters: 1,
       gunOwned: true,
       bullets: 9
     });
+    expect(countItem(player.inventory, DYNAMITE_ITEM.kind)).toBe(2);
     expect(countOres(player.inventory)).toBe(0);
     expect(player.inventory).toHaveLength(INVENTORY_SLOTS);
   });

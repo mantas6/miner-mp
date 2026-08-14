@@ -8,6 +8,7 @@
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ORES } from '../../shared/constants';
+import { DYNAMITE_ITEM } from '../core/dynamite';
 import { addItem, addOre, createInventory } from '../core/inventory';
 import { SCANNER_ITEM } from '../core/scanner-device';
 import { setUiCommands, uiCommands } from './commands';
@@ -22,7 +23,7 @@ const DOM_CONTRACT = [
   'fuel', 'fuelLabel', 'fuelReturn', 'fuelSurplus', 'hull', 'hullLabel', 'cargo', 'cargoLabel', 'extractionStatus',
   // The inventory panel ships expanded, so its slot list is part of the contract.
   'inventory', 'inventoryToggleBtn', 'inventorySlots',
-  'surfaceHint', 'sell', 'shopBtn', 'dynamiteBtn', 'teleporterBtn', 'gunBtn', 'infoBtn',
+  'surfaceHint', 'sell', 'shopBtn', 'teleporterBtn', 'gunBtn', 'infoBtn',
   // Both overlays keep their dialog shell mounted; their contents do not.
   'shop-screen', 'info-screen',
   'fuel-warning', 'toast'
@@ -535,21 +536,21 @@ describe('store-driven HUD', () => {
   });
 
   it('hides surface actions underground and dispatches the ones it shows', () => {
-    const detonateDynamite = vi.fn();
-    setUiCommands({detonateDynamite});
+    const useTeleporter = vi.fn();
+    setUiCommands({useTeleporter});
     render(<MinerApp />);
 
-    patchHud({atSurface: false, dynamite: 2});
+    patchHud({atSurface: false, teleporters: 2, teleportDepthReached: true, teleportUsable: true});
 
     const sell = document.getElementById('sell') as HTMLButtonElement;
-    const dynamite = document.getElementById('dynamiteBtn') as HTMLButtonElement;
+    const teleporter = document.getElementById('teleporterBtn') as HTMLButtonElement;
     expect(sell.hidden).toBe(true);
     expect(document.getElementById('shopBtn')?.hasAttribute('hidden')).toBe(true);
-    expect(dynamite.hidden).toBe(false);
-    expect(dynamite.textContent).toBe('Detonate (E) · x2');
+    expect(teleporter.hidden).toBe(false);
+    expect(teleporter.textContent).toBe('Teleport (T) · x2');
 
-    fireEvent.click(dynamite);
-    expect(detonateDynamite).toHaveBeenCalledOnce();
+    fireEvent.click(teleporter);
+    expect(useTeleporter).toHaveBeenCalledOnce();
   });
 
   it('prompts for the depot key only while a press would do something', () => {
@@ -834,31 +835,38 @@ describe('inventory panel', () => {
   });
 
   /**
-   * The scanner is deployed from the slot that holds it, so that slot — and only
-   * that slot — is a control. Ore has nowhere to be placed and stays inert text.
+   * Deployables are placed from the slot that holds them, so those slots — and
+   * only those — are controls. Ore has nowhere to be put down and stays text.
    */
-  it('makes only the scanner slot a deployment control', () => {
+  it('makes only the deployable slots placement controls', () => {
     const toggleScannerPlacement = vi.fn();
-    setUiCommands({toggleScannerPlacement});
+    const toggleDynamitePlacement = vi.fn();
+    setUiCommands({toggleScannerPlacement, toggleDynamitePlacement});
     render(<MinerApp />);
 
     act(() => {
       uiStore.getState().setInventorySlots(buildInventorySlots(
-        addItem(addOre(createInventory(), ORES[0], 99)!, SCANNER_ITEM, 2)!
+        addItem(addItem(addOre(createInventory(), ORES[0], 99)!, SCANNER_ITEM, 2)!, DYNAMITE_ITEM, 3)!
       ));
     });
 
-    expect(document.querySelectorAll('#inventorySlots button')).toHaveLength(1);
-    const slot = document.getElementById('scannerSlotBtn')!;
-    expect(slot.textContent).toBe('Scanner×2');
-    expect(slot.getAttribute('aria-pressed')).toBe('false');
+    expect(document.querySelectorAll('#inventorySlots button')).toHaveLength(2);
+    const scanner = document.getElementById('scannerSlotBtn')!;
+    const dynamite = document.getElementById('dynamiteSlotBtn')!;
+    expect(scanner.textContent).toBe('Scanner×2');
+    expect(dynamite.textContent).toBe('Dynamite×3');
+    expect(dynamite.getAttribute('aria-pressed')).toBe('false');
 
-    act(() => { fireEvent.click(slot); });
+    act(() => { fireEvent.click(scanner); });
     expect(toggleScannerPlacement).toHaveBeenCalledOnce();
+    act(() => { fireEvent.click(dynamite); });
+    expect(toggleDynamitePlacement).toHaveBeenCalledOnce();
 
-    // The armed state is the game's to report; the slot only paints it.
-    act(() => { uiStore.getState().setScannerArmed(true); });
-    expect(document.getElementById('scannerSlotBtn')?.getAttribute('aria-pressed')).toBe('true');
+    // The armed state is the game's to report; the slot only paints it, and only
+    // ever one of them, because the mine has just the one press to give.
+    act(() => { uiStore.getState().setArmedPlacement(DYNAMITE_ITEM.kind); });
+    expect(document.getElementById('dynamiteSlotBtn')?.getAttribute('aria-pressed')).toBe('true');
+    expect(document.getElementById('scannerSlotBtn')?.getAttribute('aria-pressed')).toBe('false');
   });
 });
 

@@ -82,7 +82,6 @@ export function createRun(deps: GameRunDeps): GameRun {
         cargoMax: STARTING.cargoMax,
         drill: STARTING.drill,
         visibility: STARTING.visibility,
-        dynamite: STARTING.dynamite,
         teleporters: STARTING.teleporters,
         gunOwned: STARTING.gunOwned,
         bullets: STARTING.bullets,
@@ -90,6 +89,7 @@ export function createRun(deps: GameRunDeps): GameRun {
         inventory: createInventory()
       });
       state.scannerDevices = [];
+      state.placedDynamite = [];
       state.exploredTiles.clear();
       state.stats = createDefaultStats();
       saveProgress();

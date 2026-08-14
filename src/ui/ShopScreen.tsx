@@ -20,7 +20,7 @@ import '../styles/icons.css';
 /** Keyboard hints, per shelf. Markup, so they stay out of the data catalog. */
 const HINTS: Record<string, ReactNode> = {
   gun: <>Control: <kbd>G</kbd>, then a direction · <kbd>G</kbd>/<kbd>Esc</kbd> cancels</>,
-  dynamite: <>Control: <kbd>E</kbd> or Detonate</>,
+  dynamite: <>Control: <kbd>E</kbd> or its inventory slot, then a mine tile · <kbd>Esc</kbd> cancels</>,
   teleporter: <>Control: <kbd>T</kbd> or Teleport / Return</>,
   scanner: <>Control: inventory slot, then a mine tile · <kbd>Esc</kbd> cancels</>,
   bullets: <>Arm with <kbd>G</kbd>, then a direction key</>

@@ -26,7 +26,7 @@ describe('player-data reset', () => {
     Object.assign(state.player, {
       x: 8, y: 80, drawX: 7, drawY: 79, facing: -1, bob: 1, drillAnim: 2,
       drillDx: 1, drillDy: 0, fuel: 2, fuelMax: 400, hull: 3, hullMax: 300,
-      cargoMax: 80, drill: 40, dynamite: 9, teleporters: 8, gunOwned: true,
+      cargoMax: 80, drill: 40, teleporters: 8, gunOwned: true,
       bullets: 70, visibility: 20, inventory: addOre(createInventory(), ORES[3], 80)!
     });
     state.cash = 9999;

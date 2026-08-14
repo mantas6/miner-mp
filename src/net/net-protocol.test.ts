@@ -193,7 +193,7 @@ describe('builders', () => {
       x: 1, y: 2, drawX: 1.1, drawY: 2.2, facing: -1, bob: 0.5,
       drillAnim: 0.2, drillDx: 1, drillDy: 0,
       // vitals that must NOT leak into the message:
-      fuel: 100, fuelMax: 100, hull: 80, hullMax: 100, cargoMax: 10, drill: 3, dynamite: 0, teleporters: 0, inventory: []
+      fuel: 100, fuelMax: 100, hull: 80, hullMax: 100, cargoMax: 10, drill: 3, teleporters: 0, inventory: []
     };
     const msg = playerStateFrom(player);
     expect(msg).toEqual({
@@ -209,7 +209,7 @@ describe('builders', () => {
     const player = {
       x: 1, y: 2, drawX: 1.1, drawY: 2.2, facing: -1, bob: 0.5,
       drillAnim: 0.2, drillDx: 1, drillDy: 0,
-      fuel: 0, fuelMax: 0, hull: 0, hullMax: 0, cargoMax: 0, drill: 0, dynamite: 0, teleporters: 0, inventory: []
+      fuel: 0, fuelMax: 0, hull: 0, hullMax: 0, cargoMax: 0, drill: 0, teleporters: 0, inventory: []
     };
     const remote = remotePlayerFrom(playerStateFrom(player));
     expect(remote).toEqual({

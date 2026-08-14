@@ -40,7 +40,6 @@ function harness(): Harness {
     fuelMax: STARTING.fuelMax + ECONOMY.tank.step,
     cargoMax: STARTING.cargoMax + ECONOMY.cargo.step,
     drill: STARTING.drill + 1,
-    dynamite: 2,
     teleporters: 1,
     gunOwned: true,
     bullets: 4,
@@ -155,7 +154,6 @@ describe('restarting after a death', () => {
       y: START_Y,
       fuel: STARTING.fuelMax + ECONOMY.tank.step,
       hull: STARTING.hullMax,
-      dynamite: 2,
       teleporters: 1,
       gunOwned: true,
       bullets: 4,
@@ -288,7 +286,6 @@ describe('a full player reset', () => {
       cargoMax: STARTING.cargoMax,
       drill: STARTING.drill,
       visibility: STARTING.visibility,
-      dynamite: STARTING.dynamite,
       teleporters: STARTING.teleporters,
       gunOwned: STARTING.gunOwned,
       bullets: STARTING.bullets

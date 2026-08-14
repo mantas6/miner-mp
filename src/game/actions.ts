@@ -1,5 +1,9 @@
-// Player-initiated actions: selling, depot services, shop purchases, dynamite,
-// the gun, and the teleporter.
+// Player-initiated actions: selling, depot services, shop purchases, the gun,
+// and the teleporter.
+//
+// The two deployables — scanners and dynamite — are only *bought* here; arming
+// and placing them lives with the devices themselves, in `scanner-devices.ts`
+// and `dynamite-sticks.ts`.
 //
 // Each one is a small transaction — validate, charge, mutate, toast, play a
 // sound — so they are grouped here rather than scattered through the loop code.
@@ -7,8 +11,8 @@
 import { TILE, WORLD_W } from '../../shared/constants';
 import { ECONOMY, LIMITS } from '../core/balance';
 import { cargoValue, partialFill, refuelCost, repairCost } from '../core/economy';
-import { getDynamiteBlastTargets } from '../core/dynamite';
-import { addItem, isFullFor, removeOres } from '../core/inventory';
+import { DYNAMITE_ITEM } from '../core/dynamite';
+import { addItem, isFullFor, removeOres, type InventoryItem } from '../core/inventory';
 import { SCANNER_ITEM } from '../core/scanner-device';
 import {
   MIN_TELEPORT_DEPTH_METERS,
@@ -46,8 +50,8 @@ export interface GameActions {
   /** Enter/Space at the depot: sell, else refuel, else repair. */
   surfaceService(): void;
   buyUpgrade(id: PlayerUpgradeId, cost: number, message: string): void;
+  /** Buy one stick of dynamite into the cargo bay; refused when it has no room. */
   buyDynamite(): void;
-  detonateDynamite(): void;
   buyTeleporter(): void;
   /** Buy one scanner device into the cargo bay; refused when it has no room. */
   buyScanner(): void;
@@ -71,7 +75,6 @@ export interface GameActionsDeps {
   revealAtPlayer(): void;
   atSurface(): boolean;
   spawnDust(x: number, y: number, color?: string, amount?: number): void;
-  spawnExplosion(x: number, y: number): void;
   spawnShotTrail(path: {x: number; y: number}[]): void;
   /** Release held keys so a modal action does not resume movement. */
   clearKeys(): void;
@@ -168,46 +171,43 @@ export function createActions(deps: GameActionsDeps): GameActions {
     toast('Cargo empty, hull and fuel are full.');
   }
 
-  function buyDynamite(): void {
-    spend(ECONOMY.dynamite.price, () => state.player.dynamite++, 'Dynamite loaded. Press E or Detonate underground.');
-  }
-
-  function detonateDynamite(): void {
-    const p = state.player;
-    if (state.gameOver) return;
-    if (atSurface()) return toast('Dynamite can only be detonated underground.');
-    if (p.dynamite <= 0) { audio.alarm(); return toast('No dynamite. Buy a charge at the surface depot.'); }
-    grid.ensureRow(p.y + ECONOMY.dynamite.radius);
-    const targets = getDynamiteBlastTargets(grid.world, p.x, p.y, ECONOMY.dynamite.radius);
-    p.dynamite--;
-    for (const {x, y} of targets) grid.set(x, y, {type: 'air'});
-    enemies.wakeEnemiesNear(p.x, p.y);
-    deps.spawnExplosion(p.x, p.y);
-    audio.explosion();
-    saveProgress();
-    toast(targets.length
-      ? `Dynamite cleared ${targets.length} blocks. Ore and artifacts were destroyed; no rewards granted.`
-      : 'Dynamite detonated, but no destructible blocks were in range.');
-  }
-
   function buyTeleporter(): void {
     spend(ECONOMY.teleporter.price, () => state.player.teleporters++, `Teleporter loaded. Press T or Teleport at ${MIN_TELEPORT_DEPTH_METERS} m or deeper.`);
   }
 
   /**
-   * Unlike dynamite and teleporters, a scanner takes a cargo slot, so the bay can
-   * refuse the sale. Checked before the money changes hands, and only at the
-   * depot, so the "come back to the surface" refusal still comes first.
+   * Deployable equipment — scanners and dynamite — takes a cargo slot, so unlike
+   * a teleporter the bay itself can refuse the sale. Checked before the money
+   * changes hands, and only at the depot, so the "come back to the surface"
+   * refusal still comes first.
    */
-  function buyScanner(): void {
-    if (atSurface() && isFullFor(state.player.inventory, SCANNER_ITEM.kind)) {
+  function buyDeployable(item: InventoryItem, price: number, fullMessage: string, loadedMessage: string): void {
+    if (atSurface() && isFullFor(state.player.inventory, item.kind)) {
       audio.alarm();
-      return toast('Cargo bay is full. Sell the cargo before buying a scanner.');
+      return toast(fullMessage);
     }
-    spend(ECONOMY.scanner.price, () => {
-      const loaded = addItem(state.player.inventory, SCANNER_ITEM);
+    spend(price, () => {
+      const loaded = addItem(state.player.inventory, item);
       if (loaded) state.player.inventory = loaded;
-    }, 'Scanner loaded. Press its inventory slot, then a mapped tile, to deploy it.');
+    }, loadedMessage);
+  }
+
+  function buyDynamite(): void {
+    buyDeployable(
+      DYNAMITE_ITEM,
+      ECONOMY.dynamite.price,
+      'Cargo bay is full. Sell the cargo before buying dynamite.',
+      'Dynamite loaded. Press E or its inventory slot, then a mine tile, to plant it.'
+    );
+  }
+
+  function buyScanner(): void {
+    buyDeployable(
+      SCANNER_ITEM,
+      ECONOMY.scanner.price,
+      'Cargo bay is full. Sell the cargo before buying a scanner.',
+      'Scanner loaded. Press its inventory slot, then a mapped tile, to deploy it.'
+    );
   }
 
   function buyGun(): void {
@@ -310,7 +310,6 @@ export function createActions(deps: GameActionsDeps): GameActions {
     surfaceService,
     buyUpgrade,
     buyDynamite,
-    detonateDynamite,
     buyTeleporter,
     buyScanner,
     buyGun,

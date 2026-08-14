@@ -23,6 +23,8 @@ export function resetWorldTerrain(state: GameState): void {
   // were surveying is coming back; the ones still in the bay are player property
   // and stay there.
   state.scannerDevices = [];
+  // A stick burning in a tunnel that no longer exists has nothing left to blow up.
+  state.placedDynamite = [];
   state.particles = [];
   state.extractionPhase = 'none';
   state.teleportEffect = null;

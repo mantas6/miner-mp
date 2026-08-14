@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TILE } from '../../shared/constants';
 import { explorationIndex } from '../../shared/exploration-codec';
+import { DYNAMITE } from '../core/dynamite';
 import type { Direction } from '../core/types';
 
 const mocks = vi.hoisted(() => {
@@ -366,6 +367,58 @@ describe('terrain cache lifecycle', () => {
     renderer.draw();
     expect(mocks.mainContext.translate.mock.calls.some(at)).toBe(true);
     expect(mocks.mainContext.arc.mock.calls.length).toBe(sweeping - 1);
+  });
+
+  /**
+   * A planted stick has one thing to say — how close it is to going off — and it
+   * says it by flashing, so what is checked is that the spark is drawn on some
+   * steps and not on others as the fuse burns down.
+   */
+  it('flashes the spark on a burning fuse and holds it lit under reduced motion', () => {
+    const stick = {x: 12, y: 24, fuse: DYNAMITE.fuseTicks};
+    const state = {
+      world: [], camX: 10, camY: 20, tick: 4, gameOver: false, reducedMotion: false,
+      exploredTiles: new Set([explorationIndex(12, 24)]), teleportEffect: null,
+      particles: [], enemies: [], remotePlayers: [], placedDynamite: [stick],
+      player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+    const renderer = createRenderer({state, get: () => ({type:'air'}), rand: () => 0});
+    const at = (call: unknown[]) => call[0] === TILE*2.5 && call[1] === TILE*4.5;
+    /** Whether this frame drew the spark: the only arc the stick ever paints. */
+    const sparked = () => {
+      vi.clearAllMocks();
+      renderer.draw();
+      expect(mocks.mainContext.translate.mock.calls.some(at)).toBe(true);
+      return mocks.mainContext.arc.mock.calls.length > 0;
+    };
+
+    const frames = new Set<boolean>();
+    for (let step = 0; step < 120; step++) {
+      stick.fuse = DYNAMITE.fuseTicks - step;
+      frames.add(sparked());
+    }
+    expect(frames).toEqual(new Set([true, false]));
+
+    // Reduced motion trades the flash for a spark that simply stays lit.
+    state.reducedMotion = true;
+    for (let step = 0; step < 20; step++) {
+      stick.fuse = DYNAMITE.fuseTicks - step;
+      expect(sparked()).toBe(true);
+    }
+  });
+
+  it('leaves a stick under fog unpainted, like the scanners out there', () => {
+    const state = {
+      world: [], camX: 10, camY: 20, tick: 4, gameOver: false, reducedMotion: false,
+      exploredTiles: new Set<number>(), teleportEffect: null,
+      particles: [], enemies: [], remotePlayers: [], placedDynamite: [{x: 12, y: 24, fuse: 30}],
+      player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+    const renderer = createRenderer({state, get: () => ({type:'air'}), rand: () => 0});
+
+    renderer.draw();
+
+    expect(mocks.mainContext.translate.mock.calls.some(call => call[0] === TILE*2.5 && call[1] === TILE*4.5)).toBe(false);
   });
 
   it('leaves a scanner under fog unpainted, like everything else out there', () => {

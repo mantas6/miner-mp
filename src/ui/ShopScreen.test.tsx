@@ -154,8 +154,8 @@ describe('shop dialog', () => {
       store.syncPlayer({...store.player, dynamite: 4, scanners: 2, gunOwned: true, bullets: LIMITS.bullets.max});
     });
 
+    // Both deployable tallies come out of the cargo bay, not off the ship.
     expect(row('dynamite').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 4');
-    // The scanner tally comes out of the cargo bay, not off the ship.
     expect(row('scanner').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 2');
     expect(document.querySelector('[data-shop-gun] button')?.textContent).toBe('Installed');
     expect(document.querySelector<HTMLButtonElement>('[data-shop-item="bullets"] button')?.disabled).toBe(true);

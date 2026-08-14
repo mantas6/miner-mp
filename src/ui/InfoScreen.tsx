@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react';
 import { ECONOMY } from '../core/balance';
 import { buildDangerGuideRows } from '../core/danger';
+import { DYNAMITE } from '../core/dynamite';
 import { PROSPECTING_TIP, buildArtifactGuideRows, buildProspectingGuideRows } from '../core/prospecting';
 import { SCANNER_DEVICE } from '../core/scanner-device';
 import { GAME_RESET_CONFIRMATION } from '../persistence-reset';
@@ -237,7 +238,7 @@ function ControlsPanel() {
         <li><kbd>Shift</kbd> + movement<span>Sprint through open space at increased fuel cost; open-space descent is free and drilling stays normal. Slamming a boosted ship into rock, a ceiling, or a wall buckles the hull.</span></li>
         <li><kbd>Enter</kbd><span>Sell cargo at the surface depot</span></li>
         <li><kbd>Space</kbd><span>Repair or refuel at the surface</span></li>
-        <li><kbd>E</kbd> / <kbd>Detonate</kbd><span>Use one carried dynamite underground; blasts yield no cargo, and destroyed artifacts grant no cash</span></li>
+        <li><kbd>E</kbd> / <strong>Dynamite slot</strong> then a mine tile<span>Plant one carried stick on explored, cleared ground. It blows a {ECONOMY.dynamite.radius}-tile radius after a {DYNAMITE.fuseSeconds}-second fuse: blasts yield no cargo, destroyed artifacts grant no cash, and a ship still inside the radius takes hull damage. Escape cancels.</span></li>
         <li><kbd>T</kbd> / <kbd>Teleport</kbd><span>At 100 m or deeper, use one carried teleporter to visit the depot, then press T again to return to the same underground location</span></li>
         <li><kbd>G</kbd> / <kbd>Arm Gun</kbd> then a direction key<span>Fire one bullet up to {ECONOMY.gun.range} tiles; press G or Escape to cancel aiming. Shots destroy the first eligible block or enemy, but valuables give no cargo or artifact cash.</span></li>
         <li><strong>Scanner slot</strong> then a mine tile<span>Deploy one carried scanner onto explored, cleared ground; it maps its {SCANNER_DEVICE.size}×{SCANNER_DEVICE.size} surroundings, one fogged tile every {SCANNER_DEVICE.intervalSeconds} seconds, then goes inert. Escape cancels.</span></li>

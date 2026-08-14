@@ -57,7 +57,7 @@ test.describe('gameplay', () => {
   test('leaving the surface swaps the depot actions for the underground ones', async ({page}) => {
     await startSoloRun(page);
     await expect(page.locator('#shopBtn')).toBeVisible();
-    await expect(page.locator('#dynamiteBtn')).toBeHidden();
+    await expect(page.locator('#teleporterBtn')).toBeHidden();
     // The live region is at the depot until the ship is actually below it.
     await expect(page.locator('#game-status')).toHaveText('At the surface depot.');
 
@@ -67,7 +67,7 @@ test.describe('gameplay', () => {
 
     await expect(page.locator('#shopBtn')).toBeHidden();
     await expect(page.locator('#sell')).toBeHidden();
-    await expect(page.locator('#dynamiteBtn')).toBeVisible();
+    await expect(page.locator('#teleporterBtn')).toBeVisible();
     await expect(page.locator('#game-status')).toHaveText('In the mine.');
     // The depth tracker counts down to the next landmark rather than up from zero.
     await expect(page.locator('#depthTarget')).toContainText('m to');
@@ -155,6 +155,52 @@ test.describe('gameplay', () => {
     await expect(page.locator('#inventoryToggleBtn')).toContainText('0/5');
     // The keyboard is back on the mine, so play resumes without a second click.
     await expect(canvas).toBeFocused();
+  });
+
+  /**
+   * Dynamite is placed the same way, but it is the fuse that makes it worth an
+   * end-to-end test: the stick has to leave the bay on the press, sit on the tile
+   * for five real seconds, and then go off on its own with nothing else touching
+   * it. The same hollowed-out, surveyed mine as the scanner test above.
+   */
+  test('a planted stick leaves the bay, burns its fuse, and blows on its own', async ({page}) => {
+    await page.addInitScript(() => {
+      const worldWidth = 90;
+      const tiles = [];
+      for (let y = 5; y <= 20; y++) {
+        for (let x = 0; x < worldWidth; x++) tiles.push({x, y, tile: {type: 'air'}});
+      }
+      localStorage.setItem('moleload-progress-v1', JSON.stringify({
+        version: 7,
+        dynamite: 2,
+        explored: `${5 * worldWidth}-${21 * worldWidth - 1}`,
+        tiles
+      }));
+    });
+    await startSoloRun(page);
+
+    // E is the shortcut for the slot, and Escape stands it down again.
+    const slot = page.locator('#dynamiteSlotBtn');
+    await expect(slot).toHaveText('Dynamite×2');
+    await page.keyboard.press('e');
+    await expect(slot).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('Escape');
+    await expect(slot).toHaveAttribute('aria-pressed', 'false');
+
+    await slot.click();
+    await expect(slot).toHaveAttribute('aria-pressed', 'true');
+
+    const canvas = page.locator('#game');
+    const box = (await canvas.boundingBox())!;
+    await canvas.click({position: {x: box.width * 0.55, y: box.height * 0.5}});
+
+    await expect(page.locator('#toast')).toContainText('Fuse lit');
+    // The stick left the bay with the press; the other one is still aboard.
+    await expect(slot).toHaveText('Dynamite×1');
+    await expect(canvas).toBeFocused();
+
+    // Nothing else happens in between: the fuse runs on the simulation's clock.
+    await expect(page.locator('#toast')).toContainText('Dynamite', {timeout: 15_000});
   });
 
   test('the canvas keeps the keyboard while mining', async ({page}) => {

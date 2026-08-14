@@ -20,7 +20,6 @@ export interface UiCommands {
   buyScanner(): void;
   buyGun(): void;
   buyBullets(): void;
-  detonateDynamite(): void;
   useTeleporter(): void;
   toggleGunArmed(): void;
   /**
@@ -28,6 +27,11 @@ export interface UiCommands {
    * press that follows on the mine is what actually deploys it.
    */
   toggleScannerPlacement(): void;
+  /**
+   * The same gesture for a stick of dynamite, which the press on the mine plants
+   * and lights. Arming one stands the other down: the mine takes one press.
+   */
+  toggleDynamitePlacement(): void;
   openShop(): void;
   closeShop(): void;
   openInfo(): void;
@@ -76,10 +80,10 @@ function noopCommands(): UiCommands {
     buyScanner: noop,
     buyGun: noop,
     buyBullets: noop,
-    detonateDynamite: noop,
     useTeleporter: noop,
     toggleGunArmed: noop,
     toggleScannerPlacement: noop,
+    toggleDynamitePlacement: noop,
     openShop: noop,
     closeShop: noop,
     openInfo: noop,

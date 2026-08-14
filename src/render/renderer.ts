@@ -4,6 +4,7 @@ import { getPartnerIndicator } from './partner-indicator';
 import { getVisibleTileRange } from '../world/visible-tile-range';
 import { isTileExplored } from '../../shared/exploration-codec';
 import { getEnemyType } from '../core/enemy-types';
+import { isDynamiteFuseLit, type PlacedDynamite } from '../core/dynamite';
 import { isScannerDone, type ScannerDevice } from '../core/scanner-device';
 import { TERRAIN_CHUNK_TILES, terrainCacheScale, terrainChunkCoordinate, terrainChunkKeyForTile } from './terrain-cache-policy';
 import type {
@@ -43,6 +44,8 @@ export interface RendererState {
   exploredTiles?: Set<number>;
   /** Scanner devices left in the mine. Absent or empty means none are deployed. */
   scannerDevices?: readonly ScannerDevice[];
+  /** Dynamite still burning in the mine. Absent or empty means none is planted. */
+  placedDynamite?: readonly PlacedDynamite[];
   teleportEffect?: TeleportEffect | null;
   input?: {sprintDirection?: Direction | null};
 }
@@ -229,6 +232,7 @@ export function createRenderer({ state, canvas, ctx, get, rand }: RendererDeps):
     drawTerrainBlendOverlay(camY);
     drawSurface(camX, camY);
     drawScannerDevices(camX, camY);
+    drawPlacedDynamite(camX, camY);
     drawEnemies(camX, camY);
     for (const pt of state.particles) {
       if (!isExplored(Math.floor(pt.x), Math.floor(pt.y))) continue;
@@ -427,6 +431,42 @@ export function createRenderer({ state, canvas, ctx, get, rand }: RendererDeps):
     ctx.fillStyle = done ? '#2a333c' : '#fff6bd';
     if (!done) { ctx.shadowColor = glow; ctx.shadowBlur = 10; }
     ctx.beginPath(); ctx.arc(0, -TILE*.14, TILE*.05, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  /**
+   * Planted dynamite, as a red stick with a spark on it. The spark blinks faster
+   * the closer the fuse is to the end, which is the only warning the canvas gives
+   * — and the only one it needs, because the answer is always "move".
+   */
+  function drawPlacedDynamite(camX: number, camY: number) {
+    const sticks = state.placedDynamite;
+    if (!sticks?.length) return;
+    for (const stick of sticks) {
+      if (!isExplored(stick.x, stick.y)) continue;
+      const sx = (stick.x - camX) * TILE, sy = (stick.y - camY) * TILE;
+      if (sx < -TILE || sy < -TILE || sx > viewport.worldWidthPx + TILE || sy > viewport.worldHeightPx + TILE) continue;
+      drawDynamiteStick(sx, sy, stick.fuse);
+    }
+  }
+  function drawDynamiteStick(sx: number, sy: number, fuse: number) {
+    // Reduced motion keeps the spark lit rather than flashing it.
+    const lit = state.reducedMotion || isDynamiteFuseLit(fuse);
+    ctx.save();
+    ctx.translate(sx + TILE*.5, sy + TILE*.5);
+    // The charge itself, standing on the tile.
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(-TILE*.13, -TILE*.06, TILE*.26, TILE*.38);
+    ctx.fillStyle = '#f0d9a0';
+    ctx.fillRect(-TILE*.13, TILE*.06, TILE*.26, TILE*.06);
+    // Fuse wire, and the spark travelling down it.
+    ctx.strokeStyle = '#d7c9a8'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, -TILE*.06); ctx.lineTo(TILE*.10, -TILE*.24); ctx.stroke();
+    if (lit) {
+      ctx.fillStyle = '#fff2b0';
+      ctx.shadowColor = '#ff9f1c';
+      ctx.shadowBlur = 12;
+      ctx.beginPath(); ctx.arc(TILE*.10, -TILE*.24, TILE*.08, 0, Math.PI*2); ctx.fill();
+    }
     ctx.restore();
   }
   function drawEnemies(camX: number, camY: number) {

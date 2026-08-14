@@ -3,6 +3,7 @@ import { SAVE_KEY, SAVE_VERSION, load, numeric, save } from './persistence';
 import { SURFACE_SPAWN_X, createInitialState } from './core/state';
 import { ECONOMY, LIMITS } from './core/balance';
 import { cargoCost } from './core/economy';
+import { DYNAMITE, DYNAMITE_ITEM, createPlacedDynamite } from './core/dynamite';
 import { addItem, countItem, countOres } from './core/inventory';
 import { SCANNER_DEVICE, SCANNER_ITEM, createScannerDevice } from './core/scanner-device';
 import { claimArtifact } from './core/artifacts';
@@ -100,7 +101,6 @@ describe('cargo balance persistence', () => {
 
 describe('carried item persistence', () => {
   it.each([
-    ['dynamite charges', { dynamite: 3 }],
     ['teleporters', { teleporters: 2 }],
     ['gun ownership and ammunition', { gunOwned: true, bullets: 17 }]
   ])('round-trips %s through save and load', (_name, owned) => {
@@ -117,7 +117,6 @@ describe('carried item persistence', () => {
   });
 
   it.each([
-    ['dynamite charges', { dynamite: 0 }],
     ['teleporters', { teleporters: 0 }],
     ['gun ownership and ammunition', { gunOwned: false, bullets: 0 }]
   ])('gives a legacy save no %s', (_name, empty) => {
@@ -189,6 +188,69 @@ describe('scanner persistence', () => {
     expect(countItem(state.player.inventory, SCANNER_ITEM.kind)).toBe(LIMITS.scanners.max);
     expect(state.scannerDevices).toHaveLength(SCANNER_DEVICE.maxPlaced);
     expect(state.scannerDevices.every(device => device.timer === SCANNER_DEVICE.intervalTicks)).toBe(true);
+  });
+});
+
+describe('dynamite persistence', () => {
+  it('round-trips carried sticks into the cargo bay and the fuses still burning', () => {
+    const stored = stubStorage();
+    const state = createInitialState();
+    state.player.inventory = addItem(state.player.inventory, DYNAMITE_ITEM, 3)!;
+    state.placedDynamite = [createPlacedDynamite(12, 640), {x: 44, y: 700, fuse: 42}];
+
+    save(state);
+
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({
+      version: SAVE_VERSION,
+      dynamite: 3,
+      dynamiteSticks: [{x: 12, y: 640, fuse: DYNAMITE.fuseTicks}, {x: 44, y: 700, fuse: 42}]
+    });
+
+    const restored = createInitialState();
+    load(restored);
+    expect(countItem(restored.player.inventory, DYNAMITE_ITEM.kind)).toBe(3);
+    expect(restored.placedDynamite).toEqual(state.placedDynamite);
+  });
+
+  it('re-stacks the count a pre-inventory save kept on the ship', () => {
+    stubStorage({version: 6, dynamite: 2});
+    const state = createInitialState();
+
+    load(state);
+
+    expect(countItem(state.player.inventory, DYNAMITE_ITEM.kind)).toBe(2);
+    expect(state.placedDynamite).toEqual([]);
+  });
+
+  it.each([
+    ['a stick outside the side walls', [{x: -3, y: 400}]],
+    ['a stick above the mine', [{x: 10, y: 0}]],
+    ['a nonsense stick', [{x: 'deep', y: null}]],
+    ['something that is not a stick at all', ['boom']],
+    ['a stick list that is not a list', 'boom']
+  ])('drops %s on load', (_name, dynamiteSticks) => {
+    stubStorage({version: SAVE_VERSION, dynamiteSticks});
+    const state = createInitialState();
+
+    load(state);
+
+    expect(state.placedDynamite).toEqual([]);
+  });
+
+  it('clamps a hand-edited save to what the game could have planted and carried', () => {
+    stubStorage({
+      version: SAVE_VERSION,
+      dynamite: 10_000,
+      dynamiteSticks: Array.from({length: DYNAMITE.maxPlaced + 5}, (_, index) => ({x: index, y: 400, fuse: 0}))
+    });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(countItem(state.player.inventory, DYNAMITE_ITEM.kind)).toBe(LIMITS.dynamite.max);
+    expect(state.placedDynamite).toHaveLength(DYNAMITE.maxPlaced);
+    // A zero fuse would go off on the first step of the resumed run.
+    expect(state.placedDynamite.every(stick => stick.fuse === 1)).toBe(true);
   });
 });
 

@@ -8,6 +8,7 @@
 // shop row paints.
 
 import { ECONOMY, LIMITS } from './balance';
+import { DYNAMITE } from './dynamite';
 import { cargoCost, drillCost, hullCost, refuelCost, repairCost, tankCost, visibilityCost } from './economy';
 import { SCANNER_DEVICE } from './scanner-device';
 import { MIN_TELEPORT_DEPTH_METERS } from './teleporter';
@@ -16,13 +17,14 @@ import { PLAYER_UPGRADES, getPlayerUpgradeProgress, type PlayerUpgradeId } from 
 
 export type ShopPlayer = Pick<
   Player,
-  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility' | 'dynamite' | 'teleporters' | 'gunOwned' | 'bullets'
+  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility' | 'teleporters' | 'gunOwned' | 'bullets'
 > & {
   /**
-   * Scanners in the cargo bay. Counted out of the inventory rather than kept on
-   * the ship, because a scanner occupies a slot the way ore does.
+   * Deployable equipment in the cargo bay. Counted out of the inventory rather
+   * than kept on the ship, because each occupies a slot the way ore does.
    */
   scanners: number;
+  dynamite: number;
 };
 
 export interface ShopRowState {
@@ -114,7 +116,7 @@ export const SHOP_ITEMS = [
     id: 'dynamite',
     icon: 'dynamite',
     title: 'Dynamite',
-    copy: 'Clears nearby terrain underground. Destroys ore and artifacts without rewards.',
+    copy: `Plant it on cleared ground from the inventory panel and stand clear: it blows a ${ECONOMY.dynamite.radius}-tile radius after a ${DYNAMITE.fuseSeconds}-second fuse, destroying ore and artifacts without rewards — and damaging any ship still inside the blast.`,
     price: ECONOMY.dynamite.price
   },
   {
@@ -135,7 +137,7 @@ export const SHOP_ITEMS = [
 
 export type ShopItemId = typeof SHOP_ITEMS[number]['id'];
 
-/** What "Carried" counts for each consumable; scanners live in the cargo bay. */
+/** What "Carried" counts for each consumable; the deployables live in the bay. */
 const ITEM_COUNTS: Record<ShopItemId, (player: ShopPlayer) => number> = {
   dynamite: player => player.dynamite,
   teleporter: player => player.teleporters,

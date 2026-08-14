@@ -320,7 +320,9 @@ zooming the camera with the wheel or a trackpad.
 | Zoom the camera (0.5x–2x, remembered) | — | Wheel scroll or trackpad pinch over the mine |
 | Sell cargo at the depot | `Enter` | Sell button |
 | Depot service | `Space` (sells cargo first, then refuels, then repairs) | Shop & Equipment -> Refuel / Repair |
-| Detonate dynamite | `E` | Detonate button |
+| Plant dynamite (5 s fuse) | `E`, then press a mine tile | Dynamite inventory slot, then a mine tile |
+| Deploy a scanner | — | Scanner inventory slot, then a mine tile |
+| Cancel a placement | `Escape` | The armed slot again |
 | Teleporter round trip (100 m+) | `T` | Teleport button |
 | Fire gun | `G` then a direction key | Arm Gun button, then a direction key |
 | Cancel gun aim | `G` or `Escape` | Arm Gun button again |
@@ -366,6 +368,10 @@ zooming the camera with the wheel or a trackpad.
   prices rise with each level.
 - Artifacts pay out immediately in cash and never take a cargo slot; dynamite
   and gunfire destroy valuables without any payout.
+- Dynamite and scanners are carried in the cargo bay and placed from their own
+  inventory slot onto explored, cleared ground. A planted stick blows a 2-tile
+  radius five seconds later — long enough to get clear, and close enough to
+  wreck a ship that did not.
 - Low fuel warnings appear below 25%; return to the surface quickly.
 - The HUD reserve readout forecasts the climb home (safe/caution/urgent), the
   scanner reads the tile the drill is aimed at, and the depth readout counts

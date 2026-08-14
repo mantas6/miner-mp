@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ORES } from '../../shared/constants';
 import { ECONOMY, LIMITS, STARTING } from '../core/balance';
 import { cargoCost, drillCost, partialFill, refuelCost, repairCost } from '../core/economy';
+import { DYNAMITE_ITEM } from '../core/dynamite';
 import { INVENTORY_SLOTS, addOre, countItem, countOres, createInventory } from '../core/inventory';
 import { SCANNER_ITEM } from '../core/scanner-device';
 import { createInitialState } from '../core/state';
@@ -52,7 +53,6 @@ function harness(): Harness {
     revealAtPlayer: context.revealAtPlayer,
     atSurface: () => context.flags.atSurface,
     spawnDust: vi.fn(),
-    spawnExplosion: vi.fn(),
     spawnShotTrail: vi.fn(),
     clearKeys: vi.fn()
   });
@@ -253,30 +253,35 @@ describe('buying equipment', () => {
     h.actions.buyDynamite();
     h.actions.buyTeleporter();
 
-    expect(h.state.player).toMatchObject({dynamite: 1, teleporters: 1});
+    // Dynamite is cargo now; only the teleporter is still counted on the ship.
+    expect(countItem(h.state.player.inventory, DYNAMITE_ITEM.kind)).toBe(1);
+    expect(h.state.player).toMatchObject({teleporters: 1});
     expect(h.state.cash).toBe(0);
   });
 
-  it('loads a scanner into a cargo slot, and refuses one the bay cannot hold', () => {
+  it.each([
+    ['scanner', SCANNER_ITEM.kind, ECONOMY.scanner.price, (actions: GameActions) => actions.buyScanner()],
+    ['dynamite', DYNAMITE_ITEM.kind, ECONOMY.dynamite.price, (actions: GameActions) => actions.buyDynamite()]
+  ])('loads a %s into a cargo slot, and refuses one the bay cannot hold', (_name, kind, price, buy) => {
     const h = harness();
-    h.state.cash = ECONOMY.scanner.price * 2;
+    h.state.cash = price * 2;
 
-    h.actions.buyScanner();
-    h.actions.buyScanner();
+    buy(h.actions);
+    buy(h.actions);
 
     // Two units of one kind share a slot, so the bay is one slot down, not two.
-    expect(countItem(h.state.player.inventory, SCANNER_ITEM.kind)).toBe(2);
+    expect(countItem(h.state.player.inventory, kind)).toBe(2);
     expect(h.state.cash).toBe(0);
 
-    // Fill every slot with other kinds: there is now nowhere for a scanner to go.
-    h.state.cash = ECONOMY.scanner.price;
+    // Fill every slot with other kinds: there is now nowhere for it to go.
+    h.state.cash = price;
     h.state.player.inventory = ORES.slice(0, INVENTORY_SLOTS)
       .reduce<ReturnType<typeof createInventory>>((bay, ore) => addOre(bay, ore, 99)!, createInventory());
 
-    h.actions.buyScanner();
+    buy(h.actions);
 
-    expect(countItem(h.state.player.inventory, SCANNER_ITEM.kind)).toBe(0);
-    expect(h.state.cash).toBe(ECONOMY.scanner.price);
+    expect(countItem(h.state.player.inventory, kind)).toBe(0);
+    expect(h.state.cash).toBe(price);
     expect(h.toasts.saw('Cargo bay is full')).toBe(true);
     expect(h.audio.played).toContain('alarm');
   });

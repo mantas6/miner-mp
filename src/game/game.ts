@@ -35,6 +35,7 @@ import { createRenderer, type Renderer } from '../render/renderer';
 import { FUEL, ECONOMY } from '../core/balance';
 import { cargoCost, tankCost, hullCost, drillCost, visibilityCost, cargoValue } from '../core/economy';
 import { countItem, countOres, type Inventory } from '../core/inventory';
+import { DYNAMITE_ITEM } from '../core/dynamite';
 import { SCANNER_ITEM } from '../core/scanner-device';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from '../core/hud-alerts';
 import { formatExpeditionObjective } from '../core/objective';
@@ -64,6 +65,7 @@ import { createSession, type GameSession } from './session';
 import { createEnemySim, type EnemySim } from './enemies';
 import { createActions, type GameActions } from './actions';
 import { createScannerDevices, type ScannerDeviceSim } from './scanner-devices';
+import { createDynamiteSticks, type DynamiteSim } from './dynamite-sticks';
 import { createMovement } from './move';
 import { createReadouts, type HudReadouts } from './readouts';
 import { createRun, type GameRun } from './run';
@@ -105,6 +107,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   let gameInput: GameInput;
   let readouts: HudReadouts;
   let scanners: ScannerDeviceSim;
+  let dynamite: DynamiteSim;
 
   state.stats = createDefaultStats();
 
@@ -249,10 +252,12 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       buyDynamite: () => actions.buyDynamite(),
       buyTeleporter: () => actions.buyTeleporter(),
       buyScanner: () => actions.buyScanner(),
-      toggleScannerPlacement: () => scanners.toggleArmed(),
+      // Only one press on the mine is available, so arming either deployable
+      // stands the other one down.
+      toggleScannerPlacement: () => { dynamite.disarm(); scanners.toggleArmed(); },
+      toggleDynamitePlacement: () => { scanners.disarm(); dynamite.toggleArmed(); },
       buyGun: () => actions.buyGun(),
       buyBullets: () => actions.buyBullets(),
-      detonateDynamite: () => actions.detonateDynamite(),
       useTeleporter: () => actions.useTeleporter(),
       toggleGunArmed: () => actions.setGunArmed(!state.input.gunArmed),
       openShop: openShopScreen,
@@ -311,12 +316,19 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       }
     });
   }
+  /** Stand down whichever deployable is waiting for a press on the mine. */
+  function disarmPlacements(): boolean {
+    // Both, and not short-circuited: only one can be armed, but a disarm must
+    // never depend on which.
+    const hadScanner = scanners.disarm();
+    return dynamite.disarm() || hadScanner;
+  }
   function openShopScreen(){
     if (!atSurface()) return toast('Shop is at the surface depot.');
     state.input.gunArmed = false;
     // An overlay covers the mine, so a pointer armed for placement has nothing
     // left to aim at.
-    scanners.disarm();
+    disarmPlacements();
     syncPlayerSnapshot();
     uiStore.getState().setActiveOverlay('shop');
   }
@@ -324,7 +336,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     uiStore.getState().closeOverlay('shop');
   }
   function openInfoScreen(){
-    scanners.disarm();
+    disarmPlacements();
     syncPlayerSnapshot();
     syncInfoDetails();
     uiStore.getState().setActiveOverlay('info');
@@ -348,11 +360,11 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     playerScratch.cargoMax = p.cargoMax;
     playerScratch.drill = p.drill;
     playerScratch.visibility = p.visibility;
-    playerScratch.dynamite = p.dynamite;
     playerScratch.teleporters = p.teleporters;
     playerScratch.gunOwned = p.gunOwned;
     playerScratch.bullets = p.bullets;
     playerScratch.scanners = countItem(p.inventory, SCANNER_ITEM.kind);
+    playerScratch.dynamite = countItem(p.inventory, DYNAMITE_ITEM.kind);
     uiStore.getState().syncPlayer(playerScratch);
   }
   function syncInfoDetails(){
@@ -437,7 +449,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     hudScratch.gunArmed = state.input.gunArmed;
     hudScratch.gunOwned = p.gunOwned;
     hudScratch.bullets = p.bullets;
-    hudScratch.dynamite = p.dynamite;
     hudScratch.teleporters = p.teleporters;
     hudScratch.teleportReturn = state.teleportReturnPosition !== null;
     hudScratch.teleportDepthReached = canTeleportToSurface(p.y);
@@ -483,8 +494,10 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     if (!state.gameOver && session.paired && state.connected) session.sendPlayerState();
     if (isPlaying()) {
       // Deployed hardware keeps working while the ship is elsewhere, but only
-      // while the run is live: a paused splash must not burn survey time.
+      // while the run is live: a paused splash must not burn survey time, and a
+      // fuse must not burn down behind a title card.
       scanners.tick();
+      dynamite.tick();
       if (session.isGuestEnemyReplica()) {
         enemies.updatePresentation();
         enemies.updateBites();
@@ -667,7 +680,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       revealAtPlayer,
       atSurface,
       spawnDust,
-      spawnExplosion,
       spawnShotTrail,
       clearKeys: () => gameInput.clearKeys()
     });
@@ -679,7 +691,18 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       toast,
       saveProgress,
       revealTiles,
-      setArmedUi: value => uiStore.getState().setScannerArmed(value)
+      setArmedUi: value => uiStore.getState().setArmedPlacement(value ? SCANNER_ITEM.kind : null)
+    });
+    dynamite = createDynamiteSticks({
+      state,
+      grid,
+      audio,
+      toast,
+      saveProgress,
+      wakeEnemiesNear: (x, y) => enemies.wakeEnemiesNear(x, y),
+      spawnExplosion,
+      damagePlayer: run.damage,
+      setArmedUi: value => uiStore.getState().setArmedPlacement(value ? DYNAMITE_ITEM.kind : null)
     });
     gameInput = createInput({
       state,
@@ -689,14 +712,15 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       restartGame: run.restartGame,
       closeShopScreen,
       closeInfoScreen,
-      cancelScannerPlacement: () => scanners.disarm(),
+      cancelPlacement: disarmPlacements,
+      toggleDynamitePlacement: () => { scanners.disarm(); dynamite.toggleArmed(); },
       toast,
       tryAutoAudio
     });
   }
 
   /**
-   * A press on the mine while a scanner is armed drops it on the tile pressed.
+   * A press on the mine while a deployable is armed puts it on the tile pressed.
    * Registered on the canvas rather than the window so the HUD's own buttons —
    * which sit over the same pixels — keep their clicks.
    *
@@ -705,7 +729,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
    * canvas after a click on the inventory slot took it away.
    */
   function handleMinePointerDown(event: PointerEvent){
-    if (!scanners.armed || !isPlaying()) return;
+    if (!isPlaying() || !(scanners.armed || dynamite.armed)) return;
     const rect = surface.canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
     // The canvas may be laid out at a different size than it is drawn at, so the
@@ -716,7 +740,8 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       state.camX,
       state.camY
     );
-    scanners.placeAt(point.x, point.y);
+    if (scanners.armed) scanners.placeAt(point.x, point.y);
+    else dynamite.placeAt(point.x, point.y);
   }
 
   /** Hand the runtime back to the mount that owns it. */
@@ -739,7 +764,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     uiStore.getState().clearToasts();
     // An armed slot outlives its runtime otherwise, and there is nothing left to
     // take the press it is waiting for.
-    uiStore.getState().setScannerArmed(false);
+    uiStore.getState().setArmedPlacement(null);
   }
 
   // --- Boot ------------------------------------------------------------------

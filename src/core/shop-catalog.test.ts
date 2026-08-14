@@ -14,9 +14,9 @@ import {
 } from './shop-catalog';
 import { createInitialState } from './state';
 
-/** A shop-shaped ship: the run's player plus the bay-counted scanner tally. */
+/** A shop-shaped ship: the run's player plus the bay-counted deployable tallies. */
 function ship(overrides: Partial<ShopPlayer> = {}): ShopPlayer {
-  return {...createInitialState().player, scanners: 0, ...overrides};
+  return {...createInitialState().player, scanners: 0, dynamite: 0, ...overrides};
 }
 
 function everyRow(player: ShopPlayer, cash: number, atSurface: boolean) {
@@ -88,7 +88,7 @@ describe('shop rows', () => {
     expect(serviceRowState('fuel', player, 0, true).status).toBe('No cash');
     expect(itemRowState('dynamite', player, 5, true).current).toBe('Carried: 3');
     expect(itemRowState('teleporter', player, 5, true).current).toBe('Carried: 1');
-    // The scanner is the one consumable counted out of the cargo bay.
+    // Scanners and dynamite are the deployables, counted out of the cargo bay.
     expect(itemRowState('scanner', player, 5, true).current).toBe('Carried: 2');
     expect(itemRowState('scanner', player, ECONOMY.scanner.price, true)).toMatchObject({
       buttonLabel: `Buy one · $${ECONOMY.scanner.price}`,

@@ -4,12 +4,17 @@ import { uiCommands } from './commands';
 import { useUiStore } from './store';
 import styles from './ActionBar.module.css';
 
-/** The surface/underground action buttons. Keyboard equivalents live in input.ts. */
+/**
+ * The surface/underground action buttons. Keyboard equivalents live in input.ts.
+ *
+ * Deployables are not here: a scanner and a stick of dynamite are placed from the
+ * inventory slot that holds them, so the bar carries only what acts on the ship
+ * itself.
+ */
 export function ActionBar() {
   const atSurface = useUiStore(state => state.hud.atSurface);
   const gameOver = useUiStore(state => state.hud.gameOver);
   const cargoValue = useUiStore(state => state.hud.cargoValue);
-  const dynamite = useUiStore(state => state.hud.dynamite);
   const teleporters = useUiStore(state => state.hud.teleporters);
   const teleportReturn = useUiStore(state => state.hud.teleportReturn);
   const teleportDepthReached = useUiStore(state => state.hud.teleportDepthReached);
@@ -36,12 +41,6 @@ export function ActionBar() {
         hidden={!atSurface}
         onClick={event => { event.stopPropagation(); uiCommands.openShop(); }}
       >Shop &amp; Equipment</button>
-      <button
-        id="dynamiteBtn"
-        hidden={atSurface}
-        disabled={dynamite <= 0 || gameOver}
-        onClick={() => uiCommands.detonateDynamite()}
-      >Detonate (E) · x{dynamite}</button>
       <button
         id="teleporterBtn"
         hidden={atSurface && !teleportReturn}
