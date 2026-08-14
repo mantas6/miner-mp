@@ -9,6 +9,18 @@
 .hud > * {
   pointer-events: auto;
 }
+/* A layout column, not a surface: the gaps between its cards stay transparent to
+   pointers so the mine underneath keeps receiving them. */
+.middle {
+  pointer-events: none;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  align-content: start;
+}
+.middle > * {
+  pointer-events: auto;
+}
 .top {
   composes: glass from "./common.module.css";
   justify-self: start;

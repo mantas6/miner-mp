@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ORES } from '../../shared/constants';
 import { STARTING } from './balance';
+import { addOre, createInventory, oreKind, removeItem } from './inventory';
 import { createInitialState } from './state';
 import {
   isAtOrAboveCapacity,
@@ -14,6 +15,13 @@ function alertState(overrides = {}) {
   const state = createInitialState();
   Object.assign(state.player, overrides);
   return state;
+}
+
+/** One stack holding `count` units of the same ore. */
+function oreLoad(count: number) {
+  let inventory = createInventory();
+  for (let i = 0; i < count; i++) inventory = addOre(inventory, ORES[0], count)!;
+  return inventory;
 }
 
 describe('HUD alert flashing thresholds', () => {
@@ -39,19 +47,19 @@ describe('HUD alert flashing thresholds', () => {
 
   it('flashes the cargo bar only when cargo is full', () => {
     const state = alertState({ cargoMax: 10 });
-    state.player.cargo = Array.from({ length: 9 }, () => ORES[0]);
+    state.player.inventory = oreLoad(9);
     expect(shouldCargoBarFlash(state)).toBe(false);
 
-    state.player.cargo.push(ORES[1]);
+    state.player.inventory = addOre(state.player.inventory, ORES[1], 10)!;
     expect(shouldCargoBarFlash(state)).toBe(true);
 
-    state.player.cargo.pop();
+    state.player.inventory = removeItem(state.player.inventory, oreKind(ORES[1].name));
     expect(shouldCargoBarFlash(state)).toBe(false);
   });
 
   it('keeps cargo flashing state tied to capacity, upgrades, game-over, and invalid max values', () => {
     const state = alertState({ cargoMax: 10 });
-    state.player.cargo = Array.from({ length: 10 }, () => ORES[0]);
+    state.player.inventory = oreLoad(10);
     expect(shouldCargoBarFlash(state)).toBe(true);
 
     state.player.cargoMax = 20;

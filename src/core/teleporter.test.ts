@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { START_Y, WORLD_W } from '../../shared/constants';
+import { ORES, START_Y, WORLD_W } from '../../shared/constants';
+import { addOre, createInventory } from './inventory';
 import { createInitialState } from './state';
 import {
   MIN_TELEPORT_DEPTH_METERS,
@@ -34,10 +35,10 @@ describe('surface teleporter', () => {
   it('consumes one charge and moves to the safe spawn without free services', () => {
     const state = createInitialState();
     const player = state.player;
-    const cargo = [{name: 'Gold', value: 70}];
+    const inventory = addOre(createInventory(), ORES[3], 10)!;
     state.cash = 90;
     state.extractionPhase = 'returning';
-    Object.assign(player, {x: 4, y: 120, drawX: 4, drawY: 120, fuel: 17, hull: 42, cargo, teleporters: 2});
+    Object.assign(player, {x: 4, y: 120, drawX: 4, drawY: 120, fuel: 17, hull: 42, inventory, teleporters: 2});
 
     expect(teleportPlayerToSurface(player)).toEqual({x: 4, y: 120});
     expect(player).toMatchObject({
@@ -49,7 +50,7 @@ describe('surface teleporter', () => {
       hull: 42,
       teleporters: 1
     });
-    expect(player.cargo).toBe(cargo);
+    expect(player.inventory).toBe(inventory);
     expect(state.cash).toBe(90);
     expect(state.extractionPhase).toBe('returning');
   });

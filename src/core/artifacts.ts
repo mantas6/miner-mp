@@ -2,7 +2,7 @@ import type { Artifact, GameStats, Player } from './types';
 
 interface ArtifactClaimState {
   cash: number;
-  player: Pick<Player, 'cargo'>;
+  player: Pick<Player, 'inventory'>;
   stats: Pick<GameStats, 'totalCashEarned' | 'artifactsFound'>;
 }
 

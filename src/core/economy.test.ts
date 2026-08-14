@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { refuelCost, repairCost, cargoCost, tankCost, hullCost, drillCost, visibilityCost, partialFill, cargoValue, cheapestUpgrade, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
 import { STARTING, ECONOMY } from './balance';
+import { ORES } from '../../shared/constants';
+import { addOre, createInventory } from './inventory';
 
 describe('cost functions', () => {
   it.each([
@@ -37,8 +39,14 @@ describe('cost functions', () => {
 describe('cargo and upgrade feedback', () => {
   const baselinePlayer = { cargoMax: STARTING.cargoMax, fuelMax: STARTING.fuelMax, hullMax: STARTING.hullMax, drill: STARTING.drill };
 
-  it('sums current cargo value from ore entries', () => {
-    expect(cargoValue([{ value: 6 }, { value: 12 }, { value: 6 }])).toBe(24);
+  it('sums current cargo value from the inventory ore stacks', () => {
+    let inventory = createInventory();
+    inventory = addOre(inventory, ORES[0], 99)!;
+    inventory = addOre(inventory, ORES[0], 99)!;
+    inventory = addOre(inventory, ORES[1], 99)!;
+
+    expect(cargoValue(inventory)).toBe(ORES[0].value * 2 + ORES[1].value);
+    expect(cargoValue(createInventory())).toBe(0);
   });
 
   it('selects the cheapest next ship upgrade', () => {

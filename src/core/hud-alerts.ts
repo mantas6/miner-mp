@@ -1,4 +1,5 @@
 import { FUEL, HULL } from './balance';
+import { countOres } from './inventory';
 import type { GameState } from './types';
 
 /**
@@ -38,5 +39,5 @@ export function shouldHullBarFlash(state: GameState): boolean {
 
 /** @param {import('./state').GameState} state @returns {boolean} */
 export function shouldCargoBarFlash(state: GameState): boolean {
-  return !state.gameOver && isAtOrAboveCapacity(state.player.cargo.length, state.player.cargoMax);
+  return !state.gameOver && isAtOrAboveCapacity(countOres(state.player.inventory), state.player.cargoMax);
 }

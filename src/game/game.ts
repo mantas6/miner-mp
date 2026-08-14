@@ -34,6 +34,7 @@ import { createDefaultStats, createInitialState } from '../core/state';
 import { createRenderer, type Renderer } from '../render/renderer';
 import { FUEL, ECONOMY } from '../core/balance';
 import { cargoCost, tankCost, hullCost, drillCost, visibilityCost, cargoValue } from '../core/economy';
+import { countOres, type Inventory } from '../core/inventory';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from '../core/hud-alerts';
 import { formatExpeditionObjective } from '../core/objective';
 import { load, save } from '../persistence';
@@ -44,7 +45,7 @@ import { formatSurfaceActionHint } from '../core/surface-hint';
 import { rand } from '../world/world';
 import { resetUiCommands, setUiCommands } from '../ui/commands';
 import { RELAY_PROBLEM_STATUS } from '../ui/connection-status';
-import { buildCargoRows, pushToast as toast, uiStore, type HudSnapshot, type PlayerSnapshot } from '../ui/store';
+import { buildCargoRows, buildInventorySlots, pushToast as toast, uiStore, type HudSnapshot, type PlayerSnapshot } from '../ui/store';
 
 import { formatExtractionPresentation } from '../core/extraction-presentation';
 import { interpolateRemotePlayers } from '../net/net-protocol';
@@ -154,8 +155,8 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     saveProgress();
   }
 
-  function cargoUsed(){ return state.player.cargo.length; }
-  function currentCargoValue(){ return cargoValue(state.player.cargo); }
+  function cargoUsed(){ return countOres(state.player.inventory); }
+  function currentCargoValue(){ return cargoValue(state.player.inventory); }
   function atSurface(){ return state.player.y < SURFACE_HEIGHT; }
 
   function spawnDust(x: number, y: number, color='#9d6a42', amount=10){
@@ -330,8 +331,20 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   }
   function syncInfoDetails(){
     const store = uiStore.getState();
-    store.setCargoRows(buildCargoRows(state.player.cargo));
+    store.setCargoRows(buildCargoRows(state.player.inventory));
     store.setStatRows(formatExpeditionStats(state.stats));
+  }
+  /**
+   * The inventory panel is on screen the whole run, so this runs every frame.
+   * The bay is immutable — every load, sale and respawn hands back a new array —
+   * so one reference comparison is enough to skip rebuilding the slot views, and
+   * a ship that mined nothing this frame allocates nothing.
+   */
+  let syncedInventory: Inventory | null = null;
+  function syncInventory(){
+    if (state.player.inventory === syncedInventory) return;
+    syncedInventory = state.player.inventory;
+    uiStore.getState().setInventorySlots(buildInventorySlots(syncedInventory));
   }
   function updateAnimation(){
     const p = state.player;
@@ -430,6 +443,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
 
     const store = uiStore.getState();
     store.syncHud(hudScratch);
+    syncInventory();
     if (store.activeOverlay !== null) syncPlayerSnapshot();
     if (store.activeOverlay === 'info') syncInfoDetails();
 

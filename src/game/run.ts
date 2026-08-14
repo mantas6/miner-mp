@@ -11,6 +11,7 @@
 import { START_Y } from '../../shared/constants';
 import { STARTING } from '../core/balance';
 import { cancelExtraction } from '../core/extraction-phase';
+import { createInventory } from '../core/inventory';
 import { createDefaultStats, placeAtSurfaceSpawn, respawnPlayer } from '../core/state';
 import { applyTileEntries, tileDiffEntries } from '../world/tile-diff';
 import { ensureWorldRow } from '../world/world';
@@ -124,7 +125,7 @@ export function createRun(deps: GameRunDeps): GameRun {
     if (ensureWorldRow(state.world, p.y)?.[p.x]?.type !== 'air') placeAtSurfaceSpawn(p);
     // Fuel, hull and cargo are never saved, so a resumed run is a fresh ship
     // parked where the last one left off.
-    Object.assign(p, {fuel: p.fuelMax, hull: p.hullMax, cargo: []});
+    Object.assign(p, {fuel: p.fuelMax, hull: p.hullMax, inventory: createInventory()});
     deps.revealAtPlayer();
     centreCameraOnShip();
     state.gameOver = false;

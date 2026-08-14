@@ -7,9 +7,11 @@
 
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ORES } from '../../shared/constants';
+import { addOre, createInventory } from '../core/inventory';
 import { setUiCommands, uiCommands } from './commands';
 import { RELAY_PROBLEM_STATUS } from './connection-status';
-import { uiStore, type HudSnapshot } from './store';
+import { buildInventorySlots, uiStore, type HudSnapshot } from './store';
 import { MinerApp } from './ui';
 
 /** Ids the game runtime, the keyboard layer, and the tests address directly. */
@@ -17,6 +19,8 @@ const DOM_CONTRACT = [
   'shell', 'game-panel', 'game', 'game-instructions', 'game-status',
   'hud', 'musicBtn', 'sfxBtn', 'connectionStatus', 'cash', 'depth', 'depthTarget', 'scanner',
   'fuel', 'fuelLabel', 'fuelReturn', 'fuelSurplus', 'hull', 'hullLabel', 'cargo', 'cargoLabel', 'extractionStatus',
+  // The inventory panel ships expanded, so its slot list is part of the contract.
+  'inventory', 'inventoryToggleBtn', 'inventorySlots',
   'surfaceHint', 'sell', 'shopBtn', 'dynamiteBtn', 'teleporterBtn', 'gunBtn', 'infoBtn',
   // Both overlays keep their dialog shell mounted; their contents do not.
   'shop-screen', 'info-screen',
@@ -772,6 +776,60 @@ describe('store-driven HUD', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('inventory panel', () => {
+  function slotText(): string[] {
+    return [...document.querySelectorAll('#inventorySlots > li')].map(slot => slot.textContent ?? '');
+  }
+
+  it('shows every slot of the bay, empty ones included', () => {
+    render(<MinerApp />);
+
+    expect(slotText()).toEqual(['Empty', 'Empty', 'Empty', 'Empty', 'Empty']);
+    expect(document.getElementById('inventoryToggleBtn')?.textContent).toContain('0/5');
+  });
+
+  it('paints the stacks the game synced, one row per kind', () => {
+    render(<MinerApp />);
+
+    act(() => {
+      uiStore.getState().setInventorySlots(buildInventorySlots(
+        addOre(addOre(addOre(createInventory(), ORES[0], 99)!, ORES[0], 99)!, ORES[1], 99)!
+      ));
+    });
+
+    expect(slotText()).toEqual(['Coal×2', 'Copper×1', 'Empty', 'Empty', 'Empty']);
+    expect(document.getElementById('inventoryToggleBtn')?.textContent).toContain('2/5');
+  });
+
+  /** Collapsing leaves the header and takes the list out of the document. */
+  it('collapses to its header and back', () => {
+    render(<MinerApp />);
+    const toggle = document.getElementById('inventoryToggleBtn') as HTMLButtonElement;
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.getAttribute('aria-controls')).toBe('inventorySlots');
+
+    act(() => { fireEvent.click(toggle); });
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    // Nothing to point at while it is shut.
+    expect(toggle.hasAttribute('aria-controls')).toBe(false);
+    expect(document.getElementById('inventorySlots')).toBeNull();
+    expect(document.getElementById('inventory')).not.toBeNull();
+
+    act(() => { fireEvent.click(toggle); });
+    expect(document.getElementById('inventorySlots')).not.toBeNull();
+  });
+
+  it('stands down once the ship is lost', () => {
+    render(<MinerApp />);
+
+    patchHud({gameOver: true});
+
+    expect((document.getElementById('inventory') as HTMLElement).hidden).toBe(true);
   });
 });
 

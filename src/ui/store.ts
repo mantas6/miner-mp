@@ -23,7 +23,8 @@ import { formatShipStatusAnnouncement } from '../core/ship-status';
 import { createInitialState } from '../core/state';
 import { formatExpeditionStats, type ExpeditionStatRow } from '../core/stats';
 import { formatSurfaceActionHint } from '../core/surface-hint';
-import type { Ore, Player } from '../core/types';
+import { createInventory, oreStacks, type Inventory, type InventoryItemKind } from '../core/inventory';
+import type { Player } from '../core/types';
 import { DEFAULT_INFO_TAB, type InfoTab } from './info-navigation';
 
 /** Everything the HUD paints every frame. Primitives only, so diffing is cheap. */
@@ -103,6 +104,20 @@ export interface CargoRow {
   value: number;
 }
 
+/**
+ * One slot of the HUD inventory panel, empty ones included: the panel shows the
+ * bay's shape, so a free slot is as much a fact as a full one.
+ */
+export interface InventorySlotView {
+  /** Slot position, and the stable React key an empty slot has nothing else for. */
+  index: number;
+  /** What is stacked here, or `null` while the slot is free. */
+  kind: InventoryItemKind | null;
+  label: string;
+  color: string;
+  count: number;
+}
+
 export interface ToastMessage {
   id: number;
   message: string;
@@ -149,6 +164,8 @@ export type ActiveOverlay = OverlayId | null;
 export interface UiState {
   hud: HudSnapshot;
   player: PlayerSnapshot;
+  /** The cargo bay's slots, painted by the always-visible inventory panel. */
+  inventorySlots: InventorySlotView[];
   cargoRows: CargoRow[];
   statRows: ExpeditionStatRow[];
   activeOverlay: ActiveOverlay;
@@ -169,6 +186,7 @@ export interface UiState {
 
   syncHud(next: Readonly<HudSnapshot>): void;
   syncPlayer(next: Readonly<PlayerSnapshot>): void;
+  setInventorySlots(slots: InventorySlotView[]): void;
   setCargoRows(rows: CargoRow[]): void;
   setStatRows(rows: ExpeditionStatRow[]): void;
   /** Show one overlay, replacing whatever was up; `null` closes them all. */
@@ -276,6 +294,14 @@ function initialPlayer(): PlayerSnapshot {
   };
 }
 
+function sameInventorySlots(a: InventorySlotView[], b: InventorySlotView[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((slot, index) => {
+    const other = b[index];
+    return slot.kind === other.kind && slot.count === other.count && slot.label === other.label && slot.color === other.color;
+  });
+}
+
 function sameCargoRows(a: CargoRow[], b: CargoRow[]): boolean {
   if (a.length !== b.length) return false;
   return a.every((row, index) => {
@@ -298,6 +324,7 @@ let toastTimer: ReturnType<typeof setTimeout> | undefined;
 export const uiStore = createStore<UiState>((set, get) => ({
   hud: initialHud(),
   player: initialPlayer(),
+  inventorySlots: buildInventorySlots(createInventory()),
   cargoRows: [],
   statRows: formatExpeditionStats({}),
   activeOverlay: null,
@@ -323,6 +350,11 @@ export const uiStore = createStore<UiState>((set, get) => ({
     const current = get().player;
     if (PLAYER_KEYS.every(key => current[key] === next[key])) return;
     set({player: {...next}});
+  },
+
+  setInventorySlots(slots) {
+    if (sameInventorySlots(get().inventorySlots, slots)) return;
+    set({inventorySlots: slots});
   },
 
   setCargoRows(rows) {
@@ -416,19 +448,21 @@ export function useUiStore<T>(selector: (state: UiState) => T): T {
   return useStore(uiStore, selector);
 }
 
-/** Build the cargo-bay rows shown in the Info overlay from the raw cargo list. */
-export function buildCargoRows(cargo: readonly Ore[]): CargoRow[] {
-  const rows = new Map<string, CargoRow>();
-  for (const ore of cargo) {
-    const row = rows.get(ore.name);
-    if (row) {
-      row.count++;
-      row.value += ore.value;
-      continue;
-    }
-    rows.set(ore.name, {name: ore.name, color: ore.color, count: 1, value: ore.value});
-  }
-  return [...rows.values()];
+/** Paint every slot of the bay, empty ones included, for the HUD panel. */
+export function buildInventorySlots(inventory: Inventory): InventorySlotView[] {
+  return inventory.map((slot, index) => slot
+    ? {index, kind: slot.kind, label: slot.item.label, color: slot.item.color, count: slot.count}
+    : {index, kind: null, label: '', color: '', count: 0});
+}
+
+/** Build the cargo-bay rows shown in the Info overlay from the ore stacks. */
+export function buildCargoRows(inventory: Inventory): CargoRow[] {
+  return oreStacks(inventory).map(stack => ({
+    name: stack.item.label,
+    color: stack.item.color,
+    count: stack.count,
+    value: stack.item.value * stack.count
+  }));
 }
 
 /** Push a transient status line. The game's `toast()` entry point. */

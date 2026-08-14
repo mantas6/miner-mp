@@ -1,5 +1,6 @@
 // Pure economy math. DOM-free / testable. No imports from dom.js or game.js.
 import { STARTING, ECONOMY } from './balance';
+import { oreStacks, type Inventory } from './inventory';
 import type { Player } from './types';
 
 type FuelUpgradePlayer = Pick<Player, 'fuelMax'>;
@@ -8,7 +9,6 @@ type CargoUpgradePlayer = Pick<Player, 'cargoMax'>;
 type HullUpgradePlayer = Pick<Player, 'hullMax'>;
 type DrillUpgradePlayer = Pick<Player, 'drill'>;
 type VisibilityUpgradePlayer = Pick<Player, 'visibility'>;
-type CargoValueOre = { value: number };
 type UpgradeGuidancePlayer = Pick<Player, 'cargoMax' | 'fuelMax' | 'hullMax' | 'drill'>;
 type ServiceGuidancePlayer = Pick<Player, 'fuel' | 'fuelMax' | 'hull' | 'hullMax'>;
 
@@ -52,8 +52,9 @@ export function visibilityCost(player: VisibilityUpgradePlayer): number {
   return Math.ceil(ECONOMY.visibility.base * Math.pow(ECONOMY.visibility.growth, Math.max(0, player.visibility - STARTING.visibility)));
 }
 
-export function cargoValue(cargo: CargoValueOre[]): number {
-  return cargo.reduce((sum, ore) => sum + ore.value, 0);
+/** What the depot would pay for every ore stack in the bay. */
+export function cargoValue(inventory: Inventory): number {
+  return oreStacks(inventory).reduce((sum, stack) => sum + stack.item.value * stack.count, 0);
 }
 
 export function cheapestUpgrade(player: UpgradeGuidancePlayer): {label: string; cost: number} {

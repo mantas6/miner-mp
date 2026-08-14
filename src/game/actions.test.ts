@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ORES } from '../../shared/constants';
 import { ECONOMY, LIMITS, STARTING } from '../core/balance';
 import { cargoCost, drillCost, partialFill, refuelCost, repairCost } from '../core/economy';
+import { INVENTORY_SLOTS, addOre, countOres, createInventory } from '../core/inventory';
 import { createInitialState } from '../core/state';
 import type { GameState } from '../core/types';
 import { createActions, type GameActions } from './actions';
@@ -60,14 +61,16 @@ function harness(): Harness {
 describe('selling cargo', () => {
   it('pays the full cargo value, empties the bay, and records the earnings', () => {
     const h = harness();
-    h.state.player.cargo = [ORES[0], ORES[3]];
-    const expected = ORES[0].value + ORES[3].value;
+    // Two units of one ore and one of another: the sale is per stack, not per slot.
+    h.state.player.inventory = addOre(addOre(addOre(createInventory(), ORES[0], 9)!, ORES[0], 9)!, ORES[3], 9)!;
+    const expected = ORES[0].value * 2 + ORES[3].value;
 
     h.actions.sell();
 
     expect(h.state.cash).toBe(STARTING.cash + expected);
     expect(h.state.stats.totalCashEarned).toBe(expected);
-    expect(h.state.player.cargo).toEqual([]);
+    expect(countOres(h.state.player.inventory)).toBe(0);
+    expect(h.state.player.inventory).toHaveLength(INVENTORY_SLOTS);
     expect(h.saveProgress).toHaveBeenCalled();
     expect(h.audio.played).toContain('cash');
   });
@@ -75,12 +78,12 @@ describe('selling cargo', () => {
   it('refuses to sell underground and keeps the cargo aboard', () => {
     const h = harness();
     h.flags.atSurface = false;
-    h.state.player.cargo = [ORES[0]];
+    h.state.player.inventory = addOre(createInventory(), ORES[0], 9)!;
 
     h.actions.sell();
 
     expect(h.state.cash).toBe(STARTING.cash);
-    expect(h.state.player.cargo).toHaveLength(1);
+    expect(countOres(h.state.player.inventory)).toBe(1);
     expect(h.toasts.saw('Depot is on the surface')).toBe(true);
   });
 
@@ -164,12 +167,12 @@ describe('depot services', () => {
   it('prioritises selling, then fuel, then hull at the depot', () => {
     const h = harness();
     h.state.cash = 500;
-    h.state.player.cargo = [ORES[0]];
+    h.state.player.inventory = addOre(createInventory(), ORES[0], 9)!;
     h.state.player.fuel = 50;
     h.state.player.hull = 50;
 
     h.actions.surfaceService();
-    expect(h.state.player.cargo).toEqual([]);
+    expect(countOres(h.state.player.inventory)).toBe(0);
 
     h.actions.surfaceService();
     expect(h.state.player.fuel).toBe(h.state.player.fuelMax);

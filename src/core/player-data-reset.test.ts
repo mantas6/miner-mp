@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ORES } from '../../shared/constants';
 import { MULTIPLAYER_SETTINGS_KEY } from '../net/multiplayer-settings';
+import { addOre, createInventory } from './inventory';
 import { confirmPlayerDataReset, resetPlayerData } from './player-data-reset';
 import { SAVE_KEY } from '../persistence';
 import { createInitialState } from './state';
@@ -25,7 +27,7 @@ describe('player-data reset', () => {
       x: 8, y: 80, drawX: 7, drawY: 79, facing: -1, bob: 1, drillAnim: 2,
       drillDx: 1, drillDy: 0, fuel: 2, fuelMax: 400, hull: 3, hullMax: 300,
       cargoMax: 80, drill: 40, dynamite: 9, teleporters: 8, gunOwned: true,
-      bullets: 70, visibility: 20, cargo: [{name: 'Gold', value: 50}]
+      bullets: 70, visibility: 20, inventory: addOre(createInventory(), ORES[3], 80)!
     });
     state.cash = 9999;
     state.tick = 500;

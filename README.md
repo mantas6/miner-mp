@@ -356,6 +356,10 @@ zooming the camera with the wheel or a trackpad.
 
 - You start with limited cash, fuel, hull, cargo capacity, and drill power.
 - Dig ore, return to the surface, and sell cargo for cash.
+- The cargo bay is five inventory slots (`src/core/inventory.ts`), shown as a
+  collapsible HUD panel. Each ore type stacks in one slot, so a load needs both a
+  free slot (or a stack already open for that ore) and room under the Cargo Bay
+  upgrade's total ore cap. Selling empties every ore stack at once.
 - Refuel and repair at the surface depot.
 - The depot shop sells five upgrades — Cargo Bay, Fuel Tank, Hull, Drill, Sensor
   Array — plus dynamite, teleporters, the Linebreaker gun, and ammo. Upgrade

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ORES, START_Y, WORLD_W } from '../../shared/constants';
 import { FUEL, HULL, STARTING } from '../core/balance';
+import { INVENTORY_SLOTS, addOre, countOres, createInventory, oreKind } from '../core/inventory';
 import { createInitialState } from '../core/state';
 import type { Enemy, GameState, Tile } from '../core/types';
 import { createMovement, type GameMovement } from './move';
@@ -280,14 +281,15 @@ describe('digging', () => {
     expect(h.state.player.y).toBe(41);
   });
 
-  it('banks mined ore in cargo, counts it, and saves', () => {
+  it('stacks mined ore in the inventory, counts it, and saves', () => {
     const h = harness();
     h.state.player.drill = 5;
     h.grid.put(10, 41, {type: 'ore', ore: ORES[0], hp: 1, maxHp: 1});
 
     h.movement.move(0, 1);
 
-    expect(h.state.player.cargo).toEqual([ORES[0]]);
+    expect(h.state.player.inventory[0]).toMatchObject({kind: oreKind('Coal'), count: 1});
+    expect(countOres(h.state.player.inventory)).toBe(1);
     expect(h.state.stats.oreMined).toBe(1);
     expect(h.state.player.y).toBe(41);
     expect(h.saveProgress).toHaveBeenCalled();
@@ -298,15 +300,33 @@ describe('digging', () => {
     const h = harness();
     h.state.player.drill = 5;
     h.state.player.cargoMax = 1;
-    h.state.player.cargo = [ORES[0]];
+    h.state.player.inventory = addOre(createInventory(), ORES[0], 1)!;
     h.grid.put(10, 41, {type: 'ore', ore: ORES[1], hp: 1, maxHp: 1});
 
     h.movement.move(0, 1);
 
-    expect(h.state.player.cargo).toEqual([ORES[0]]);
+    expect(countOres(h.state.player.inventory)).toBe(1);
     expect(h.grid.get(10, 41)).toMatchObject({type: 'ore', hp: 1});
     expect(h.state.player.y).toBe(40);
     expect(h.toasts.saw('Cargo bay full')).toBe(true);
+  });
+
+  /** The other refusal: room under `cargoMax`, but no slot left to open. */
+  it('leaves ore in the ground when every inventory slot is claimed', () => {
+    const h = harness();
+    h.state.player.drill = 5;
+    h.state.player.cargoMax = 99;
+    let inventory = createInventory();
+    for (const ore of ORES.slice(0, INVENTORY_SLOTS)) inventory = addOre(inventory, ore, 99)!;
+    h.state.player.inventory = inventory;
+    h.grid.put(10, 41, {type: 'ore', ore: ORES[INVENTORY_SLOTS], hp: 1, maxHp: 1});
+
+    h.movement.move(0, 1);
+
+    expect(countOres(h.state.player.inventory)).toBe(INVENTORY_SLOTS);
+    expect(h.grid.get(10, 41)).toMatchObject({type: 'ore', hp: 1});
+    expect(h.state.player.y).toBe(40);
+    expect(h.toasts.saw('No free inventory slot')).toBe(true);
   });
 
   it('pays artifacts out as cash immediately without using a cargo slot', () => {
@@ -319,7 +339,7 @@ describe('digging', () => {
 
     expect(h.state.cash).toBe(STARTING.cash + 900);
     expect(h.state.stats.artifactsFound).toBe(1);
-    expect(h.state.player.cargo).toEqual([]);
+    expect(countOres(h.state.player.inventory)).toBe(0);
     expect(h.state.player.y).toBe(41);
   });
 });

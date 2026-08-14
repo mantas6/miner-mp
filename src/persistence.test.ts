@@ -3,6 +3,7 @@ import { SAVE_KEY, SAVE_VERSION, load, numeric, save } from './persistence';
 import { SURFACE_SPAWN_X, createInitialState } from './core/state';
 import { ECONOMY } from './core/balance';
 import { cargoCost } from './core/economy';
+import { countOres } from './core/inventory';
 import { claimArtifact } from './core/artifacts';
 import { ARTIFACTS, MAX_SAVED_TILE_ENTRIES, START_Y } from '../shared/constants';
 import { explorationIndex } from '../shared/exploration-codec';
@@ -59,7 +60,7 @@ describe('artifact payout persistence', () => {
     expect(restored.cash).toBe(240);
     expect(restored.stats.artifactsFound).toBe(1);
     expect(restored.stats.totalCashEarned).toBe(180);
-    expect(restored.player.cargo).toEqual([]);
+    expect(countOres(restored.player.inventory)).toBe(0);
   });
 });
 

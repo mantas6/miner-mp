@@ -8,6 +8,7 @@ import { TILE, WORLD_W } from '../../shared/constants';
 import { ECONOMY, LIMITS } from '../core/balance';
 import { cargoValue, partialFill, refuelCost, repairCost } from '../core/economy';
 import { getDynamiteBlastTargets } from '../core/dynamite';
+import { removeOres } from '../core/inventory';
 import {
   MIN_TELEPORT_DEPTH_METERS,
   canTeleportToSurface,
@@ -77,7 +78,7 @@ export function createActions(deps: GameActionsDeps): GameActions {
   const {state, session, enemies, grid, audio, toast, saveProgress, addCash, atSurface} = deps;
 
   function currentCargoValue(): number {
-    return cargoValue(state.player.cargo);
+    return cargoValue(state.player.inventory);
   }
 
   function sell(): void {
@@ -85,7 +86,8 @@ export function createActions(deps: GameActionsDeps): GameActions {
     if (!atSurface()) return toast('Depot is on the surface.');
     if (!value) return toast('Cargo is empty.');
     addCash(value);
-    state.player.cargo = [];
+    // Only the ore stacks leave; anything else the bay holds stays aboard.
+    state.player.inventory = removeOres(state.player.inventory);
     saveProgress();
     toast(`Sold cargo for $${value}.`);
     audio.cash(value);

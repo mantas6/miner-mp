@@ -1,9 +1,10 @@
 // The world's data shapes are defined once, as zod schemas, in
 // `shared/world-schema.ts` — the relay validates against the same definitions.
-import type { EnemyKind, Ore, Tile } from '../../shared/world-schema';
+import type { EnemyKind, Tile } from '../../shared/world-schema';
 // Type-only: neither the track registry nor the tile diff becomes a runtime
 // dependency of this module.
 import type { TrackId } from '../audio/tracks';
+import type { Inventory } from './inventory';
 import type { TileDiff } from '../world/tile-diff';
 
 export type {
@@ -44,8 +45,11 @@ export interface Player {
   gunOwned: boolean;
   bullets: number;
   visibility: number;
-  /** Mined ore awaiting sale at the depot; artifacts are banked instead. */
-  cargo: Ore[];
+  /**
+   * The slot-based cargo bay. Mined ore stacks here awaiting sale at the depot
+   * (artifacts are banked instead), capped by both a free slot and `cargoMax`.
+   */
+  inventory: Inventory;
 }
 
 /** The transform fields shared by the local ship, its replicas, and renderers. */

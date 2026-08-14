@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { ActionBar } from './ActionBar';
 import { BarRow } from './BarRow';
+import { InventoryPanel } from './InventoryPanel';
 import { Scanner } from './Scanner';
 import { StatsGrid } from './StatsGrid';
 import { uiCommands } from './commands';
@@ -42,7 +43,12 @@ export function Hud() {
       </div>
 
       <StatsGrid />
-      <Scanner />
+      {/* The left column of the middle row: readouts that stack downward from
+          under the sound strip, clear of the meters pinned to the bottom. */}
+      <div className={styles.middle}>
+        <Scanner />
+        <InventoryPanel />
+      </div>
       <BarRow />
       <ActionBar />
     </div>

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { STARTING, ECONOMY } from './balance';
 import { ORES, START_Y, WORLD_W } from '../../shared/constants';
+import { INVENTORY_SLOTS, addOre, countOres, createInventory } from './inventory';
 import { createInitialState, respawnPlayer } from './state';
 
 describe('initial game state', () => {
@@ -8,7 +9,8 @@ describe('initial game state', () => {
     const state = createInitialState();
 
     expect(state.player.cargoMax).toBe(STARTING.cargoMax);
-    expect(state.player.cargo).toHaveLength(0);
+    expect(state.player.inventory).toHaveLength(INVENTORY_SLOTS);
+    expect(countOres(state.player.inventory)).toBe(0);
     expect(state.player.dynamite).toBe(0);
     expect(state.player.teleporters).toBe(0);
     expect(state.player.gunOwned).toBe(false);
@@ -42,7 +44,7 @@ describe('player respawn', () => {
     player.teleporters = 1;
     player.gunOwned = true;
     player.bullets = 9;
-    player.cargo = [ORES[0]];
+    player.inventory = addOre(createInventory(), ORES[0], player.cargoMax)!;
 
     respawnPlayer(player);
 
@@ -57,8 +59,9 @@ describe('player respawn', () => {
       dynamite: 2,
       teleporters: 1,
       gunOwned: true,
-      bullets: 9,
-      cargo: []
+      bullets: 9
     });
+    expect(countOres(player.inventory)).toBe(0);
+    expect(player.inventory).toHaveLength(INVENTORY_SLOTS);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ORES, START_Y, WORLD_W } from '../../shared/constants';
 import { ECONOMY, STARTING } from '../core/balance';
+import { addOre, countOres, createInventory } from '../core/inventory';
 import { createInitialState } from '../core/state';
 import type { GameState } from '../core/types';
 import { createTileDiff } from '../world/tile-diff';
@@ -44,7 +45,7 @@ function harness(): Harness {
     gunOwned: true,
     bullets: 4,
     visibility: 5,
-    cargo: [ORES[0], ORES[1]]
+    inventory: addOre(addOre(createInventory(), ORES[0], 99)!, ORES[1], 99)!
   });
   state.cash = 900;
   state.stats.maxDepth = 570;
@@ -154,13 +155,13 @@ describe('restarting after a death', () => {
       y: START_Y,
       fuel: STARTING.fuelMax + ECONOMY.tank.step,
       hull: STARTING.hullMax,
-      cargo: [],
       dynamite: 2,
       teleporters: 1,
       gunOwned: true,
       bullets: 4,
       visibility: 5
     });
+    expect(countOres(h.state.player.inventory)).toBe(0);
     expect(h.state.gameOver).toBe(false);
     expect(h.input.reset).toHaveBeenCalled();
     expect(h.toasts.saw('Replacement ship')).toBe(true);
@@ -232,9 +233,9 @@ describe('resuming a saved run', () => {
     expect(h.state.player).toMatchObject({
       x: 12, y: 60,
       fuel: STARTING.fuelMax + ECONOMY.tank.step,
-      hull: STARTING.hullMax,
-      cargo: []
+      hull: STARTING.hullMax
     });
+    expect(countOres(h.state.player.inventory)).toBe(0);
     expect(h.state.cash).toBe(900);
     expect(h.toasts.saw('580 m')).toBe(true);
     // The camera opens on the ship instead of panning down from the depot.
@@ -290,9 +291,9 @@ describe('a full player reset', () => {
       dynamite: STARTING.dynamite,
       teleporters: STARTING.teleporters,
       gunOwned: STARTING.gunOwned,
-      bullets: STARTING.bullets,
-      cargo: []
+      bullets: STARTING.bullets
     });
+    expect(countOres(h.state.player.inventory)).toBe(0);
     expect(h.state.exploredTiles.size).toBe(0);
     expect(h.state.stats).toMatchObject({maxDepth: 0, oreMined: 0, deaths: 0});
     expect(h.invalidateFog).toHaveBeenCalled();
@@ -308,7 +309,7 @@ describe('a shared-world reset', () => {
     h.run.clearWorldRuntime();
 
     expect(h.state.cash).toBe(900);
-    expect(h.state.player.cargo).toHaveLength(2);
+    expect(countOres(h.state.player.inventory)).toBe(2);
     expect(h.state.enemyIdCounter).toBe(1);
     expect(h.state.soloTileDiff.size).toBe(0);
     expect(h.enemies.clearExposure).toHaveBeenCalled();
