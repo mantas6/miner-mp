@@ -27,6 +27,7 @@ function createActionsSpy() {
     buyDynamite: vi.fn(),
     detonateDynamite: vi.fn(),
     buyTeleporter: vi.fn(),
+    buyScanner: vi.fn(),
     buyGun: vi.fn(),
     buyBullets: vi.fn(),
     setGunArmed: vi.fn(),
@@ -43,6 +44,7 @@ interface Harness {
   restartGame: ReturnType<typeof vi.fn>;
   closeShopScreen: ReturnType<typeof vi.fn>;
   closeInfoScreen: ReturnType<typeof vi.fn>;
+  cancelScannerPlacement: ReturnType<typeof vi.fn>;
   toast: ReturnType<typeof vi.fn>;
   tryAutoAudio: ReturnType<typeof vi.fn>;
 }
@@ -61,6 +63,8 @@ function harness(): Harness {
     restartGame: vi.fn(),
     closeShopScreen: vi.fn(),
     closeInfoScreen: vi.fn(),
+    // Nothing armed by default, so Escape stays as unhandled as it ever was.
+    cancelScannerPlacement: vi.fn(() => false),
     toast: vi.fn(),
     tryAutoAudio: vi.fn()
   };

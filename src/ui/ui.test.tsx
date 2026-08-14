@@ -8,7 +8,8 @@
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ORES } from '../../shared/constants';
-import { addOre, createInventory } from '../core/inventory';
+import { addItem, addOre, createInventory } from '../core/inventory';
+import { SCANNER_ITEM } from '../core/scanner-device';
 import { setUiCommands, uiCommands } from './commands';
 import { RELAY_PROBLEM_STATUS } from './connection-status';
 import { buildInventorySlots, uiStore, type HudSnapshot } from './store';
@@ -31,7 +32,7 @@ const DOM_CONTRACT = [
 const SHOP_CONTRACT = [
   'shop-card', 'shopCloseBtn',
   'fuelBtn', 'repairBtn', 'cargoBtn', 'tankBtn', 'hullBtn', 'drillBtn', 'visibilityBtn',
-  'shopDynamiteBtn', 'shopTeleporterBtn', 'shopGunBtn', 'shopBulletsBtn'
+  'shopDynamiteBtn', 'shopTeleporterBtn', 'shopScannerBtn', 'shopGunBtn', 'shopBulletsBtn'
 ];
 
 /** Ids that exist only while the info screen is up, on the tab it opens with. */
@@ -830,6 +831,34 @@ describe('inventory panel', () => {
     patchHud({gameOver: true});
 
     expect((document.getElementById('inventory') as HTMLElement).hidden).toBe(true);
+  });
+
+  /**
+   * The scanner is deployed from the slot that holds it, so that slot — and only
+   * that slot — is a control. Ore has nowhere to be placed and stays inert text.
+   */
+  it('makes only the scanner slot a deployment control', () => {
+    const toggleScannerPlacement = vi.fn();
+    setUiCommands({toggleScannerPlacement});
+    render(<MinerApp />);
+
+    act(() => {
+      uiStore.getState().setInventorySlots(buildInventorySlots(
+        addItem(addOre(createInventory(), ORES[0], 99)!, SCANNER_ITEM, 2)!
+      ));
+    });
+
+    expect(document.querySelectorAll('#inventorySlots button')).toHaveLength(1);
+    const slot = document.getElementById('scannerSlotBtn')!;
+    expect(slot.textContent).toBe('Scanner×2');
+    expect(slot.getAttribute('aria-pressed')).toBe('false');
+
+    act(() => { fireEvent.click(slot); });
+    expect(toggleScannerPlacement).toHaveBeenCalledOnce();
+
+    // The armed state is the game's to report; the slot only paints it.
+    act(() => { uiStore.getState().setScannerArmed(true); });
+    expect(document.getElementById('scannerSlotBtn')?.getAttribute('aria-pressed')).toBe('true');
   });
 });
 

@@ -1,5 +1,7 @@
-import { MAX_WORLD_ROW, START_Y, WORLD_W } from '../shared/constants';
+import { MAX_WORLD_ROW, START_Y, SURFACE_HEIGHT, WORLD_W } from '../shared/constants';
 import { ECONOMY, LIMITS, STARTING } from './core/balance';
+import { addItem, countItem } from './core/inventory';
+import { SCANNER_DEVICE, SCANNER_ITEM, type ScannerDevice } from './core/scanner-device';
 import { createDefaultStats } from './core/state';
 import { encodeExploration, mergeExploration } from '../shared/exploration-codec';
 import { capTileEntries, createTileDiff, parseTileEntries, tileDiffEntries } from './world/tile-diff';
@@ -17,8 +19,15 @@ import type { GameState, GameStats } from './core/types';
 //   * v3: run-length encoded explored tiles.
 //   * v4: `tiles`, the solo world's tile diff.
 //   * v5: `x`/`y`, the tile the ship was parked on.
+//   * v6: `scanners` and `scannerDevices` — the survey scanners carried, and the
+//     ones left running in the mine.
 // Older blobs still load; they just restore a pristine mine, and pre-v5 saves
 // start at the depot the way they always did.
+//
+// The cargo bay itself is deliberately *not* saved: ore is lost with the run.
+// Scanners are equipment rather than cargo, so they are stored as a count and
+// re-stacked into the bay on load, the way dynamite and teleporters are stored
+// as counts on the ship.
 
 /** The persisted save file. Every field is re-validated on load. */
 interface SavedProgress {
@@ -33,6 +42,8 @@ interface SavedProgress {
   drill?: unknown;
   dynamite?: unknown;
   teleporters?: unknown;
+  scanners?: unknown;
+  scannerDevices?: unknown;
   gunOwned?: unknown;
   bullets?: unknown;
   visibility?: unknown;
@@ -41,7 +52,7 @@ interface SavedProgress {
 }
 
 export const SAVE_KEY = 'moleload-progress-v1';
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 const LEGACY_CARGO_STEP = 10;
 const CARGO_BALANCE_SAVE_VERSION = 2;
 
@@ -49,6 +60,26 @@ export function numeric(value: unknown, fallback: number, min=0, max=Number.MAX_
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
   return Math.max(min, Math.min(max, n));
+}
+
+/**
+ * Rebuild the deployed scanners, dropping anything a corrupt or hand-edited save
+ * put outside the mine. The count is capped the way the game caps it, so a save
+ * can never restore more hardware than the player could have placed.
+ */
+export function parseScannerDevices(value: unknown): ScannerDevice[] {
+  if (!Array.isArray(value)) return [];
+  const devices: ScannerDevice[] = [];
+  for (const entry of value) {
+    if (devices.length >= SCANNER_DEVICE.maxPlaced) break;
+    if (!entry || typeof entry !== 'object') continue;
+    const saved = entry as {x?: unknown; y?: unknown; timer?: unknown};
+    const x = Math.floor(numeric(saved.x, -1, -1, WORLD_W - 1));
+    const y = Math.floor(numeric(saved.y, -1, -1, MAX_WORLD_ROW));
+    if (x < 0 || y < SURFACE_HEIGHT) continue;
+    devices.push({x, y, timer: Math.floor(numeric(saved.timer, 0, 0, SCANNER_DEVICE.intervalTicks))});
+  }
+  return devices;
 }
 
 export function load(state: GameState): void {
@@ -71,6 +102,11 @@ export function load(state: GameState): void {
     p.gunOwned = save.gunOwned === true;
     p.bullets = Math.floor(numeric(save.bullets, p.bullets, LIMITS.bullets.min, LIMITS.bullets.max));
     p.visibility = Math.floor(numeric(save.visibility, p.visibility, LIMITS.visibility.min, LIMITS.visibility.max));
+    // Scanners are equipment, so they come back into the bay the run starts with;
+    // `run.resume()` clears the ore around them and leaves them alone.
+    const scanners = Math.floor(numeric(save.scanners, 0, LIMITS.scanners.min, LIMITS.scanners.max));
+    if (scanners > 0) p.inventory = addItem(p.inventory, SCANNER_ITEM, scanners) ?? p.inventory;
+    state.scannerDevices = parseScannerDevices(save.scannerDevices);
     // The ship resumes on the tile it parked on, render position included so it
     // appears there instead of easing in from the depot. The clamps are the ones
     // `movementDestination` enforces, so no save can park a miner in a wall.
@@ -108,6 +144,8 @@ export function save(state: GameState): void {
     gunOwned: p.gunOwned,
     bullets: p.bullets,
     visibility: p.visibility,
+    scanners: countItem(p.inventory, SCANNER_ITEM.kind),
+    scannerDevices: state.scannerDevices.slice(0, SCANNER_DEVICE.maxPlaced).map(({x, y, timer}) => ({x, y, timer})),
     explored: encodeExploration(state.exploredTiles),
     tiles: capTileEntries(tileDiffEntries(state.soloTileDiff)),
     stats: state.stats,

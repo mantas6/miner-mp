@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIMITS } from './balance';
+import { ECONOMY, LIMITS } from './balance';
 import {
   SHOP_ITEMS,
   SHOP_SERVICES,
@@ -9,15 +9,17 @@ import {
   itemRowState,
   serviceRowState,
   shopSummary,
-  upgradeRowState
+  upgradeRowState,
+  type ShopPlayer
 } from './shop-catalog';
 import { createInitialState } from './state';
 
-function ship(overrides: Partial<ReturnType<typeof createInitialState>['player']> = {}) {
-  return {...createInitialState().player, ...overrides};
+/** A shop-shaped ship: the run's player plus the bay-counted scanner tally. */
+function ship(overrides: Partial<ShopPlayer> = {}): ShopPlayer {
+  return {...createInitialState().player, scanners: 0, ...overrides};
 }
 
-function everyRow(player: ReturnType<typeof ship>, cash: number, atSurface: boolean) {
+function everyRow(player: ShopPlayer, cash: number, atSurface: boolean) {
   return [
     ...SHOP_UPGRADES.map(upgrade => upgradeRowState(upgrade.id, player, cash, atSurface)),
     ...SHOP_SERVICES.map(service => serviceRowState(service.id, player, cash, atSurface)),
@@ -31,7 +33,7 @@ describe('shop rows', () => {
   it('shows current level, next benefit, exact price, and affordability', () => {
     const state = createInitialState();
 
-    const cargo = upgradeRowState('cargo', state.player, state.cash, true);
+    const cargo = upgradeRowState('cargo', ship(), state.cash, true);
 
     expect(cargo.current).toBe('Level 0/198 · 10/1000 slots');
     expect(cargo.benefit).toBe('Next: 10 → 15 slots');
@@ -78,7 +80,7 @@ describe('shop rows', () => {
   });
 
   it('preserves partial service semantics and reports carried consumables', () => {
-    const player = ship({fuel: 50, hull: 80, dynamite: 3, teleporters: 1});
+    const player = ship({fuel: 50, hull: 80, dynamite: 3, teleporters: 1, scanners: 2});
 
     expect(serviceRowState('fuel', player, 5, true)).toMatchObject({status: 'Partial service', buttonDisabled: false});
     expect(serviceRowState('repair', player, 5, true).current).toBe('80/100 · full service $39');
@@ -86,6 +88,13 @@ describe('shop rows', () => {
     expect(serviceRowState('fuel', player, 0, true).status).toBe('No cash');
     expect(itemRowState('dynamite', player, 5, true).current).toBe('Carried: 3');
     expect(itemRowState('teleporter', player, 5, true).current).toBe('Carried: 1');
+    // The scanner is the one consumable counted out of the cargo bay.
+    expect(itemRowState('scanner', player, 5, true).current).toBe('Carried: 2');
+    expect(itemRowState('scanner', player, ECONOMY.scanner.price, true)).toMatchObject({
+      buttonLabel: `Buy one · $${ECONOMY.scanner.price}`,
+      status: 'Ready',
+      buttonDisabled: false
+    });
   });
 
   it('requires the permanent gun before ammunition and reports ownership', () => {

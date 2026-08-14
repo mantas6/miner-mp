@@ -119,6 +119,7 @@ describe('shop dialog', () => {
       repair: vi.fn(),
       buyDynamite: vi.fn(),
       buyTeleporter: vi.fn(),
+      buyScanner: vi.fn(),
       buyGun: vi.fn(),
       buyBullets: vi.fn()
     };
@@ -137,6 +138,8 @@ describe('shop dialog', () => {
     expect(commands.buyDynamite).toHaveBeenCalledOnce();
     fireEvent.click(document.getElementById('shopTeleporterBtn')!);
     expect(commands.buyTeleporter).toHaveBeenCalledOnce();
+    fireEvent.click(document.getElementById('shopScannerBtn')!);
+    expect(commands.buyScanner).toHaveBeenCalledOnce();
     fireEvent.click(document.getElementById('shopBulletsBtn')!);
     expect(commands.buyBullets).toHaveBeenCalledOnce();
   });
@@ -148,10 +151,12 @@ describe('shop dialog', () => {
 
     act(() => {
       const store = uiStore.getState();
-      store.syncPlayer({...store.player, dynamite: 4, gunOwned: true, bullets: LIMITS.bullets.max});
+      store.syncPlayer({...store.player, dynamite: 4, scanners: 2, gunOwned: true, bullets: LIMITS.bullets.max});
     });
 
     expect(row('dynamite').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 4');
+    // The scanner tally comes out of the cargo bay, not off the ship.
+    expect(row('scanner').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 2');
     expect(document.querySelector('[data-shop-gun] button')?.textContent).toBe('Installed');
     expect(document.querySelector<HTMLButtonElement>('[data-shop-item="bullets"] button')?.disabled).toBe(true);
     expect(document.querySelector('[data-shop-item="bullets"] [data-shop-status]')?.textContent).toBe('Ammo full');

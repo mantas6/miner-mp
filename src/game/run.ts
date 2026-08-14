@@ -11,7 +11,7 @@
 import { START_Y } from '../../shared/constants';
 import { STARTING } from '../core/balance';
 import { cancelExtraction } from '../core/extraction-phase';
-import { createInventory } from '../core/inventory';
+import { createInventory, removeOres } from '../core/inventory';
 import { createDefaultStats, placeAtSurfaceSpawn, respawnPlayer } from '../core/state';
 import { applyTileEntries, tileDiffEntries } from '../world/tile-diff';
 import { ensureWorldRow } from '../world/world';
@@ -85,8 +85,11 @@ export function createRun(deps: GameRunDeps): GameRun {
         dynamite: STARTING.dynamite,
         teleporters: STARTING.teleporters,
         gunOwned: STARTING.gunOwned,
-        bullets: STARTING.bullets
+        bullets: STARTING.bullets,
+        // Bought equipment lives in the bay, so emptying it is part of the wipe.
+        inventory: createInventory()
       });
+      state.scannerDevices = [];
       state.exploredTiles.clear();
       state.stats = createDefaultStats();
       saveProgress();
@@ -124,8 +127,9 @@ export function createRun(deps: GameRunDeps): GameRun {
     // depot, because a ship buried in dirt cannot drill its way back up.
     if (ensureWorldRow(state.world, p.y)?.[p.x]?.type !== 'air') placeAtSurfaceSpawn(p);
     // Fuel, hull and cargo are never saved, so a resumed run is a fresh ship
-    // parked where the last one left off.
-    Object.assign(p, {fuel: p.fuelMax, hull: p.hullMax, inventory: createInventory()});
+    // parked where the last one left off — carrying the equipment the save
+    // restored into its bay, and none of the ore.
+    Object.assign(p, {fuel: p.fuelMax, hull: p.hullMax, inventory: removeOres(p.inventory)});
     deps.revealAtPlayer();
     centreCameraOnShip();
     state.gameOver = false;

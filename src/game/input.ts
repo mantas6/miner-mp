@@ -67,6 +67,8 @@ export interface GameInputDeps {
   restartGame(): void;
   closeShopScreen(): void;
   closeInfoScreen(): void;
+  /** Stand down an armed scanner. Reports whether the press was consumed. */
+  cancelScannerPlacement(): boolean;
   toast(message: string): void;
   /** Enable sound on the first trusted gesture, when the browser allows it. */
   tryAutoAudio(event?: Event): void;
@@ -163,6 +165,9 @@ export function createInput(deps: GameInputDeps): GameInput {
     if (gunAction === 'arm') { if (!e.repeat) actions.setGunArmed(true); e.preventDefault(); e.stopPropagation(); return; }
     if (gunAction === 'cancel') { if (!e.repeat) actions.setGunArmed(false); e.preventDefault(); e.stopPropagation(); return; }
     if (gunAction === 'fire' && dir) { if (!e.repeat) actions.fireGun(dir); e.preventDefault(); e.stopPropagation(); return; }
+    // After the gun, so an armed gun still owns Escape; only an armed scanner
+    // consumes the key, and a stray Escape on the mine keeps meaning nothing.
+    if (key === 'escape' && deps.cancelScannerPlacement()) { e.preventDefault(); e.stopPropagation(); return; }
     if (dir) {
       if (e.shiftKey) keys.add('shift');
       if (!keys.has(key) && !e.repeat) state.input.keyImpulse = dir;

@@ -73,6 +73,90 @@ test.describe('gameplay', () => {
     await expect(page.locator('#depthTarget')).toContainText('m to');
   });
 
+  /**
+   * The scanner's whole control surface is the slot that holds it, so this walks
+   * the browser path the unit tests cannot: a restored save putting one in the
+   * bay, a real purchase stacking onto it, and the armed state a press and an
+   * Escape move it between.
+   *
+   * The wallet and the first device are seeded through the save file rather than
+   * earned, because everything under test here happens at the depot and mining
+   * $200 of ore first would test the drill instead.
+   */
+  test('a bought scanner is carried in the bay and arms from its own slot', async ({page}) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('moleload-progress-v1', JSON.stringify({version: 6, cash: 5000, scanners: 1}));
+    });
+    await startSoloRun(page);
+
+    const slot = page.locator('#scannerSlotBtn');
+    await expect(slot).toHaveText('Scanner×1');
+    await expect(slot).toHaveAttribute('aria-pressed', 'false');
+
+    await page.locator('#shopBtn').click();
+    await page.locator('#shopScannerBtn').click();
+    await expect(page.locator('[data-shop-item="scanner"] [data-shop-current]')).toHaveText('Carried: 2');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#shop-screen')).toBeHidden();
+
+    await expect(slot).toHaveText('Scanner×2');
+    await slot.click();
+    await expect(slot).toHaveAttribute('aria-pressed', 'true');
+
+    // A press on the mine is answered by the tile it actually landed on: halfway
+    // down the canvas is deep, unsurveyed rock, and a refusal costs nothing.
+    const canvas = page.locator('#game');
+    const box = (await canvas.boundingBox())!;
+    await canvas.click({position: {x: box.width * 0.55, y: box.height * 0.5}});
+    await expect(page.locator('#toast')).toContainText('already explored');
+    await expect(slot).toHaveText('Scanner×2');
+    await expect(slot).toHaveAttribute('aria-pressed', 'true');
+
+    // Escape stands the pointer down again without spending the device.
+    await page.keyboard.press('Escape');
+    await expect(slot).toHaveAttribute('aria-pressed', 'false');
+    await expect(slot).toHaveText('Scanner×2');
+  });
+
+  /**
+   * The other half of the gesture: a press on the mine puts the device on the
+   * tile that was pressed. The save below hollows out and surveys rows 5–20 of
+   * the whole mine, so every point in the middle of the canvas is a legal target
+   * whatever size the browser window happens to be — the test is about the
+   * screen-to-tile conversion, not about aiming.
+   */
+  test('a press on the mine deploys the armed scanner and spends it', async ({page}) => {
+    await page.addInitScript(() => {
+      const worldWidth = 90;
+      const tiles = [];
+      for (let y = 5; y <= 20; y++) {
+        for (let x = 0; x < worldWidth; x++) tiles.push({x, y, tile: {type: 'air'}});
+      }
+      localStorage.setItem('moleload-progress-v1', JSON.stringify({
+        version: 6,
+        scanners: 1,
+        explored: `${5 * worldWidth}-${21 * worldWidth - 1}`,
+        tiles
+      }));
+    });
+    await startSoloRun(page);
+
+    const slot = page.locator('#scannerSlotBtn');
+    await slot.click();
+    await expect(slot).toHaveAttribute('aria-pressed', 'true');
+
+    const canvas = page.locator('#game');
+    const box = (await canvas.boundingBox())!;
+    await canvas.click({position: {x: box.width * 0.55, y: box.height * 0.5}});
+
+    await expect(page.locator('#toast')).toContainText('Scanner deployed');
+    // The device left the bay with the press, and the slot with it.
+    await expect(page.locator('#scannerSlotBtn')).toHaveCount(0);
+    await expect(page.locator('#inventoryToggleBtn')).toContainText('0/5');
+    // The keyboard is back on the mine, so play resumes without a second click.
+    await expect(canvas).toBeFocused();
+  });
+
   test('the canvas keeps the keyboard while mining', async ({page}) => {
     await startSoloRun(page);
     await drillDown(page);

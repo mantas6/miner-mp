@@ -23,7 +23,8 @@ import { formatShipStatusAnnouncement } from '../core/ship-status';
 import { createInitialState } from '../core/state';
 import { formatExpeditionStats, type ExpeditionStatRow } from '../core/stats';
 import { formatSurfaceActionHint } from '../core/surface-hint';
-import { createInventory, oreStacks, type Inventory, type InventoryItemKind } from '../core/inventory';
+import { countItem, createInventory, oreStacks, type Inventory, type InventoryItemKind } from '../core/inventory';
+import { SCANNER_ITEM } from '../core/scanner-device';
 import type { Player } from '../core/types';
 import { DEFAULT_INFO_TAB, type InfoTab } from './info-navigation';
 
@@ -91,10 +92,14 @@ const HUD_KEYS = [
 export type PlayerSnapshot = Pick<
   Player,
   'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility' | 'dynamite' | 'teleporters' | 'gunOwned' | 'bullets'
->;
+> & {
+  /** Scanners in the cargo bay, counted out of the inventory for the shop row. */
+  scanners: number;
+};
 
 const PLAYER_KEYS = [
-  'fuel', 'fuelMax', 'hull', 'hullMax', 'cargoMax', 'drill', 'visibility', 'dynamite', 'teleporters', 'gunOwned', 'bullets'
+  'fuel', 'fuelMax', 'hull', 'hullMax', 'cargoMax', 'drill', 'visibility', 'dynamite', 'teleporters', 'gunOwned', 'bullets',
+  'scanners'
 ] as const satisfies readonly (keyof PlayerSnapshot)[];
 
 export interface CargoRow {
@@ -183,6 +188,12 @@ export interface UiState {
   sfxLabel: string;
   /** Queue of transient status lines; the newest one is the one on screen. */
   toasts: ToastMessage[];
+  /**
+   * A carried scanner is waiting for the player to pick a tile for it. The game
+   * owns that state — it is the game that consumes the click — so this is only
+   * the paint of it: the armed slot, and nothing else on screen, says so.
+   */
+  scannerArmed: boolean;
 
   syncHud(next: Readonly<HudSnapshot>): void;
   syncPlayer(next: Readonly<PlayerSnapshot>): void;
@@ -202,6 +213,7 @@ export interface UiState {
   pushToast(message: string): void;
   dismissToast(id: number): void;
   clearToasts(): void;
+  setScannerArmed(armed: boolean): void;
 }
 
 /** Visible lifetime of one toast, matching the pre-store CSS timing. */
@@ -290,7 +302,8 @@ function initialPlayer(): PlayerSnapshot {
     dynamite: player.dynamite,
     teleporters: player.teleporters,
     gunOwned: player.gunOwned,
-    bullets: player.bullets
+    bullets: player.bullets,
+    scanners: countItem(player.inventory, SCANNER_ITEM.kind)
   };
 }
 
@@ -339,6 +352,7 @@ export const uiStore = createStore<UiState>((set, get) => ({
   sfxOn: false,
   sfxLabel: 'Enable sound effects',
   toasts: [],
+  scannerArmed: false,
 
   syncHud(next) {
     const current = get().hud;
@@ -440,6 +454,10 @@ export const uiStore = createStore<UiState>((set, get) => ({
     clearTimeout(toastTimer);
     toastTimer = undefined;
     if (get().toasts.length > 0) set({toasts: []});
+  },
+
+  setScannerArmed(armed) {
+    if (get().scannerArmed !== armed) set({scannerArmed: armed});
   }
 }));
 

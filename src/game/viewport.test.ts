@@ -1,7 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { TILE, WORLD_W } from '../../shared/constants';
 import { getVisibleTileRange } from '../world/visible-tile-range';
-import { advanceViewportZoom, requestViewportZoom, setViewportSize, setViewportZoom, viewport } from './viewport';
+import {
+  advanceViewportZoom,
+  drawnCamera,
+  requestViewportZoom,
+  setViewportSize,
+  setViewportZoom,
+  tileAtViewportPoint,
+  viewport
+} from './viewport';
 import { MAX_ZOOM, MIN_ZOOM } from './zoom';
 
 afterEach(() => {
@@ -99,5 +107,27 @@ describe('viewport zoom', () => {
     requestViewportZoom(-4);
 
     expect(viewport.targetZoom).toBe(MIN_ZOOM);
+  });
+});
+
+describe('pointing at a tile', () => {
+  it('answers with the tile the renderer drew under that point', () => {
+    expect(tileAtViewportPoint(0, 0, 10, 20)).toEqual({x: 10, y: 20});
+    expect(tileAtViewportPoint(TILE * 2.5, TILE * 3.5, 10, 20)).toEqual({x: 12, y: 23});
+  });
+
+  it('undoes the zoom, so a zoomed-out view still hits what was pressed', () => {
+    setViewportZoom(0.5);
+
+    // Half scale: one screen pixel covers twice as much mine.
+    expect(tileAtViewportPoint(TILE, TILE, 0, 0)).toEqual({x: 2, y: 2});
+  });
+
+  it('starts from the clamped camera the mine is actually drawn with', () => {
+    expect(drawnCamera(-8, -3)).toEqual({x: 0, y: 0});
+    expect(drawnCamera(WORLD_W, 5)).toEqual({x: WORLD_W - viewport.tilesX, y: 5});
+    // A camera pushed past the left wall draws column 0 at the left edge, and a
+    // press there has to answer with column 0 rather than a negative one.
+    expect(tileAtViewportPoint(0, 0, -8, -3)).toEqual({x: 0, y: 0});
   });
 });

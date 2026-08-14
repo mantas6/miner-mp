@@ -13,6 +13,7 @@ import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, 
 import { ECONOMY } from '../core/balance';
 import { buildDangerGuideRows } from '../core/danger';
 import { PROSPECTING_TIP, buildArtifactGuideRows, buildProspectingGuideRows } from '../core/prospecting';
+import { SCANNER_DEVICE } from '../core/scanner-device';
 import { GAME_RESET_CONFIRMATION } from '../persistence-reset';
 import { DeveloperPanel } from './DeveloperPanel';
 import { getInfoNavigationSections, getInfoTabFocusTarget, type InfoTab } from './info-navigation';
@@ -239,6 +240,7 @@ function ControlsPanel() {
         <li><kbd>E</kbd> / <kbd>Detonate</kbd><span>Use one carried dynamite underground; blasts yield no cargo, and destroyed artifacts grant no cash</span></li>
         <li><kbd>T</kbd> / <kbd>Teleport</kbd><span>At 100 m or deeper, use one carried teleporter to visit the depot, then press T again to return to the same underground location</span></li>
         <li><kbd>G</kbd> / <kbd>Arm Gun</kbd> then a direction key<span>Fire one bullet up to {ECONOMY.gun.range} tiles; press G or Escape to cancel aiming. Shots destroy the first eligible block or enemy, but valuables give no cargo or artifact cash.</span></li>
+        <li><strong>Scanner slot</strong> then a mine tile<span>Deploy one carried scanner onto explored, cleared ground; it maps its {SCANNER_DEVICE.size}×{SCANNER_DEVICE.size} surroundings, one fogged tile every {SCANNER_DEVICE.intervalSeconds} seconds, then goes inert. Escape cancels.</span></li>
         <li><kbd>R</kbd> then <kbd>R</kbd><span>Confirm reset while alive</span></li>
       </ul>
     </section>

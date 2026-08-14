@@ -8,7 +8,8 @@ import { TILE, WORLD_W } from '../../shared/constants';
 import { ECONOMY, LIMITS } from '../core/balance';
 import { cargoValue, partialFill, refuelCost, repairCost } from '../core/economy';
 import { getDynamiteBlastTargets } from '../core/dynamite';
-import { removeOres } from '../core/inventory';
+import { addItem, isFullFor, removeOres } from '../core/inventory';
+import { SCANNER_ITEM } from '../core/scanner-device';
 import {
   MIN_TELEPORT_DEPTH_METERS,
   canTeleportToSurface,
@@ -48,6 +49,8 @@ export interface GameActions {
   buyDynamite(): void;
   detonateDynamite(): void;
   buyTeleporter(): void;
+  /** Buy one scanner device into the cargo bay; refused when it has no room. */
+  buyScanner(): void;
   buyGun(): void;
   buyBullets(): void;
   setGunArmed(armed: boolean): void;
@@ -191,6 +194,22 @@ export function createActions(deps: GameActionsDeps): GameActions {
     spend(ECONOMY.teleporter.price, () => state.player.teleporters++, `Teleporter loaded. Press T or Teleport at ${MIN_TELEPORT_DEPTH_METERS} m or deeper.`);
   }
 
+  /**
+   * Unlike dynamite and teleporters, a scanner takes a cargo slot, so the bay can
+   * refuse the sale. Checked before the money changes hands, and only at the
+   * depot, so the "come back to the surface" refusal still comes first.
+   */
+  function buyScanner(): void {
+    if (atSurface() && isFullFor(state.player.inventory, SCANNER_ITEM.kind)) {
+      audio.alarm();
+      return toast('Cargo bay is full. Sell the cargo before buying a scanner.');
+    }
+    spend(ECONOMY.scanner.price, () => {
+      const loaded = addItem(state.player.inventory, SCANNER_ITEM);
+      if (loaded) state.player.inventory = loaded;
+    }, 'Scanner loaded. Press its inventory slot, then a mapped tile, to deploy it.');
+  }
+
   function buyGun(): void {
     if (state.player.gunOwned) return toast('Linebreaker Gun is already installed.');
     spend(ECONOMY.gun.price, () => { state.player.gunOwned = true; }, 'Linebreaker Gun installed permanently. Buy ammunition before descending.');
@@ -293,6 +312,7 @@ export function createActions(deps: GameActionsDeps): GameActions {
     buyDynamite,
     detonateDynamite,
     buyTeleporter,
+    buyScanner,
     buyGun,
     buyBullets,
     setGunArmed,

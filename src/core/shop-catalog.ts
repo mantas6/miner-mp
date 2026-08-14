@@ -9,14 +9,21 @@
 
 import { ECONOMY, LIMITS } from './balance';
 import { cargoCost, drillCost, hullCost, refuelCost, repairCost, tankCost, visibilityCost } from './economy';
+import { SCANNER_DEVICE } from './scanner-device';
 import { MIN_TELEPORT_DEPTH_METERS } from './teleporter';
 import type { Player } from './types';
 import { PLAYER_UPGRADES, getPlayerUpgradeProgress, type PlayerUpgradeId } from './upgrades';
 
-type ShopPlayer = Pick<
+export type ShopPlayer = Pick<
   Player,
   'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility' | 'dynamite' | 'teleporters' | 'gunOwned' | 'bullets'
->;
+> & {
+  /**
+   * Scanners in the cargo bay. Counted out of the inventory rather than kept on
+   * the ship, because a scanner occupies a slot the way ore does.
+   */
+  scanners: number;
+};
 
 export interface ShopRowState {
   /** Sprite class suffix in `styles/icons.css`. */
@@ -116,10 +123,24 @@ export const SHOP_ITEMS = [
     title: 'Teleporter',
     copy: `Emergency round trip from ${MIN_TELEPORT_DEPTH_METERS} m or deeper to the depot without unloading or servicing the ship.`,
     price: ECONOMY.teleporter.price
+  },
+  {
+    id: 'scanner',
+    icon: 'scanner',
+    title: 'Scanner',
+    copy: `Deployable survey unit. Drop it on cleared ground from the inventory panel and it maps its ${SCANNER_DEVICE.size}×${SCANNER_DEVICE.size} surroundings, one fogged tile every ${SCANNER_DEVICE.intervalSeconds} seconds, then goes inert.`,
+    price: ECONOMY.scanner.price
   }
 ] as const;
 
 export type ShopItemId = typeof SHOP_ITEMS[number]['id'];
+
+/** What "Carried" counts for each consumable; scanners live in the cargo bay. */
+const ITEM_COUNTS: Record<ShopItemId, (player: ShopPlayer) => number> = {
+  dynamite: player => player.dynamite,
+  teleporter: player => player.teleporters,
+  scanner: player => player.scanners
+};
 
 export const SHOP_GUN = {
   icon: 'gun',
@@ -153,7 +174,7 @@ export function shopSummary(cash: number, atSurface: boolean): {cash: string; lo
 
 export function upgradeRowState(id: PlayerUpgradeId, player: ShopPlayer, cash: number, atSurface: boolean): ShopRowState {
   const entry = SHOP_UPGRADES.find(upgrade => upgrade.id === id)!;
-  const progress = getPlayerUpgradeProgress(player as Player, id);
+  const progress = getPlayerUpgradeProgress(player, id);
   const price = entry.cost(player);
   const stepValue = Math.min(progress.maxValue, progress.value + ECONOMY[id].step);
   return {
@@ -188,7 +209,7 @@ export function serviceRowState(id: ShopServiceId, player: ShopPlayer, cash: num
 
 export function itemRowState(id: ShopItemId, player: ShopPlayer, cash: number, atSurface: boolean): ShopRowState {
   const item = SHOP_ITEMS.find(entry => entry.id === id)!;
-  const count = id === 'dynamite' ? player.dynamite : player.teleporters;
+  const count = ITEM_COUNTS[id](player);
   return {
     icon: item.icon,
     title: item.title,

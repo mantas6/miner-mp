@@ -19,6 +19,10 @@ export function resetWorldTerrain(state: GameState): void {
   state.soloTileDiff = new Map();
   state.enemies = [];
   state.exploredTiles.clear();
+  // Deployed scanners belong to the mine they were dropped into, and the fog they
+  // were surveying is coming back; the ones still in the bay are player property
+  // and stay there.
+  state.scannerDevices = [];
   state.particles = [];
   state.extractionPhase = 'none';
   state.teleportEffect = null;

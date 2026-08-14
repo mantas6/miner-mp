@@ -9,6 +9,7 @@ import {
   serviceRowState,
   shopSummary,
   upgradeRowState,
+  type ShopItemId,
   type ShopRowState
 } from '../core/shop-catalog';
 import { uiCommands } from './commands';
@@ -21,7 +22,15 @@ const HINTS: Record<string, ReactNode> = {
   gun: <>Control: <kbd>G</kbd>, then a direction · <kbd>G</kbd>/<kbd>Esc</kbd> cancels</>,
   dynamite: <>Control: <kbd>E</kbd> or Detonate</>,
   teleporter: <>Control: <kbd>T</kbd> or Teleport / Return</>,
+  scanner: <>Control: inventory slot, then a mine tile · <kbd>Esc</kbd> cancels</>,
   bullets: <>Arm with <kbd>G</kbd>, then a direction key</>
+};
+
+/** Consumable shelves, by id: the button the tests address and what it buys. */
+const ITEM_PURCHASES: Record<ShopItemId, {buttonId: string; buy(): void}> = {
+  dynamite: {buttonId: 'shopDynamiteBtn', buy: () => uiCommands.buyDynamite()},
+  teleporter: {buttonId: 'shopTeleporterBtn', buy: () => uiCommands.buyTeleporter()},
+  scanner: {buttonId: 'shopScannerBtn', buy: () => uiCommands.buyScanner()}
 };
 
 interface ShopItemProps {
@@ -166,10 +175,10 @@ function ShopCard({closeRef}: {closeRef: RefObject<HTMLButtonElement | null>}) {
             <ShopItem
               key={item.id}
               row={itemRowState(item.id, ...rowArgs)}
-              buttonId={item.id === 'dynamite' ? 'shopDynamiteBtn' : 'shopTeleporterBtn'}
+              buttonId={ITEM_PURCHASES[item.id].buttonId}
               hint={HINTS[item.id]}
               marker={{'data-shop-item': item.id}}
-              onBuy={() => (item.id === 'dynamite' ? uiCommands.buyDynamite() : uiCommands.buyTeleporter())}
+              onBuy={ITEM_PURCHASES[item.id].buy}
             />
           ))}
           <ShopItem

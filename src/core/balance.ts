@@ -23,6 +23,8 @@ export const LIMITS = Object.freeze({
   drill: Object.freeze({ min: 1, max: 100 }),
   dynamite: Object.freeze({ min: 0, max: 999 }),
   teleporters: Object.freeze({ min: 0, max: 999 }),
+  /** Carried (not yet deployed) scanner devices; they live in the cargo bay. */
+  scanners: Object.freeze({ min: 0, max: 999 }),
   bullets: Object.freeze({ min: 0, max: 999 }),
   visibility: Object.freeze({ min: 3, max: 8 })
 });
@@ -81,6 +83,7 @@ export const ECONOMY = Object.freeze({
   visibility: Object.freeze({ base: 175, growth: 1.45, step: 1 }),
   dynamite: Object.freeze({ price: 50, radius: 2 }),
   teleporter: Object.freeze({ price: 250 }),
+  scanner: Object.freeze({ price: 200 }),
   gun: Object.freeze({ price: 1500, ammoPrice: 120, ammoBundle: 6, range: 8, damage: 100 }),
   artifactReward: 5000
 });

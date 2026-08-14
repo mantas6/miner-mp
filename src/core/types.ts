@@ -5,6 +5,7 @@ import type { EnemyKind, Tile } from '../../shared/world-schema';
 // dependency of this module.
 import type { TrackId } from '../audio/tracks';
 import type { Inventory } from './inventory';
+import type { ScannerDevice } from './scanner-device';
 import type { TileDiff } from '../world/tile-diff';
 
 export type {
@@ -170,6 +171,12 @@ export interface GameState {
   reducedMotion: boolean;
   /** Explored underground cells as row-major indexes; surface rows are implicitly visible. */
   exploredTiles: Set<number>;
+  /**
+   * Scanner devices left in the mine, clearing fog around themselves. Local to
+   * this client: the tiles they reveal are shared through the ordinary
+   * exploration message, but the hardware itself is one miner's business.
+   */
+  scannerDevices: ScannerDevice[];
 }
 
 export interface AudioController {

@@ -340,6 +340,48 @@ describe('terrain cache lifecycle', () => {
     expect(mocks.mainContext.shadowColor).not.toBe('#43d9ff');
   });
 
+  /**
+   * The one thing a deployed scanner has to say on the canvas is whether it is
+   * still working, and it says it with the sweep ring a finished one has lost.
+   */
+  it('sweeps a ring for a working scanner and drops it once the square is mapped', () => {
+    const device = {x: 12, y: 24, timer: 0};
+    const state = {
+      world: [], camX: 10, camY: 20, tick: 4, gameOver: false, reducedMotion: false,
+      exploredTiles: new Set([explorationIndex(12, 24)]), teleportEffect: null,
+      particles: [], enemies: [], remotePlayers: [], scannerDevices: [device],
+      player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+    const renderer = createRenderer({state, get: () => ({type:'air'}), rand: () => 0});
+    // The device sits two tiles below the ship: its own tile, in screen pixels.
+    const at = (call: unknown[]) => call[0] === TILE*2.5 && call[1] === TILE*4.5;
+
+    renderer.draw();
+    expect(mocks.mainContext.translate.mock.calls.some(at)).toBe(true);
+    const sweeping = mocks.mainContext.arc.mock.calls.length;
+
+    // Everything around it explored: the survey is over, and the ring goes.
+    vi.clearAllMocks();
+    for (let y = 22; y <= 26; y++) for (let x = 10; x <= 14; x++) state.exploredTiles.add(explorationIndex(x, y));
+    renderer.draw();
+    expect(mocks.mainContext.translate.mock.calls.some(at)).toBe(true);
+    expect(mocks.mainContext.arc.mock.calls.length).toBe(sweeping - 1);
+  });
+
+  it('leaves a scanner under fog unpainted, like everything else out there', () => {
+    const state = {
+      world: [], camX: 10, camY: 20, tick: 4, gameOver: false, reducedMotion: false,
+      exploredTiles: new Set<number>(), teleportEffect: null,
+      particles: [], enemies: [], remotePlayers: [], scannerDevices: [{x: 12, y: 24, timer: 0}],
+      player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+    const renderer = createRenderer({state, get: () => ({type:'air'}), rand: () => 0});
+
+    renderer.draw();
+
+    expect(mocks.mainContext.translate.mock.calls.some(call => call[0] === TILE*2.5 && call[1] === TILE*4.5)).toBe(false);
+  });
+
   it('keeps reduced-motion boost flames static across render frames', () => {
     const state = {
       world: [], camX: 10, camY: 20, tick: 1, gameOver: false, reducedMotion: true,

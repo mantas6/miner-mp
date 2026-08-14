@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { ORES } from '../../shared/constants';
 import { ECONOMY, LIMITS, STARTING } from '../core/balance';
 import { cargoCost, drillCost, partialFill, refuelCost, repairCost } from '../core/economy';
-import { INVENTORY_SLOTS, addOre, countOres, createInventory } from '../core/inventory';
+import { INVENTORY_SLOTS, addOre, countItem, countOres, createInventory } from '../core/inventory';
+import { SCANNER_ITEM } from '../core/scanner-device';
 import { createInitialState } from '../core/state';
 import type { GameState } from '../core/types';
 import { createActions, type GameActions } from './actions';
@@ -254,6 +255,30 @@ describe('buying equipment', () => {
 
     expect(h.state.player).toMatchObject({dynamite: 1, teleporters: 1});
     expect(h.state.cash).toBe(0);
+  });
+
+  it('loads a scanner into a cargo slot, and refuses one the bay cannot hold', () => {
+    const h = harness();
+    h.state.cash = ECONOMY.scanner.price * 2;
+
+    h.actions.buyScanner();
+    h.actions.buyScanner();
+
+    // Two units of one kind share a slot, so the bay is one slot down, not two.
+    expect(countItem(h.state.player.inventory, SCANNER_ITEM.kind)).toBe(2);
+    expect(h.state.cash).toBe(0);
+
+    // Fill every slot with other kinds: there is now nowhere for a scanner to go.
+    h.state.cash = ECONOMY.scanner.price;
+    h.state.player.inventory = ORES.slice(0, INVENTORY_SLOTS)
+      .reduce<ReturnType<typeof createInventory>>((bay, ore) => addOre(bay, ore, 99)!, createInventory());
+
+    h.actions.buyScanner();
+
+    expect(countItem(h.state.player.inventory, SCANNER_ITEM.kind)).toBe(0);
+    expect(h.state.cash).toBe(ECONOMY.scanner.price);
+    expect(h.toasts.saw('Cargo bay is full')).toBe(true);
+    expect(h.audio.played).toContain('alarm');
   });
 
   it('requires the gun before ammunition, and never sells it twice', () => {

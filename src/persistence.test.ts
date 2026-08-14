@@ -1,9 +1,10 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { SAVE_KEY, SAVE_VERSION, load, numeric, save } from './persistence';
 import { SURFACE_SPAWN_X, createInitialState } from './core/state';
-import { ECONOMY } from './core/balance';
+import { ECONOMY, LIMITS } from './core/balance';
 import { cargoCost } from './core/economy';
-import { countOres } from './core/inventory';
+import { addItem, countItem, countOres } from './core/inventory';
+import { SCANNER_DEVICE, SCANNER_ITEM, createScannerDevice } from './core/scanner-device';
 import { claimArtifact } from './core/artifacts';
 import { ARTIFACTS, MAX_SAVED_TILE_ENTRIES, START_Y } from '../shared/constants';
 import { explorationIndex } from '../shared/exploration-codec';
@@ -126,6 +127,68 @@ describe('carried item persistence', () => {
     load(state);
 
     expect(state.player).toMatchObject(empty);
+  });
+});
+
+describe('scanner persistence', () => {
+  it('round-trips carried scanners into the cargo bay and the devices left running', () => {
+    const stored = stubStorage();
+    const state = createInitialState();
+    state.player.inventory = addItem(state.player.inventory, SCANNER_ITEM, 2)!;
+    state.scannerDevices = [createScannerDevice(12, 640), {x: 44, y: 700, timer: 123}];
+
+    save(state);
+
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({
+      version: SAVE_VERSION,
+      scanners: 2,
+      scannerDevices: [{x: 12, y: 640, timer: 0}, {x: 44, y: 700, timer: 123}]
+    });
+
+    const restored = createInitialState();
+    load(restored);
+    expect(countItem(restored.player.inventory, SCANNER_ITEM.kind)).toBe(2);
+    expect(restored.scannerDevices).toEqual(state.scannerDevices);
+  });
+
+  it('gives a save written before scanners existed neither one', () => {
+    stubStorage({version: 5, cash: 90});
+    const state = createInitialState();
+
+    load(state);
+
+    expect(countItem(state.player.inventory, SCANNER_ITEM.kind)).toBe(0);
+    expect(state.scannerDevices).toEqual([]);
+  });
+
+  it.each([
+    ['a device outside the side walls', [{x: -3, y: 400}]],
+    ['a device above the mine', [{x: 10, y: 0}]],
+    ['a nonsense device', [{x: 'deep', y: null}]],
+    ['something that is not a device at all', ['scanner']],
+    ['a device list that is not a list', 'scanner']
+  ])('drops %s on load', (_name, scannerDevices) => {
+    stubStorage({version: SAVE_VERSION, scannerDevices});
+    const state = createInitialState();
+
+    load(state);
+
+    expect(state.scannerDevices).toEqual([]);
+  });
+
+  it('clamps a hand-edited save to what the game could have deployed and carried', () => {
+    stubStorage({
+      version: SAVE_VERSION,
+      scanners: 10_000,
+      scannerDevices: Array.from({length: SCANNER_DEVICE.maxPlaced + 5}, (_, index) => ({x: index, y: 400, timer: 999_999}))
+    });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(countItem(state.player.inventory, SCANNER_ITEM.kind)).toBe(LIMITS.scanners.max);
+    expect(state.scannerDevices).toHaveLength(SCANNER_DEVICE.maxPlaced);
+    expect(state.scannerDevices.every(device => device.timer === SCANNER_DEVICE.intervalTicks)).toBe(true);
   });
 });
 

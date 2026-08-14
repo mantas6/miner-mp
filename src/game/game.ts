@@ -24,7 +24,7 @@
 import { START_Y, SURFACE_HEIGHT, WORLD_W } from '../../shared/constants';
 import { createDisposalScope } from './disposal';
 import { createGameSurface, type GameSurfaceRefs } from './dom';
-import { advanceViewportZoom, setViewportZoom, viewport } from './viewport';
+import { advanceViewportZoom, setViewportZoom, tileAtViewportPoint, viewport } from './viewport';
 import { recenteredCamera } from './zoom';
 import { loadZoomLevel, saveZoomLevel } from './zoom-settings';
 import { createAudio } from '../audio/audio';
@@ -34,7 +34,8 @@ import { createDefaultStats, createInitialState } from '../core/state';
 import { createRenderer, type Renderer } from '../render/renderer';
 import { FUEL, ECONOMY } from '../core/balance';
 import { cargoCost, tankCost, hullCost, drillCost, visibilityCost, cargoValue } from '../core/economy';
-import { countOres, type Inventory } from '../core/inventory';
+import { countItem, countOres, type Inventory } from '../core/inventory';
+import { SCANNER_ITEM } from '../core/scanner-device';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from '../core/hud-alerts';
 import { formatExpeditionObjective } from '../core/objective';
 import { load, save } from '../persistence';
@@ -62,6 +63,7 @@ import { createWorldGrid, type WorldGrid } from './world-grid';
 import { createSession, type GameSession } from './session';
 import { createEnemySim, type EnemySim } from './enemies';
 import { createActions, type GameActions } from './actions';
+import { createScannerDevices, type ScannerDeviceSim } from './scanner-devices';
 import { createMovement } from './move';
 import { createReadouts, type HudReadouts } from './readouts';
 import { createRun, type GameRun } from './run';
@@ -102,6 +104,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   let run: GameRun;
   let gameInput: GameInput;
   let readouts: HudReadouts;
+  let scanners: ScannerDeviceSim;
 
   state.stats = createDefaultStats();
 
@@ -146,6 +149,22 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     if (!added.length) return;
     invalidateFogTiles(added);
     if (broadcast) session.broadcastExploration();
+    progressSave.schedule();
+  }
+  /**
+   * Explore individual tiles — what a deployed scanner reports. It travels the
+   * same path the ship's own footprint does, so a partner's fog lifts with ours.
+   */
+  function revealTiles(indexes: number[]) {
+    const added: number[] = [];
+    for (const index of indexes) {
+      if (state.exploredTiles.has(index)) continue;
+      state.exploredTiles.add(index);
+      added.push(index);
+    }
+    if (!added.length) return;
+    invalidateFogTiles(added);
+    session.broadcastExploration();
     progressSave.schedule();
   }
 
@@ -229,6 +248,8 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       buyUpgrade: id => actions.buyUpgrade(id, UPGRADE_PURCHASES[id].cost(), UPGRADE_PURCHASES[id].message),
       buyDynamite: () => actions.buyDynamite(),
       buyTeleporter: () => actions.buyTeleporter(),
+      buyScanner: () => actions.buyScanner(),
+      toggleScannerPlacement: () => scanners.toggleArmed(),
       buyGun: () => actions.buyGun(),
       buyBullets: () => actions.buyBullets(),
       detonateDynamite: () => actions.detonateDynamite(),
@@ -293,6 +314,9 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   function openShopScreen(){
     if (!atSurface()) return toast('Shop is at the surface depot.');
     state.input.gunArmed = false;
+    // An overlay covers the mine, so a pointer armed for placement has nothing
+    // left to aim at.
+    scanners.disarm();
     syncPlayerSnapshot();
     uiStore.getState().setActiveOverlay('shop');
   }
@@ -300,6 +324,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     uiStore.getState().closeOverlay('shop');
   }
   function openInfoScreen(){
+    scanners.disarm();
     syncPlayerSnapshot();
     syncInfoDetails();
     uiStore.getState().setActiveOverlay('info');
@@ -327,6 +352,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     playerScratch.teleporters = p.teleporters;
     playerScratch.gunOwned = p.gunOwned;
     playerScratch.bullets = p.bullets;
+    playerScratch.scanners = countItem(p.inventory, SCANNER_ITEM.kind);
     uiStore.getState().syncPlayer(playerScratch);
   }
   function syncInfoDetails(){
@@ -456,6 +482,9 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     gameInput.tick();
     if (!state.gameOver && session.paired && state.connected) session.sendPlayerState();
     if (isPlaying()) {
+      // Deployed hardware keeps working while the ship is elsewhere, but only
+      // while the run is live: a paused splash must not burn survey time.
+      scanners.tick();
       if (session.isGuestEnemyReplica()) {
         enemies.updatePresentation();
         enemies.updateBites();
@@ -643,6 +672,15 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       clearKeys: () => gameInput.clearKeys()
     });
     readouts = createReadouts({state, grid, enemies, atSurface, toast});
+    scanners = createScannerDevices({
+      state,
+      grid,
+      audio,
+      toast,
+      saveProgress,
+      revealTiles,
+      setArmedUi: value => uiStore.getState().setScannerArmed(value)
+    });
     gameInput = createInput({
       state,
       actions,
@@ -651,9 +689,34 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       restartGame: run.restartGame,
       closeShopScreen,
       closeInfoScreen,
+      cancelScannerPlacement: () => scanners.disarm(),
       toast,
       tryAutoAudio
     });
+  }
+
+  /**
+   * A press on the mine while a scanner is armed drops it on the tile pressed.
+   * Registered on the canvas rather than the window so the HUD's own buttons —
+   * which sit over the same pixels — keep their clicks.
+   *
+   * The press is deliberately left to run its course afterwards: it is also the
+   * gesture that unlocks audio, and it is what hands the keyboard back to the
+   * canvas after a click on the inventory slot took it away.
+   */
+  function handleMinePointerDown(event: PointerEvent){
+    if (!scanners.armed || !isPlaying()) return;
+    const rect = surface.canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    // The canvas may be laid out at a different size than it is drawn at, so the
+    // press is normalised into the CSS pixels the viewport is expressed in first.
+    const point = tileAtViewportPoint(
+      (event.clientX - rect.left) * (viewport.widthPx / rect.width),
+      (event.clientY - rect.top) * (viewport.heightPx / rect.height),
+      state.camX,
+      state.camY
+    );
+    scanners.placeAt(point.x, point.y);
   }
 
   /** Hand the runtime back to the mount that owns it. */
@@ -674,6 +737,9 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     // replacement runtime re-announces its own boot toast.
     resetUiCommands();
     uiStore.getState().clearToasts();
+    // An armed slot outlives its runtime otherwise, and there is nothing left to
+    // take the press it is waiting for.
+    uiStore.getState().setScannerArmed(false);
   }
 
   // --- Boot ------------------------------------------------------------------
@@ -697,6 +763,8 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     });
     loadProgress();
     scope.onWindow('touchstart', tryAutoAudio, {passive:true});
+    surface.canvas.addEventListener('pointerdown', handleMinePointerDown);
+    scope.add(() => surface.canvas.removeEventListener('pointerdown', handleMinePointerDown));
     scope.add(gameInput.attach());
     scope.onWindow('focus', focusGame);
     scope.onDocument('visibilitychange', () => {

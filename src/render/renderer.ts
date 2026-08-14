@@ -4,6 +4,7 @@ import { getPartnerIndicator } from './partner-indicator';
 import { getVisibleTileRange } from '../world/visible-tile-range';
 import { isTileExplored } from '../../shared/exploration-codec';
 import { getEnemyType } from '../core/enemy-types';
+import { isScannerDone, type ScannerDevice } from '../core/scanner-device';
 import { TERRAIN_CHUNK_TILES, terrainCacheScale, terrainChunkCoordinate, terrainChunkKeyForTile } from './terrain-cache-policy';
 import type {
   Direction,
@@ -40,6 +41,8 @@ export interface RendererState {
   reducedMotion?: boolean;
   /** Absent means "everything is visible": no fog is painted. */
   exploredTiles?: Set<number>;
+  /** Scanner devices left in the mine. Absent or empty means none are deployed. */
+  scannerDevices?: readonly ScannerDevice[];
   teleportEffect?: TeleportEffect | null;
   input?: {sprintDirection?: Direction | null};
 }
@@ -225,6 +228,7 @@ export function createRenderer({ state, canvas, ctx, get, rand }: RendererDeps):
     drawTerrainDamage(camX, camY);
     drawTerrainBlendOverlay(camY);
     drawSurface(camX, camY);
+    drawScannerDevices(camX, camY);
     drawEnemies(camX, camY);
     for (const pt of state.particles) {
       if (!isExplored(Math.floor(pt.x), Math.floor(pt.y))) continue;
@@ -380,6 +384,50 @@ export function createRenderer({ state, canvas, ctx, get, rand }: RendererDeps):
       ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-7, -9); ctx.lineTo(-3, 0); ctx.lineTo(-7, 9); ctx.closePath(); ctx.fill();
       ctx.restore();
     }
+  }
+  /**
+   * Deployed scanners, as a lit dish on a tripod. A working one sweeps a ring
+   * that a finished one has lost, so "still mapping" and "spent" are one glance
+   * apart without a label on the canvas.
+   */
+  function drawScannerDevices(camX: number, camY: number) {
+    const devices = state.scannerDevices;
+    if (!devices?.length) return;
+    for (const device of devices) {
+      if (!isExplored(device.x, device.y)) continue;
+      const sx = (device.x - camX) * TILE, sy = (device.y - camY) * TILE;
+      if (sx < -TILE || sy < -TILE || sx > viewport.worldWidthPx + TILE || sy > viewport.worldHeightPx + TILE) continue;
+      drawScannerBody(sx, sy, state.exploredTiles ? isScannerDone(device, state.exploredTiles) : true);
+    }
+  }
+  function drawScannerBody(sx: number, sy: number, done: boolean) {
+    const glow = done ? '#5d6b78' : '#7fe3ff';
+    ctx.save();
+    ctx.translate(sx + TILE*.5, sy + TILE*.5);
+    if (!done && !state.reducedMotion) {
+      // One expanding pulse per cycle: the survey, made visible.
+      const pulse = (state.tick % 90) / 90;
+      ctx.globalAlpha = (1 - pulse) * .45;
+      ctx.strokeStyle = glow; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 0, TILE*(.2 + pulse*.8), 0, Math.PI*2); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    // Tripod and mast.
+    ctx.strokeStyle = '#8c9aa8'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-TILE*.18, TILE*.30); ctx.lineTo(0, TILE*.02);
+    ctx.moveTo(TILE*.18, TILE*.30); ctx.lineTo(0, TILE*.02);
+    ctx.moveTo(0, TILE*.30); ctx.lineTo(0, -TILE*.10);
+    ctx.stroke();
+    // Dish.
+    ctx.fillStyle = done ? '#3f4a55' : '#cdefff';
+    ctx.beginPath(); ctx.arc(0, -TILE*.12, TILE*.20, Math.PI, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = glow; ctx.lineWidth = 2; ctx.stroke();
+    // Status lamp: lit while the survey runs, dark once it is spent.
+    ctx.fillStyle = done ? '#2a333c' : '#fff6bd';
+    if (!done) { ctx.shadowColor = glow; ctx.shadowBlur = 10; }
+    ctx.beginPath(); ctx.arc(0, -TILE*.14, TILE*.05, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
   }
   function drawEnemies(camX: number, camY: number) {
     for (const e of state.enemies) {

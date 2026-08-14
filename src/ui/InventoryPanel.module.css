@@ -71,6 +71,27 @@
   text-transform: uppercase;
   opacity: 0.7;
 }
+/* A slot that is also a control: the scanner is deployed from where it is shown,
+   so the row keeps its layout and gains only a pressed state. */
+.place {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  font: inherit;
+  text-align: left;
+}
+.armed {
+  box-shadow:
+    0 0 0 1px #8eeaff,
+    0 0 8px rgba(142, 234, 255, 0.55);
+}
+
 .icon {
   width: 10px;
   height: 10px;

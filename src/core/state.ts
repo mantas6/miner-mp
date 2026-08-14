@@ -1,6 +1,6 @@
 import { START_Y, WORLD_W } from '../../shared/constants';
 import { STARTING } from './balance';
-import { createInventory } from './inventory';
+import { createInventory, removeOres } from './inventory';
 import type { GameState, GameStats, Player } from './types';
 
 /** Tile column of the surface shaft where every ship starts or returns. */
@@ -23,8 +23,9 @@ export function respawnPlayer(player: Player): void {
   Object.assign(player, {
     fuel: player.fuelMax,
     hull: player.hullMax,
-    // Ore never survives a death, and the bay itself is not persisted either.
-    inventory: createInventory()
+    // Ore never survives a death; bought equipment does, exactly as the dynamite
+    // and teleporters counted on the ship do.
+    inventory: removeOres(player.inventory)
   });
 }
 
@@ -63,6 +64,7 @@ export function createInitialState(): GameState {
     teleportReturnPosition: null,
     reducedMotion: false,
     exploredTiles: new Set<number>(),
+    scannerDevices: [],
     input: {
       keyImpulse: null,
       sprintDirection: null,

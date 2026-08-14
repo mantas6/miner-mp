@@ -10,7 +10,7 @@
 // this frame; `targetZoom` is where the wheel asked it to go. `advanceViewportZoom()`
 // walks one toward the other so a mouse notch reads as a glide rather than a jump.
 
-import { TILE } from '../../shared/constants';
+import { TILE, WORLD_W } from '../../shared/constants';
 import { clampZoom, DEFAULT_ZOOM } from './zoom';
 
 const DEFAULT_WIDTH_PX = 960;
@@ -75,6 +75,31 @@ export function setViewportZoom(zoom: number): void {
 /** Ask for a zoom level; `advanceViewportZoom()` eases toward it. */
 export function requestViewportZoom(zoom: number): void {
   viewport.targetZoom = clampZoom(zoom);
+}
+
+/**
+ * The camera the mine is actually drawn with: the eased camera, clamped to the
+ * world the way `renderer.draw()` clamps it. Anything converting a screen point
+ * back into a tile has to start from this, or a view pushed against the left
+ * wall or the sky would answer with the tile next door.
+ */
+export function drawnCamera(camX: number, camY: number): {x: number; y: number} {
+  return {
+    x: Math.max(0, Math.min(WORLD_W - viewport.tilesX, camX)),
+    y: Math.max(0, camY)
+  };
+}
+
+/**
+ * The tile under a point given in canvas CSS pixels. The inverse of the
+ * renderer's world transform: undo the zoom, then the camera.
+ */
+export function tileAtViewportPoint(x: number, y: number, camX: number, camY: number): {x: number; y: number} {
+  const camera = drawnCamera(camX, camY);
+  return {
+    x: Math.floor(camera.x + x / viewport.zoom / TILE),
+    y: Math.floor(camera.y + y / viewport.zoom / TILE)
+  };
 }
 
 /**

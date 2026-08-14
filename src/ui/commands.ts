@@ -17,11 +17,17 @@ export interface UiCommands {
   buyUpgrade(id: PlayerUpgradeId): void;
   buyDynamite(): void;
   buyTeleporter(): void;
+  buyScanner(): void;
   buyGun(): void;
   buyBullets(): void;
   detonateDynamite(): void;
   useTeleporter(): void;
   toggleGunArmed(): void;
+  /**
+   * Arm a carried scanner for placement, or disarm the one already waiting. The
+   * press that follows on the mine is what actually deploys it.
+   */
+  toggleScannerPlacement(): void;
   openShop(): void;
   closeShop(): void;
   openInfo(): void;
@@ -67,11 +73,13 @@ function noopCommands(): UiCommands {
     buyUpgrade: noop,
     buyDynamite: noop,
     buyTeleporter: noop,
+    buyScanner: noop,
     buyGun: noop,
     buyBullets: noop,
     detonateDynamite: noop,
     useTeleporter: noop,
     toggleGunArmed: noop,
+    toggleScannerPlacement: noop,
     openShop: noop,
     closeShop: noop,
     openInfo: noop,
