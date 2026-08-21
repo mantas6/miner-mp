@@ -171,13 +171,6 @@
   padding: 8px 10px;
   font-size: var(--fs-xs);
 }
-.gunGrid {
-  margin-top: 9px;
-}
-.gunGrid .item {
-  grid-column: 1 / -1;
-}
-
 @media (max-width: 760px) {
   .screen {
     padding: 8px;

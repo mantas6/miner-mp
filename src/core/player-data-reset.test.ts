@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ORES } from '../../shared/constants';
 import { MULTIPLAYER_SETTINGS_KEY } from '../net/multiplayer-settings';
-import { addOre, createInventory } from './inventory';
+import { addItem, addOre, createInventory } from './inventory';
 import { confirmPlayerDataReset, resetPlayerData } from './player-data-reset';
 import { SAVE_KEY } from '../persistence';
 import { createInitialState } from './state';
+import { GUN_ITEM } from './weapon';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -26,8 +27,8 @@ describe('player-data reset', () => {
     Object.assign(state.player, {
       x: 8, y: 80, drawX: 7, drawY: 79, facing: -1, bob: 1, drillAnim: 2,
       drillDx: 1, drillDy: 0, fuel: 2, fuelMax: 400, hull: 3, hullMax: 300,
-      cargoMax: 80, drill: 40, teleporters: 8, gunOwned: true,
-      bullets: 70, visibility: 20, inventory: addOre(createInventory(), ORES[3], 80)!
+      cargoMax: 80, drill: 40, teleporters: 8, visibility: 20,
+      inventory: addItem(addOre(createInventory(), ORES[3], 80)!, GUN_ITEM, 2)!
     });
     state.cash = 9999;
     state.tick = 500;
@@ -59,7 +60,7 @@ describe('player-data reset', () => {
     expect(JSON.parse(storage.values.get(SAVE_KEY)!)).toMatchObject({
       cash: fresh.cash, fuelMax: fresh.player.fuelMax, hullMax: fresh.player.hullMax,
       cargoMax: fresh.player.cargoMax, drill: fresh.player.drill, dynamite: 0,
-      teleporters: 0, gunOwned: false, bullets: 0, visibility: fresh.player.visibility,
+      teleporters: 0, guns: 0, visibility: fresh.player.visibility,
       explored: '', stats: fresh.stats
     });
   });

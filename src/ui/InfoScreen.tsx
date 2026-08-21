@@ -238,7 +238,7 @@ function ControlsPanel() {
         <li><kbd>Space</kbd><span>Repair or refuel at the surface</span></li>
         <li><kbd>E</kbd> / <strong>Dynamite slot</strong> then a mine tile<span>Plant one carried stick on explored, cleared ground. It blows a {ECONOMY.dynamite.radius}-tile radius after a {DYNAMITE.fuseSeconds}-second fuse: blasts yield no cargo, destroyed artifacts grant no cash, and a ship still inside the radius takes hull damage. Escape cancels.</span></li>
         <li><kbd>T</kbd> / <kbd>Teleport</kbd><span>At 100 m or deeper, use one carried teleporter to visit the depot, then press T again to return to the same underground location</span></li>
-        <li><kbd>G</kbd> / <kbd>Arm Gun</kbd> then a direction key<span>Fire one bullet up to {ECONOMY.gun.range} tiles; press G or Escape to cancel aiming. Shots destroy the first eligible block or enemy, but valuables give no cargo or artifact cash.</span></li>
+        <li><kbd>G</kbd> / <kbd>Arm Gun</kbd> then a direction key<span>Spend one carried Linebreaker on a shot up to {ECONOMY.gun.range} tiles; press G or Escape to cancel aiming without using it. Shots destroy the first eligible block or enemy, but valuables give no cargo or artifact cash.</span></li>
         <li><strong>Scanner slot</strong> then a mine tile<span>Deploy one carried scanner onto explored, cleared ground; it maps its {SCANNER_DEVICE.size}×{SCANNER_DEVICE.size} surroundings, one fogged tile every {SCANNER_DEVICE.intervalSeconds} seconds, then goes inert. Escape cancels.</span></li>
         <li><kbd>R</kbd> then <kbd>R</kbd><span>Confirm reset while alive</span></li>
       </ul>

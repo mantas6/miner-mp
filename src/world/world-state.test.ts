@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import { addItem } from '../core/inventory';
 import { createInitialState } from '../core/state';
+import { GUN_ITEM } from '../core/weapon';
 import { createTileDiff } from './tile-diff';
 import { confirmWorldStateReset, resetWorldTerrain, WORLD_STATE_RESET_CONFIRMATION } from './world-state';
 
@@ -13,7 +15,8 @@ describe('world state reset', () => {
 
   it('regenerates terrain/entities/view state while preserving player progression and inventory', () => {
     const state = createInitialState();
-    Object.assign(state.player, { fuel: 17, hull: 23, fuelMax: 400, hullMax: 300, cargoMax: 80, drill: 40, teleporters: 8, gunOwned: true, bullets: 70, visibility: 20 });
+    Object.assign(state.player, { fuel: 17, hull: 23, fuelMax: 400, hullMax: 300, cargoMax: 80, drill: 40, teleporters: 8, visibility: 20 });
+    state.player.inventory = addItem(state.player.inventory, GUN_ITEM, 2)!;
     state.cash = 9999;
     state.stats.maxDepth = 900;
     state.world = [[{type:'air'}]];

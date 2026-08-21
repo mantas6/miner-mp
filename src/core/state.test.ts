@@ -4,6 +4,7 @@ import { ORES, START_Y, WORLD_W } from '../../shared/constants';
 import { DYNAMITE_ITEM } from './dynamite';
 import { INVENTORY_SLOTS, addItem, addOre, countItem, countOres, createInventory } from './inventory';
 import { createInitialState, respawnPlayer } from './state';
+import { GUN_ITEM } from './weapon';
 
 describe('initial game state', () => {
   it('starts a new game with starting capacities, no consumables, and no progress', () => {
@@ -13,9 +14,8 @@ describe('initial game state', () => {
     expect(state.player.inventory).toHaveLength(INVENTORY_SLOTS);
     expect(countOres(state.player.inventory)).toBe(0);
     expect(countItem(state.player.inventory, DYNAMITE_ITEM.kind)).toBe(0);
+    expect(countItem(state.player.inventory, GUN_ITEM.kind)).toBe(0);
     expect(state.player.teleporters).toBe(0);
-    expect(state.player.gunOwned).toBe(false);
-    expect(state.player.bullets).toBe(0);
     expect(state.extractionPhase).toBe('none');
     expect(state.stats.motherlodeExtractions).toBe(0);
     expect(state.input.sprintDirection).toBeNull();
@@ -42,10 +42,11 @@ describe('player respawn', () => {
     player.cargoMax += ECONOMY.cargo.step;
     player.drill += ECONOMY.drill.step;
     player.teleporters = 1;
-    player.gunOwned = true;
-    player.bullets = 9;
     // Ore and equipment share the bay, and only the ore is lost with the ship.
-    player.inventory = addItem(addOre(createInventory(), ORES[0], player.cargoMax)!, DYNAMITE_ITEM, 2)!;
+    player.inventory = addItem(
+      addItem(addOre(createInventory(), ORES[0], player.cargoMax)!, DYNAMITE_ITEM, 2)!,
+      GUN_ITEM
+    )!;
 
     respawnPlayer(player);
 
@@ -57,11 +58,10 @@ describe('player respawn', () => {
       hull: player.hullMax,
       cargoMax: STARTING.cargoMax + ECONOMY.cargo.step,
       drill: STARTING.drill + ECONOMY.drill.step,
-      teleporters: 1,
-      gunOwned: true,
-      bullets: 9
+      teleporters: 1
     });
     expect(countItem(player.inventory, DYNAMITE_ITEM.kind)).toBe(2);
+    expect(countItem(player.inventory, GUN_ITEM.kind)).toBe(1);
     expect(countOres(player.inventory)).toBe(0);
     expect(player.inventory).toHaveLength(INVENTORY_SLOTS);
   });

@@ -83,8 +83,6 @@ export function createRun(deps: GameRunDeps): GameRun {
         drill: STARTING.drill,
         visibility: STARTING.visibility,
         teleporters: STARTING.teleporters,
-        gunOwned: STARTING.gunOwned,
-        bullets: STARTING.bullets,
         // Bought equipment lives in the bay, so emptying it is part of the wipe.
         inventory: createInventory()
       });

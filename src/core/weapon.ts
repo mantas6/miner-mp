@@ -1,6 +1,23 @@
+// The Linebreaker: what one shot can reach, and what it hits on the way.
+//
+// The gun is a single-use device, not a fitting: it is bought at the depot, it
+// rides in the cargo bay like a stick of dynamite, and firing it spends the
+// item. There is no ammunition to track, so "can I shoot?" is a question about
+// the bay, which is why the check below takes a count rather than the ship.
+
 import { SURFACE_HEIGHT } from '../../shared/constants';
 import { tileKey } from '../../shared/tile-key';
+import type { InventoryItem } from './inventory';
 import type { Direction, Tile } from './types';
+
+/** The stackable item the depot sells and the cargo bay carries. */
+export const GUN_ITEM: InventoryItem = {
+  kind: 'gun',
+  label: 'Linebreaker',
+  color: '#ffe58a',
+  // Depot equipment is not cargo, so the sell-everything button never prices it.
+  value: 0
+};
 
 export interface ShotEnemyTarget {
   id: number;
@@ -23,14 +40,14 @@ export function isGunDestructible(tile: Tile): boolean {
   return tile.type === 'dirt' || tile.type === 'ore' || tile.type === 'artifact' || tile.type === 'hazard' || tile.type === 'enemy';
 }
 
-export function consumeBulletForShot(
-  player: {gunOwned: boolean; bullets: number},
-  armed: boolean,
-  direction: Direction
-): boolean {
-  if (!armed || !player.gunOwned || player.bullets <= 0 || !isCardinalDirection(direction)) return false;
-  player.bullets--;
-  return true;
+/**
+ * Whether this press spends a carried gun: one has to be armed, one has to be
+ * aboard, and the direction has to be one of the four the barrel points down.
+ * Pure — the caller takes the item out of the bay — so the same verdict serves
+ * the key handler and the button.
+ */
+export function canFireGun(carried: number, armed: boolean, direction: Direction): boolean {
+  return armed && carried > 0 && isCardinalDirection(direction);
 }
 
 export function resolveShot(

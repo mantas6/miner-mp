@@ -7,7 +7,7 @@
 // the ship is docked, and it returns exactly the strings and the disabled flag the
 // shop row paints.
 
-import { ECONOMY, LIMITS } from './balance';
+import { ECONOMY } from './balance';
 import { DYNAMITE } from './dynamite';
 import { cargoCost, drillCost, hullCost, refuelCost, repairCost, tankCost, visibilityCost } from './economy';
 import { SCANNER_DEVICE } from './scanner-device';
@@ -17,14 +17,15 @@ import { PLAYER_UPGRADES, getPlayerUpgradeProgress, type PlayerUpgradeId } from 
 
 export type ShopPlayer = Pick<
   Player,
-  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility' | 'teleporters' | 'gunOwned' | 'bullets'
+  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility' | 'teleporters'
 > & {
   /**
-   * Deployable equipment in the cargo bay. Counted out of the inventory rather
+   * Single-use equipment in the cargo bay. Counted out of the inventory rather
    * than kept on the ship, because each occupies a slot the way ore does.
    */
   scanners: number;
   dynamite: number;
+  guns: number;
 };
 
 export interface ShopRowState {
@@ -132,32 +133,25 @@ export const SHOP_ITEMS = [
     title: 'Scanner',
     copy: `Deployable survey unit. Drop it on cleared ground from the inventory panel and it maps its ${SCANNER_DEVICE.size}×${SCANNER_DEVICE.size} surroundings, one fogged tile every ${SCANNER_DEVICE.intervalSeconds} seconds, then goes inert.`,
     price: ECONOMY.scanner.price
+  },
+  {
+    id: 'gun',
+    icon: 'gun',
+    title: 'Linebreaker Gun',
+    copy: `Single-use precision weapon. Fires one round up to ${ECONOMY.gun.range} tiles and is spent with the shot; rock, depot structure, boundaries, and Motherlode are protected.`,
+    price: ECONOMY.gun.price
   }
 ] as const;
 
 export type ShopItemId = typeof SHOP_ITEMS[number]['id'];
 
-/** What "Carried" counts for each consumable; the deployables live in the bay. */
+/** What "Carried" counts for each consumable; all but the teleporter live in the bay. */
 const ITEM_COUNTS: Record<ShopItemId, (player: ShopPlayer) => number> = {
   dynamite: player => player.dynamite,
   teleporter: player => player.teleporters,
-  scanner: player => player.scanners
+  scanner: player => player.scanners,
+  gun: player => player.guns
 };
-
-export const SHOP_GUN = {
-  icon: 'gun',
-  title: 'Linebreaker Gun',
-  copy: `Permanent precision weapon. Fires one round up to ${ECONOMY.gun.range} tiles; rock, depot structure, boundaries, and Motherlode are protected.`,
-  price: ECONOMY.gun.price
-} as const;
-
-export const SHOP_AMMO = {
-  icon: 'bullets',
-  title: 'Gun Ammunition',
-  copy: 'Six precision rounds. Requires the permanent Linebreaker Gun.',
-  price: ECONOMY.gun.ammoPrice,
-  bundle: ECONOMY.gun.ammoBundle
-} as const;
 
 /** The shared "can I buy this right now?" verdict for a fixed-price purchase. */
 function purchaseState(cash: number, price: number, atSurface: boolean, unavailable = false): Pick<ShopRowState, 'status' | 'buttonDisabled'> {
@@ -222,29 +216,3 @@ export function itemRowState(id: ShopItemId, player: ShopPlayer, cash: number, a
   };
 }
 
-export function gunRowState(player: ShopPlayer, cash: number, atSurface: boolean): ShopRowState {
-  const state = purchaseState(cash, SHOP_GUN.price, atSurface, player.gunOwned);
-  return {
-    icon: SHOP_GUN.icon,
-    title: SHOP_GUN.title,
-    copy: SHOP_GUN.copy,
-    current: player.gunOwned ? `Owned · Ammo: ${player.bullets}` : 'Not owned · Ammo: 0',
-    buttonLabel: player.gunOwned ? 'Installed' : `Buy · $${SHOP_GUN.price}`,
-    buttonDisabled: state.buttonDisabled,
-    status: player.gunOwned ? (atSurface ? 'Owned' : 'Surface depot only') : state.status
-  };
-}
-
-export function ammoRowState(player: ShopPlayer, cash: number, atSurface: boolean): ShopRowState {
-  const ammoFull = player.bullets + SHOP_AMMO.bundle > LIMITS.bullets.max;
-  const state = purchaseState(cash, SHOP_AMMO.price, atSurface, !player.gunOwned || ammoFull);
-  return {
-    icon: SHOP_AMMO.icon,
-    title: SHOP_AMMO.title,
-    copy: SHOP_AMMO.copy,
-    current: `Ammo: ${player.bullets} · +${SHOP_AMMO.bundle} per bundle`,
-    buttonLabel: `Buy ${SHOP_AMMO.bundle} · $${SHOP_AMMO.price}`,
-    buttonDisabled: state.buttonDisabled,
-    status: atSurface && !player.gunOwned ? 'Gun required' : atSurface && ammoFull ? 'Ammo full' : state.status
-  };
-}

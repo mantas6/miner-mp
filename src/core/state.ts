@@ -92,8 +92,6 @@ export function createInitialState(): GameState {
       cargoMax: STARTING.cargoMax,
       drill: STARTING.drill,
       teleporters: STARTING.teleporters,
-      gunOwned: STARTING.gunOwned,
-      bullets: STARTING.bullets,
       visibility: STARTING.visibility,
       inventory: createInventory()
     }

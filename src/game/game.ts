@@ -36,6 +36,7 @@ import { cargoCost, tankCost, hullCost, drillCost, visibilityCost, cargoValue } 
 import { countItem, countOres, type Inventory } from '../core/inventory';
 import { DYNAMITE_ITEM } from '../core/dynamite';
 import { SCANNER_ITEM } from '../core/scanner-device';
+import { GUN_ITEM } from '../core/weapon';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from '../core/hud-alerts';
 import { formatExpeditionObjective } from '../core/objective';
 import { load, save } from '../persistence';
@@ -249,7 +250,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       toggleScannerPlacement: () => { dynamite.disarm(); scanners.toggleArmed(); },
       toggleDynamitePlacement: () => { scanners.disarm(); dynamite.toggleArmed(); },
       buyGun: () => actions.buyGun(),
-      buyBullets: () => actions.buyBullets(),
       useTeleporter: () => actions.useTeleporter(),
       toggleGunArmed: () => actions.setGunArmed(!state.input.gunArmed),
       openShop: openShopScreen,
@@ -349,10 +349,9 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     playerScratch.drill = p.drill;
     playerScratch.visibility = p.visibility;
     playerScratch.teleporters = p.teleporters;
-    playerScratch.gunOwned = p.gunOwned;
-    playerScratch.bullets = p.bullets;
     playerScratch.scanners = countItem(p.inventory, SCANNER_ITEM.kind);
     playerScratch.dynamite = countItem(p.inventory, DYNAMITE_ITEM.kind);
+    playerScratch.guns = countItem(p.inventory, GUN_ITEM.kind);
     uiStore.getState().syncPlayer(playerScratch);
   }
   function syncInfoDetails(){
@@ -435,8 +434,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     hudScratch.atSurface = surf;
     hudScratch.gameOver = state.gameOver;
     hudScratch.gunArmed = state.input.gunArmed;
-    hudScratch.gunOwned = p.gunOwned;
-    hudScratch.bullets = p.bullets;
+    hudScratch.guns = countItem(p.inventory, GUN_ITEM.kind);
     hudScratch.teleporters = p.teleporters;
     hudScratch.teleportReturn = state.teleportReturnPosition !== null;
     hudScratch.teleportDepthReached = canTeleportToSurface(p.y);

@@ -26,6 +26,7 @@ import { formatSurfaceActionHint } from '../core/surface-hint';
 import { countItem, createInventory, oreStacks, type Inventory, type InventoryItemKind } from '../core/inventory';
 import { DYNAMITE_ITEM } from '../core/dynamite';
 import { SCANNER_ITEM } from '../core/scanner-device';
+import { GUN_ITEM } from '../core/weapon';
 import type { Player } from '../core/types';
 import { DEFAULT_INFO_TAB, type InfoTab } from './info-navigation';
 
@@ -49,8 +50,8 @@ export interface HudSnapshot {
   atSurface: boolean;
   gameOver: boolean;
   gunArmed: boolean;
-  gunOwned: boolean;
-  bullets: number;
+  /** Single-use Linebreakers in the bay: the gun button's whole availability. */
+  guns: number;
   teleporters: number;
   /** A stored underground return point exists. */
   teleportReturn: boolean;
@@ -82,7 +83,7 @@ export interface HudSnapshot {
 const HUD_KEYS = [
   'cash', 'depthMeters', 'fuel', 'fuelMax', 'hull', 'hullMax', 'cargo', 'cargoMax', 'cargoValue',
   'fuelAlert', 'hullAlert', 'cargoAlert', 'objective', 'extractionHud', 'extractionInfo',
-  'atSurface', 'gameOver', 'gunArmed', 'gunOwned', 'bullets', 'teleporters',
+  'atSurface', 'gameOver', 'gunArmed', 'guns', 'teleporters',
   'teleportReturn', 'teleportDepthReached', 'teleportUsable',
   'scanner', 'surfaceHint', 'fuelReserveStatus', 'fuelReserveNeeded', 'fuelReserveMargin',
   'depthTarget', 'depthTargetKind', 'depthTargetRemaining', 'announcement'
@@ -91,16 +92,17 @@ const HUD_KEYS = [
 /** The ship stats the shop and the developer panel price and label their rows from. */
 export type PlayerSnapshot = Pick<
   Player,
-  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility' | 'teleporters' | 'gunOwned' | 'bullets'
+  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility' | 'teleporters'
 > & {
-  /** Deployables in the cargo bay, counted out of the inventory for the shop rows. */
+  /** Consumables in the cargo bay, counted out of the inventory for the shop rows. */
   scanners: number;
   dynamite: number;
+  guns: number;
 };
 
 const PLAYER_KEYS = [
-  'fuel', 'fuelMax', 'hull', 'hullMax', 'cargoMax', 'drill', 'visibility', 'teleporters', 'gunOwned', 'bullets',
-  'scanners', 'dynamite'
+  'fuel', 'fuelMax', 'hull', 'hullMax', 'cargoMax', 'drill', 'visibility', 'teleporters',
+  'scanners', 'dynamite', 'guns'
 ] as const satisfies readonly (keyof PlayerSnapshot)[];
 
 export interface CargoRow {
@@ -260,8 +262,7 @@ function initialHud(): HudSnapshot {
     atSurface: true,
     gameOver: false,
     gunArmed: false,
-    gunOwned: player.gunOwned,
-    bullets: player.bullets,
+    guns: countItem(player.inventory, GUN_ITEM.kind),
     teleporters: player.teleporters,
     teleportReturn: false,
     teleportDepthReached: false,
@@ -305,10 +306,9 @@ function initialPlayer(): PlayerSnapshot {
     drill: player.drill,
     visibility: player.visibility,
     teleporters: player.teleporters,
-    gunOwned: player.gunOwned,
-    bullets: player.bullets,
     scanners: countItem(player.inventory, SCANNER_ITEM.kind),
-    dynamite: countItem(player.inventory, DYNAMITE_ITEM.kind)
+    dynamite: countItem(player.inventory, DYNAMITE_ITEM.kind),
+    guns: countItem(player.inventory, GUN_ITEM.kind)
   };
 }
 

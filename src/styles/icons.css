@@ -201,15 +201,6 @@
   background: #ffeaa0;
   box-shadow: 0 0 8px #ffd35f;
 }
-.icon-bullets::before {
-  width: 9px;
-  height: 29px;
-  border-radius: 5px 5px 2px 2px;
-  background: linear-gradient(#ffe58e 0 30%, #a66f29 31%);
-  box-shadow:
-    -13px 4px 0 #a66f29,
-    13px 4px 0 #a66f29;
-}
 @media (max-width: 760px) {
   .equipment-icon {
     width: 42px;

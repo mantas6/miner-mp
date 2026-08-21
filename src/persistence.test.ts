@@ -6,6 +6,7 @@ import { cargoCost } from './core/economy';
 import { DYNAMITE, DYNAMITE_ITEM, createPlacedDynamite } from './core/dynamite';
 import { addItem, countItem, countOres } from './core/inventory';
 import { SCANNER_DEVICE, SCANNER_ITEM, createScannerDevice } from './core/scanner-device';
+import { GUN_ITEM } from './core/weapon';
 import { claimArtifact } from './core/artifacts';
 import { ARTIFACTS, MAX_SAVED_TILE_ENTRIES, START_Y } from '../shared/constants';
 import { explorationIndex } from '../shared/exploration-codec';
@@ -100,32 +101,52 @@ describe('cargo balance persistence', () => {
 });
 
 describe('carried item persistence', () => {
-  it.each([
-    ['teleporters', { teleporters: 2 }],
-    ['gun ownership and ammunition', { gunOwned: true, bullets: 17 }]
-  ])('round-trips %s through save and load', (_name, owned) => {
+  it('round-trips teleporters through save and load', () => {
     const stored = stubStorage();
     const state = createInitialState();
-    Object.assign(state.player, owned);
+    state.player.teleporters = 2;
     save(state);
 
     const restored = createInitialState();
     load(restored);
 
-    expect(restored.player).toMatchObject(owned);
-    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject(owned);
+    expect(restored.player.teleporters).toBe(2);
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({teleporters: 2});
   });
 
-  it.each([
-    ['teleporters', { teleporters: 0 }],
-    ['gun ownership and ammunition', { gunOwned: false, bullets: 0 }]
-  ])('gives a legacy save no %s', (_name, empty) => {
+  it('gives a legacy save no teleporters', () => {
     stubStorage({ cash: 90 });
     const state = createInitialState();
 
     load(state);
 
-    expect(state.player).toMatchObject(empty);
+    expect(state.player.teleporters).toBe(0);
+  });
+});
+
+describe('Linebreaker persistence', () => {
+  it('round-trips the carried guns as a count and re-stacks them into the bay', () => {
+    const stored = stubStorage();
+    const state = createInitialState();
+    state.player.inventory = addItem(state.player.inventory, GUN_ITEM, 3)!;
+
+    save(state);
+    const restored = createInitialState();
+    load(restored);
+
+    expect(countItem(restored.player.inventory, GUN_ITEM.kind)).toBe(3);
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({guns: 3});
+  });
+
+  it('gives a save written before the gun became an item nothing to fire', () => {
+    // `gunOwned`/`bullets` described a fitting and a magazine that no longer
+    // exist, so a pre-v8 save simply arrives without a Linebreaker aboard.
+    stubStorage({ cash: 90, gunOwned: true, bullets: 17 });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(countItem(state.player.inventory, GUN_ITEM.kind)).toBe(0);
   });
 });
 

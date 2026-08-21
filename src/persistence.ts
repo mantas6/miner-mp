@@ -3,6 +3,7 @@ import { ECONOMY, LIMITS, STARTING } from './core/balance';
 import { DYNAMITE, DYNAMITE_ITEM, type PlacedDynamite } from './core/dynamite';
 import { addItem, countItem } from './core/inventory';
 import { SCANNER_DEVICE, SCANNER_ITEM, type ScannerDevice } from './core/scanner-device';
+import { GUN_ITEM } from './core/weapon';
 import { createDefaultStats } from './core/state';
 import { encodeExploration, mergeExploration } from '../shared/exploration-codec';
 import { capTileEntries, createTileDiff, parseTileEntries, tileDiffEntries } from './world/tile-diff';
@@ -25,13 +26,16 @@ import type { GameState, GameStats } from './core/types';
 //   * v7: `dynamiteSticks`, the charges still burning in the mine. `dynamite`
 //     keeps its meaning — the number carried — but is now counted out of the
 //     cargo bay rather than off the ship.
+//   * v8: `guns`, the single-use Linebreakers in the bay. It replaces `gunOwned`
+//     and `bullets`, which are ignored on load: there is no permanent fitting to
+//     restore any more, and a magazine that no longer exists cannot be refunded.
 // Older blobs still load; they just restore a pristine mine, and pre-v5 saves
 // start at the depot the way they always did.
 //
 // The cargo bay itself is deliberately *not* saved: ore is lost with the run.
-// Scanners and dynamite are equipment rather than cargo, so they are stored as
-// counts and re-stacked into the bay on load, the way teleporters are stored as
-// a count on the ship.
+// Scanners, dynamite and guns are equipment rather than cargo, so they are
+// stored as counts and re-stacked into the bay on load, the way teleporters are
+// stored as a count on the ship.
 
 /** The persisted save file. Every field is re-validated on load. */
 interface SavedProgress {
@@ -49,15 +53,14 @@ interface SavedProgress {
   teleporters?: unknown;
   scanners?: unknown;
   scannerDevices?: unknown;
-  gunOwned?: unknown;
-  bullets?: unknown;
+  guns?: unknown;
   visibility?: unknown;
   explored?: unknown;
   stats?: Partial<Record<keyof GameStats, unknown>>;
 }
 
 export const SAVE_KEY = 'moleload-progress-v1';
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 const LEGACY_CARGO_STEP = 10;
 const CARGO_BALANCE_SAVE_VERSION = 2;
 
@@ -132,15 +135,15 @@ export function load(state: GameState): void {
       : savedCargoMax;
     p.drill = numeric(save.drill, p.drill, LIMITS.drill.min, LIMITS.drill.max);
     p.teleporters = Math.floor(numeric(save.teleporters, p.teleporters, LIMITS.teleporters.min, LIMITS.teleporters.max));
-    p.gunOwned = save.gunOwned === true;
-    p.bullets = Math.floor(numeric(save.bullets, p.bullets, LIMITS.bullets.min, LIMITS.bullets.max));
     p.visibility = Math.floor(numeric(save.visibility, p.visibility, LIMITS.visibility.min, LIMITS.visibility.max));
-    // Scanners and dynamite are equipment, so they come back into the bay the run
-    // starts with; `run.resume()` clears the ore around them and leaves them alone.
+    // Equipment comes back into the bay the run starts with; `run.resume()` clears
+    // the ore around it and leaves it alone.
     const scanners = Math.floor(numeric(save.scanners, 0, LIMITS.scanners.min, LIMITS.scanners.max));
     if (scanners > 0) p.inventory = addItem(p.inventory, SCANNER_ITEM, scanners) ?? p.inventory;
     const dynamite = Math.floor(numeric(save.dynamite, 0, LIMITS.dynamite.min, LIMITS.dynamite.max));
     if (dynamite > 0) p.inventory = addItem(p.inventory, DYNAMITE_ITEM, dynamite) ?? p.inventory;
+    const guns = Math.floor(numeric(save.guns, 0, LIMITS.guns.min, LIMITS.guns.max));
+    if (guns > 0) p.inventory = addItem(p.inventory, GUN_ITEM, guns) ?? p.inventory;
     state.scannerDevices = parseScannerDevices(save.scannerDevices);
     state.placedDynamite = parsePlacedDynamite(save.dynamiteSticks);
     // The ship resumes on the tile it parked on, render position included so it
@@ -177,8 +180,7 @@ export function save(state: GameState): void {
     drill: p.drill,
     dynamite: countItem(p.inventory, DYNAMITE_ITEM.kind),
     teleporters: p.teleporters,
-    gunOwned: p.gunOwned,
-    bullets: p.bullets,
+    guns: countItem(p.inventory, GUN_ITEM.kind),
     visibility: p.visibility,
     scanners: countItem(p.inventory, SCANNER_ITEM.kind),
     scannerDevices: state.scannerDevices.slice(0, SCANNER_DEVICE.maxPlaced).map(({x, y, timer}) => ({x, y, timer})),

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ECONOMY } from './balance';
 import { SURFACE_HEIGHT } from '../../shared/constants';
 import type { Tile } from './types';
-import { consumeBulletForShot, gunKeyAction, resolveShot } from './weapon';
+import { canFireGun, gunKeyAction, resolveShot } from './weapon';
 
 function airWorld(width = 15, height = 15): Tile[][] {
   return Array.from({length: height}, (_, y) => Array.from({length: width}, (_, x) =>
@@ -10,7 +10,7 @@ function airWorld(width = 15, height = 15): Tile[][] {
   ));
 }
 
-describe('gun aim input and ammunition', () => {
+describe('gun aim input and carried guns', () => {
   it('arms with G, fires only on a following direction, and supports clear cancellation', () => {
     expect(gunKeyAction(false, 'g')).toBe('arm');
     expect(gunKeyAction(true, 'ArrowRight')).toBe('fire');
@@ -20,15 +20,12 @@ describe('gun aim input and ammunition', () => {
     expect(gunKeyAction(true, 'Enter')).toBe('pass');
   });
 
-  it('consumes exactly one bullet only for an owned, armed, cardinal shot', () => {
-    const player = {gunOwned: true, bullets: 2};
-    expect(consumeBulletForShot(player, false, [1, 0])).toBe(false);
-    expect(consumeBulletForShot(player, true, [1, 1])).toBe(false);
-    expect(player.bullets).toBe(2);
-    expect(consumeBulletForShot(player, true, [1, 0])).toBe(true);
-    expect(player.bullets).toBe(1);
-    expect(consumeBulletForShot({gunOwned: false, bullets: 2}, true, [0, 1])).toBe(false);
-    expect(consumeBulletForShot({gunOwned: true, bullets: 0}, true, [0, 1])).toBe(false);
+  it('fires only when a carried gun is armed and pointed down a cardinal', () => {
+    expect(canFireGun(2, false, [1, 0])).toBe(false);
+    expect(canFireGun(2, true, [1, 1])).toBe(false);
+    expect(canFireGun(2, true, [1, 0])).toBe(true);
+    // An empty bay is the whole of "out of ammunition" now.
+    expect(canFireGun(0, true, [0, 1])).toBe(false);
   });
 });
 

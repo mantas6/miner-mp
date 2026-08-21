@@ -8,8 +8,9 @@ import styles from './ActionBar.module.css';
  * The surface/underground action buttons. Keyboard equivalents live in input.ts.
  *
  * Deployables are not here: a scanner and a stick of dynamite are placed from the
- * inventory slot that holds them, so the bar carries only what acts on the ship
- * itself.
+ * inventory slot that holds them. The Linebreaker is carried the same way but
+ * kept on the bar, because aiming it is a direction key rather than a press on a
+ * tile, and the button is where that aiming mode is entered and shown.
  */
 export function ActionBar() {
   const atSurface = useUiStore(state => state.hud.atSurface);
@@ -19,9 +20,8 @@ export function ActionBar() {
   const teleportReturn = useUiStore(state => state.hud.teleportReturn);
   const teleportDepthReached = useUiStore(state => state.hud.teleportDepthReached);
   const teleportUsable = useUiStore(state => state.hud.teleportUsable);
-  const gunOwned = useUiStore(state => state.hud.gunOwned);
   const gunArmed = useUiStore(state => state.hud.gunArmed);
-  const bullets = useUiStore(state => state.hud.bullets);
+  const guns = useUiStore(state => state.hud.guns);
 
   const teleportLabel = atSurface
     ? 'Return (T)'
@@ -50,11 +50,11 @@ export function ActionBar() {
       <button
         id="gunBtn"
         className={clsx(styles.gunBtn, gunArmed && styles.armed)}
-        hidden={atSurface || !gunOwned}
-        disabled={bullets <= 0 || gameOver}
+        hidden={atSurface || guns <= 0}
+        disabled={gameOver}
         aria-pressed={gunArmed}
         onClick={() => uiCommands.toggleGunArmed()}
-      >{gunArmed ? `AIMING — press direction · x${bullets}` : `Arm Gun (G) · x${bullets}`}</button>
+      >{gunArmed ? `AIMING — press direction · x${guns}` : `Arm Gun (G) · x${guns}`}</button>
       <button id="infoBtn" onClick={event => { event.stopPropagation(); uiCommands.openInfo(); }}>Info / Cargo</button>
     </div>
   );

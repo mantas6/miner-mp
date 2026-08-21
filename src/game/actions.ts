@@ -3,16 +3,18 @@
 //
 // The two deployables — scanners and dynamite — are only *bought* here; arming
 // and placing them lives with the devices themselves, in `scanner-devices.ts`
-// and `dynamite-sticks.ts`.
+// and `dynamite-sticks.ts`. The Linebreaker is bought the same way but fired
+// from here, because a shot resolves against the world in one press instead of
+// being left behind in it.
 //
 // Each one is a small transaction — validate, charge, mutate, toast, play a
 // sound — so they are grouped here rather than scattered through the loop code.
 
 import { TILE, WORLD_W } from '../../shared/constants';
-import { ECONOMY, LIMITS } from '../core/balance';
+import { ECONOMY } from '../core/balance';
 import { cargoValue, partialFill, refuelCost, repairCost } from '../core/economy';
 import { DYNAMITE_ITEM } from '../core/dynamite';
-import { addItem, isFullFor, removeOres, type InventoryItem } from '../core/inventory';
+import { addItem, countItem, isFullFor, removeItem, removeOres, type InventoryItem } from '../core/inventory';
 import { SCANNER_ITEM } from '../core/scanner-device';
 import {
   MIN_TELEPORT_DEPTH_METERS,
@@ -23,7 +25,7 @@ import {
 } from '../core/teleporter';
 import type { AudioController, Direction, GameState } from '../core/types';
 import { applyPlayerUpgrade, getPlayerUpgradeProgress, type PlayerUpgradeId } from '../core/upgrades';
-import { consumeBulletForShot, resolveShot } from '../core/weapon';
+import { GUN_ITEM, canFireGun, resolveShot } from '../core/weapon';
 import { viewport } from './viewport';
 import type { EnemySim } from './enemies';
 import type { GameSession } from './session';
@@ -55,9 +57,10 @@ export interface GameActions {
   buyTeleporter(): void;
   /** Buy one scanner device into the cargo bay; refused when it has no room. */
   buyScanner(): void;
+  /** Buy one single-use Linebreaker into the cargo bay; refused when it has no room. */
   buyGun(): void;
-  buyBullets(): void;
   setGunArmed(armed: boolean): void;
+  /** Fire the carried Linebreaker, spending it. Reports whether the shot went off. */
   fireGun(direction: Direction): boolean;
   useTeleporter(): void;
 }
@@ -176,9 +179,9 @@ export function createActions(deps: GameActionsDeps): GameActions {
   }
 
   /**
-   * Deployable equipment — scanners and dynamite — takes a cargo slot, so unlike
-   * a teleporter the bay itself can refuse the sale. Checked before the money
-   * changes hands, and only at the depot, so the "come back to the surface"
+   * Single-use equipment — scanners, dynamite, guns — takes a cargo slot, so
+   * unlike a teleporter the bay itself can refuse the sale. Checked before the
+   * money changes hands, and only at the depot, so the "come back to the surface"
    * refusal still comes first.
    */
   function buyDeployable(item: InventoryItem, price: number, fullMessage: string, loadedMessage: string): void {
@@ -211,41 +214,44 @@ export function createActions(deps: GameActionsDeps): GameActions {
   }
 
   function buyGun(): void {
-    if (state.player.gunOwned) return toast('Linebreaker Gun is already installed.');
-    spend(ECONOMY.gun.price, () => { state.player.gunOwned = true; }, 'Linebreaker Gun installed permanently. Buy ammunition before descending.');
+    buyDeployable(
+      GUN_ITEM,
+      ECONOMY.gun.price,
+      'Cargo bay is full. Sell the cargo before buying a Linebreaker.',
+      'Linebreaker loaded. Press G, then a direction, to spend it on one shot.'
+    );
   }
 
-  function buyBullets(): void {
-    const p = state.player;
-    if (!p.gunOwned) return toast('Buy the Linebreaker Gun before buying ammunition.');
-    if (p.bullets + ECONOMY.gun.ammoBundle > LIMITS.bullets.max) return toast('Ammunition storage is full.');
-    spend(ECONOMY.gun.ammoPrice, () => { p.bullets += ECONOMY.gun.ammoBundle; }, `${ECONOMY.gun.ammoBundle} bullets loaded.`);
+  /** Linebreakers aboard; the gun is carried, so this is the whole ammunition question. */
+  function gunsCarried(): number {
+    return countItem(state.player.inventory, GUN_ITEM.kind);
   }
 
   function setGunArmed(armed: boolean): void {
-    const p = state.player;
     if (armed) {
       if (state.gameOver) return;
       if (atSurface()) return toast('The gun can only be fired underground.');
-      if (!p.gunOwned) { audio.alarm(); return toast('Buy the permanent Linebreaker Gun at the surface shop.'); }
-      if (p.bullets <= 0) { audio.alarm(); return toast('No ammunition. Buy bullet bundles at the surface shop.'); }
+      if (gunsCarried() <= 0) { audio.alarm(); return toast('No Linebreaker aboard. Buy one at the surface shop.'); }
       deps.clearKeys();
       state.input.keyImpulse = null;
       state.input.gunArmed = true;
       toast('GUN ARMED — press a direction key. G or Escape cancels.');
       return;
     }
-    if (state.input.gunArmed) toast('Gun aim cancelled. No bullet used.');
+    if (state.input.gunArmed) toast('Gun aim cancelled. No Linebreaker used.');
     state.input.gunArmed = false;
   }
 
   function fireGun(direction: Direction): boolean {
     const p = state.player;
-    if (!state.input.gunArmed || state.gameOver || atSurface() || !p.gunOwned || p.bullets <= 0) return false;
+    if (state.gameOver || atSurface()) return false;
+    if (!canFireGun(gunsCarried(), state.input.gunArmed, direction)) return false;
     if (direction[1] > 0) grid.ensureRow(p.y + ECONOMY.gun.range);
     const shot = resolveShot(grid.world, p.x, p.y, direction, ECONOMY.gun.range, state.enemies.filter(enemy => enemy.alive));
     if (!shot) return false;
-    if (!consumeBulletForShot(p, state.input.gunArmed, direction)) return false;
+    // The gun is the round: it leaves the bay whatever the shot ends up hitting.
+    state.player.inventory = removeItem(state.player.inventory, GUN_ITEM.kind);
+    const remaining = gunsCarried();
     state.input.gunArmed = false;
     p.drillDx = direction[0]; p.drillDy = direction[1];
     if (direction[0]) p.facing = direction[0];
@@ -254,7 +260,7 @@ export function createActions(deps: GameActionsDeps): GameActions {
     const target = shot.target;
     if (target?.kind === 'enemy') {
       enemies.damageEnemy(state.enemies.find(enemy => enemy.id === target.enemy.id), ECONOMY.gun.damage);
-      toast(`Direct enemy hit. ${p.bullets} bullets remain.`);
+      toast(`Direct enemy hit. ${remaining} Linebreakers remain.`);
     } else if (target?.kind === 'tile') {
       if (target.tile.type === 'enemy') {
         if (session.isGuestEnemyReplica()) session.send({type: 'enemyTileShot', x: target.x, y: target.y, by: 'guest'});
@@ -264,9 +270,9 @@ export function createActions(deps: GameActionsDeps): GameActions {
         enemies.wakeEnemiesNear(target.x, target.y);
         deps.spawnDust(target.x, target.y, '#ffe58a', state.reducedMotion ? 3 : 12);
       }
-      toast(`Shot destroyed ${target.tile.type}. No mining rewards. ${p.bullets} bullets remain.`);
-    } else if (shot.outcome === 'blocked') toast(`Shot blocked by protected terrain. ${p.bullets} bullets remain.`);
-    else toast(`Shot missed within ${ECONOMY.gun.range}-tile range. ${p.bullets} bullets remain.`);
+      toast(`Shot destroyed ${target.tile.type}. No mining rewards. ${remaining} Linebreakers remain.`);
+    } else if (shot.outcome === 'blocked') toast(`Shot blocked by protected terrain. ${remaining} Linebreakers remain.`);
+    else toast(`Shot missed within ${ECONOMY.gun.range}-tile range. ${remaining} Linebreakers remain.`);
     saveProgress();
     return true;
   }
@@ -313,7 +319,6 @@ export function createActions(deps: GameActionsDeps): GameActions {
     buyTeleporter,
     buyScanner,
     buyGun,
-    buyBullets,
     setGunArmed,
     fireGun,
     useTeleporter

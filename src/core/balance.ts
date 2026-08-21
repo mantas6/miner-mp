@@ -10,8 +10,6 @@ export const STARTING = Object.freeze({
   cargoMax: 10,
   drill: 1,
   teleporters: 0,
-  gunOwned: false,
-  bullets: 0,
   visibility: 3
 });
 
@@ -25,7 +23,8 @@ export const LIMITS = Object.freeze({
   teleporters: Object.freeze({ min: 0, max: 999 }),
   /** Carried (not yet deployed) scanner devices; they live in the cargo bay. */
   scanners: Object.freeze({ min: 0, max: 999 }),
-  bullets: Object.freeze({ min: 0, max: 999 }),
+  /** Carried (not yet fired) Linebreaker guns; they live in the cargo bay. */
+  guns: Object.freeze({ min: 0, max: 999 }),
   visibility: Object.freeze({ min: 3, max: 8 })
 });
 
@@ -90,6 +89,12 @@ export const ECONOMY = Object.freeze({
   dynamite: Object.freeze({ price: 50, radius: 2 }),
   teleporter: Object.freeze({ price: 250 }),
   scanner: Object.freeze({ price: 200 }),
-  gun: Object.freeze({ price: 1500, ammoPrice: 120, ammoBundle: 6, range: 8, damage: 100 }),
+  /**
+   * One disposable Linebreaker: a barrel, a single round, and nothing to reload.
+   * Priced between the dynamite it competes with underground and the scanner,
+   * because one shot buys a guaranteed kill at range where a stick of dynamite
+   * buys a wider hole the player still has to run away from.
+   */
+  gun: Object.freeze({ price: 150, range: 8, damage: 100 }),
   artifactReward: 5000
 });

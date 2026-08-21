@@ -3,8 +3,6 @@ import {
   SHOP_ITEMS,
   SHOP_SERVICES,
   SHOP_UPGRADES,
-  ammoRowState,
-  gunRowState,
   itemRowState,
   serviceRowState,
   shopSummary,
@@ -22,15 +20,15 @@ const HINTS: Record<string, ReactNode> = {
   gun: <>Control: <kbd>G</kbd>, then a direction · <kbd>G</kbd>/<kbd>Esc</kbd> cancels</>,
   dynamite: <>Control: <kbd>E</kbd> or its inventory slot, then a mine tile · <kbd>Esc</kbd> cancels</>,
   teleporter: <>Control: <kbd>T</kbd> or Teleport / Return</>,
-  scanner: <>Control: inventory slot, then a mine tile · <kbd>Esc</kbd> cancels</>,
-  bullets: <>Arm with <kbd>G</kbd>, then a direction key</>
+  scanner: <>Control: inventory slot, then a mine tile · <kbd>Esc</kbd> cancels</>
 };
 
 /** Consumable shelves, by id: the button the tests address and what it buys. */
 const ITEM_PURCHASES: Record<ShopItemId, {buttonId: string; buy(): void}> = {
   dynamite: {buttonId: 'shopDynamiteBtn', buy: () => uiCommands.buyDynamite()},
   teleporter: {buttonId: 'shopTeleporterBtn', buy: () => uiCommands.buyTeleporter()},
-  scanner: {buttonId: 'shopScannerBtn', buy: () => uiCommands.buyScanner()}
+  scanner: {buttonId: 'shopScannerBtn', buy: () => uiCommands.buyScanner()},
+  gun: {buttonId: 'shopGunBtn', buy: () => uiCommands.buyGun()}
 };
 
 interface ShopItemProps {
@@ -157,15 +155,6 @@ function ShopCard({closeRef}: {closeRef: RefObject<HTMLButtonElement | null>}) {
             />
           ))}
         </div>
-        <div className={`${styles.grid} ${styles.gunGrid}`}>
-          <ShopItem
-            row={gunRowState(...rowArgs)}
-            buttonId="shopGunBtn"
-            hint={HINTS.gun}
-            marker={{'data-shop-gun': true}}
-            onBuy={() => uiCommands.buyGun()}
-          />
-        </div>
       </section>
 
       <section className={styles.section} aria-labelledby="shop-equipment-title">
@@ -181,13 +170,6 @@ function ShopCard({closeRef}: {closeRef: RefObject<HTMLButtonElement | null>}) {
               onBuy={ITEM_PURCHASES[item.id].buy}
             />
           ))}
-          <ShopItem
-            row={ammoRowState(...rowArgs)}
-            buttonId="shopBulletsBtn"
-            hint={HINTS.bullets}
-            marker={{'data-shop-item': 'bullets'}}
-            onBuy={() => uiCommands.buyBullets()}
-          />
         </div>
       </section>
     </div>

@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ORES, START_Y, WORLD_W } from '../../shared/constants';
 import { ECONOMY, STARTING } from '../core/balance';
-import { addOre, countOres, createInventory } from '../core/inventory';
+import { addItem, addOre, countItem, countOres, createInventory } from '../core/inventory';
 import { createInitialState } from '../core/state';
+import { GUN_ITEM } from '../core/weapon';
 import type { GameState } from '../core/types';
 import { createTileDiff } from '../world/tile-diff';
 import { makeTile } from '../world/world';
@@ -41,10 +42,9 @@ function harness(): Harness {
     cargoMax: STARTING.cargoMax + ECONOMY.cargo.step,
     drill: STARTING.drill + 1,
     teleporters: 1,
-    gunOwned: true,
-    bullets: 4,
     visibility: 5,
-    inventory: addOre(addOre(createInventory(), ORES[0], 99)!, ORES[1], 99)!
+    // Ore to lose with the ship, and one Linebreaker that survives it.
+    inventory: addItem(addOre(addOre(createInventory(), ORES[0], 99)!, ORES[1], 99)!, GUN_ITEM)!
   });
   state.cash = 900;
   state.stats.maxDepth = 570;
@@ -155,10 +155,10 @@ describe('restarting after a death', () => {
       fuel: STARTING.fuelMax + ECONOMY.tank.step,
       hull: STARTING.hullMax,
       teleporters: 1,
-      gunOwned: true,
-      bullets: 4,
       visibility: 5
     });
+    // Equipment is not cargo: the replacement ship keeps the carried gun.
+    expect(countItem(h.state.player.inventory, GUN_ITEM.kind)).toBe(1);
     expect(countOres(h.state.player.inventory)).toBe(0);
     expect(h.state.gameOver).toBe(false);
     expect(h.input.reset).toHaveBeenCalled();
@@ -286,10 +286,9 @@ describe('a full player reset', () => {
       cargoMax: STARTING.cargoMax,
       drill: STARTING.drill,
       visibility: STARTING.visibility,
-      teleporters: STARTING.teleporters,
-      gunOwned: STARTING.gunOwned,
-      bullets: STARTING.bullets
+      teleporters: STARTING.teleporters
     });
+    expect(countItem(h.state.player.inventory, GUN_ITEM.kind)).toBe(0);
     expect(countOres(h.state.player.inventory)).toBe(0);
     expect(h.state.exploredTiles.size).toBe(0);
     expect(h.state.stats).toMatchObject({maxDepth: 0, oreMined: 0, deaths: 0});

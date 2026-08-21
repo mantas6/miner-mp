@@ -4,8 +4,6 @@ import {
   SHOP_ITEMS,
   SHOP_SERVICES,
   SHOP_UPGRADES,
-  ammoRowState,
-  gunRowState,
   itemRowState,
   serviceRowState,
   shopSummary,
@@ -14,18 +12,16 @@ import {
 } from './shop-catalog';
 import { createInitialState } from './state';
 
-/** A shop-shaped ship: the run's player plus the bay-counted deployable tallies. */
+/** A shop-shaped ship: the run's player plus the bay-counted consumable tallies. */
 function ship(overrides: Partial<ShopPlayer> = {}): ShopPlayer {
-  return {...createInitialState().player, scanners: 0, dynamite: 0, ...overrides};
+  return {...createInitialState().player, scanners: 0, dynamite: 0, guns: 0, ...overrides};
 }
 
 function everyRow(player: ShopPlayer, cash: number, atSurface: boolean) {
   return [
     ...SHOP_UPGRADES.map(upgrade => upgradeRowState(upgrade.id, player, cash, atSurface)),
     ...SHOP_SERVICES.map(service => serviceRowState(service.id, player, cash, atSurface)),
-    ...SHOP_ITEMS.map(item => itemRowState(item.id, player, cash, atSurface)),
-    gunRowState(player, cash, atSurface),
-    ammoRowState(player, cash, atSurface)
+    ...SHOP_ITEMS.map(item => itemRowState(item.id, player, cash, atSurface))
   ];
 }
 
@@ -97,20 +93,22 @@ describe('shop rows', () => {
     });
   });
 
-  it('requires the permanent gun before ammunition and reports ownership', () => {
-    const unarmed = ship();
+  it('prices the gun as one more carried consumable, with no ammunition shelf', () => {
+    expect(SHOP_ITEMS.map(item => item.id)).not.toContain('bullets');
 
-    expect(gunRowState(unarmed, 1499, true)).toMatchObject({
-      current: 'Not owned · Ammo: 0',
+    expect(itemRowState('gun', ship(), ECONOMY.gun.price - 1, true)).toMatchObject({
+      current: 'Carried: 0',
+      buttonLabel: `Buy one · $${ECONOMY.gun.price}`,
       status: 'Need $1',
       buttonDisabled: true
     });
-    expect(ammoRowState(unarmed, 1499, true)).toMatchObject({status: 'Gun required', buttonDisabled: true});
-
-    const armed = ship({gunOwned: true, bullets: 7});
-    expect(gunRowState(armed, 120, true)).toMatchObject({current: 'Owned · Ammo: 7', status: 'Owned', buttonLabel: 'Installed'});
-    expect(ammoRowState(armed, 120, true)).toMatchObject({current: 'Ammo: 7 · +6 per bundle', buttonDisabled: false});
-    expect(ammoRowState(ship({gunOwned: true, bullets: LIMITS.bullets.max}), 120, true).status).toBe('Ammo full');
+    // Owning one never closes the shelf: every shot spends an item, so the next
+    // one is always for sale.
+    expect(itemRowState('gun', ship({guns: 2}), ECONOMY.gun.price, true)).toMatchObject({
+      current: 'Carried: 2',
+      status: 'Ready',
+      buttonDisabled: false
+    });
   });
 
   it('disables every purchase away from the surface depot', () => {

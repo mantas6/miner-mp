@@ -310,7 +310,7 @@ zooming the camera with the wheel or a trackpad.
 | Deploy a scanner | — | Scanner inventory slot, then a mine tile |
 | Cancel a placement | `Escape` | The armed slot again |
 | Teleporter round trip (100 m+) | `T` | Teleport button |
-| Fire gun | `G` then a direction key | Arm Gun button, then a direction key |
+| Fire a carried Linebreaker (single use) | `G` then a direction key | Arm Gun button, then a direction key |
 | Cancel gun aim | `G` or `Escape` | Arm Gun button again |
 | Cargo, stats and guides | — | Info / Cargo button |
 | Close a dialog | `Escape` | × button or the backdrop |
@@ -350,14 +350,17 @@ zooming the camera with the wheel or a trackpad.
   upgrade's total ore cap. Selling empties every ore stack at once.
 - Refuel and repair at the surface depot.
 - The depot shop sells five upgrades — Cargo Bay, Fuel Tank, Hull, Drill, Sensor
-  Array — plus dynamite, teleporters, the Linebreaker gun, and ammo. Upgrade
-  prices rise with each level.
+  Array — plus the consumables: dynamite, teleporters, scanners, and Linebreaker
+  guns. Upgrade prices rise with each level; consumables are a flat price each.
 - Artifacts pay out immediately in cash and never take a cargo slot; dynamite
   and gunfire destroy valuables without any payout.
 - Dynamite and scanners are carried in the cargo bay and placed from their own
   inventory slot onto explored, cleared ground. A planted stick blows a 2-tile
   radius five seconds later — long enough to get clear, and close enough to
   wreck a ship that did not.
+- The Linebreaker gun rides in the cargo bay the same way, but is spent rather
+  than placed: arming it and pressing a direction fires one shot up to 8 tiles
+  and removes the item from the bay. There is no ammunition — a shot costs a gun.
 - Low fuel warnings appear below 25%; return to the surface quickly.
 - The HUD reserve readout forecasts the climb home (safe/caution/urgent), the
   scanner reads the tile the drill is aimed at, and the depth readout counts

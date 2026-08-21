@@ -6,7 +6,6 @@
 
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LIMITS } from '../core/balance';
 import { ShopScreen } from './ShopScreen';
 import { setUiCommands, uiCommands } from './commands';
 import { uiStore, type PlayerSnapshot } from './store';
@@ -120,11 +119,10 @@ describe('shop dialog', () => {
       buyDynamite: vi.fn(),
       buyTeleporter: vi.fn(),
       buyScanner: vi.fn(),
-      buyGun: vi.fn(),
-      buyBullets: vi.fn()
+      buyGun: vi.fn()
     };
     setUiCommands(commands);
-    open({cash: 1_000_000, player: {fuel: 10, hull: 10, gunOwned: true}});
+    open({cash: 1_000_000, player: {fuel: 10, hull: 10}});
 
     fireEvent.click(button('hull'));
     expect(commands.buyUpgrade).toHaveBeenCalledWith('hull');
@@ -140,25 +138,27 @@ describe('shop dialog', () => {
     expect(commands.buyTeleporter).toHaveBeenCalledOnce();
     fireEvent.click(document.getElementById('shopScannerBtn')!);
     expect(commands.buyScanner).toHaveBeenCalledOnce();
-    fireEvent.click(document.getElementById('shopBulletsBtn')!);
-    expect(commands.buyBullets).toHaveBeenCalledOnce();
+    fireEvent.click(document.getElementById('shopGunBtn')!);
+    expect(commands.buyGun).toHaveBeenCalledOnce();
   });
 
   it('repaints rows when the ship snapshot changes', () => {
     open({cash: 1_000_000});
     expect(button('dynamite').disabled).toBe(false);
-    expect(document.querySelector('[data-shop-gun] button')?.textContent).toBe('Buy · $1500');
+    expect(row('gun').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 0');
 
     act(() => {
       const store = uiStore.getState();
-      store.syncPlayer({...store.player, dynamite: 4, scanners: 2, gunOwned: true, bullets: LIMITS.bullets.max});
+      store.syncPlayer({...store.player, dynamite: 4, scanners: 2, guns: 3});
     });
 
-    // Both deployable tallies come out of the cargo bay, not off the ship.
+    // Every consumable tally comes out of the cargo bay, not off the ship.
     expect(row('dynamite').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 4');
     expect(row('scanner').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 2');
-    expect(document.querySelector('[data-shop-gun] button')?.textContent).toBe('Installed');
-    expect(document.querySelector<HTMLButtonElement>('[data-shop-item="bullets"] button')?.disabled).toBe(true);
-    expect(document.querySelector('[data-shop-item="bullets"] [data-shop-status]')?.textContent).toBe('Ammo full');
+    expect(row('gun').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 3');
+    // The gun is a consumable now: carrying some never closes the shelf, and the
+    // ammunition shelf is gone with the magazine.
+    expect(button('gun').disabled).toBe(false);
+    expect(document.querySelector('[data-shop-item="bullets"]')).toBeNull();
   });
 });

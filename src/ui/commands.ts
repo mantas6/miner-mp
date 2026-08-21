@@ -19,7 +19,6 @@ export interface UiCommands {
   buyTeleporter(): void;
   buyScanner(): void;
   buyGun(): void;
-  buyBullets(): void;
   useTeleporter(): void;
   toggleGunArmed(): void;
   /**
@@ -76,7 +75,6 @@ function noopCommands(): UiCommands {
     buyTeleporter: noop,
     buyScanner: noop,
     buyGun: noop,
-    buyBullets: noop,
     useTeleporter: noop,
     toggleGunArmed: noop,
     toggleScannerPlacement: noop,

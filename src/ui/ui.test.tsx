@@ -33,7 +33,7 @@ const DOM_CONTRACT = [
 const SHOP_CONTRACT = [
   'shop-card', 'shopCloseBtn',
   'fuelBtn', 'repairBtn', 'cargoBtn', 'tankBtn', 'hullBtn', 'drillBtn', 'visibilityBtn',
-  'shopDynamiteBtn', 'shopTeleporterBtn', 'shopScannerBtn', 'shopGunBtn', 'shopBulletsBtn'
+  'shopDynamiteBtn', 'shopTeleporterBtn', 'shopScannerBtn', 'shopGunBtn'
 ];
 
 /** Ids that exist only while the info screen is up, on the tab it opens with. */
@@ -569,7 +569,7 @@ describe('store-driven HUD', () => {
   it('marks the gun button armed while aiming', () => {
     render(<MinerApp />);
 
-    patchHud({atSurface: false, gunOwned: true, bullets: 3, gunArmed: true});
+    patchHud({atSurface: false, guns: 3, gunArmed: true});
 
     const gun = document.getElementById('gunBtn') as HTMLButtonElement;
     expect(gun.className).toMatch(/armed/);
