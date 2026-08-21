@@ -34,12 +34,11 @@ import { useGameRuntime, type GameRuntimeFactory } from './useGameRuntime';
 import common from './common.module.css';
 
 export interface MinerAppProps {
-  developerToolsEnabled?: boolean;
   /** Builds the simulation around the mounted canvas. Omitted: chrome only. */
   createRuntime?: GameRuntimeFactory;
 }
 
-export function MinerApp({ developerToolsEnabled = false, createRuntime }: MinerAppProps) {
+export function MinerApp({ createRuntime }: MinerAppProps) {
   const phase = useUiStore(state => state.phase);
   const { canvasRef, panelRef } = useGameRuntime(createRuntime);
   return (
@@ -77,7 +76,7 @@ export function MinerApp({ developerToolsEnabled = false, createRuntime }: Miner
         <GameStatus />
         <Hud />
         <ShopScreen />
-        <InfoScreen developerToolsEnabled={developerToolsEnabled} />
+        <InfoScreen />
         <SurfaceHint />
         <FuelWarning />
         <Toast />

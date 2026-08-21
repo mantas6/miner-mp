@@ -27,7 +27,7 @@ const artifactRows = buildArtifactGuideRows();
 const dangerRows = buildDangerGuideRows();
 
 /** The dialog shell: open/close mechanics and focus restoration, no content. */
-export function InfoScreen({developerToolsEnabled = false}: {developerToolsEnabled?: boolean}) {
+export function InfoScreen() {
   const open = useUiStore(state => state.activeOverlay === 'info');
   const dialogRef = useRef<HTMLDialogElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -55,19 +55,18 @@ export function InfoScreen({developerToolsEnabled = false}: {developerToolsEnabl
       onClose={() => uiCommands.closeInfo()}
       onPointerDown={event => { if (event.target === dialogRef.current) uiCommands.closeInfo(); }}
     >
-      {open && <InfoCard closeRef={closeRef} developerToolsEnabled={developerToolsEnabled} />}
+      {open && <InfoCard closeRef={closeRef} />}
     </dialog>
   );
 }
 
 interface InfoCardProps {
   closeRef: RefObject<HTMLButtonElement | null>;
-  developerToolsEnabled: boolean;
 }
 
-function InfoCard({closeRef, developerToolsEnabled}: InfoCardProps) {
+function InfoCard({closeRef}: InfoCardProps) {
   const activeTab = useUiStore(state => state.infoTab);
-  const sections = getInfoNavigationSections(developerToolsEnabled);
+  const sections = getInfoNavigationSections();
   const cardRef = useRef<HTMLDivElement>(null);
 
   // Every tab starts at the top of the card, as the imperative version did.
@@ -87,7 +86,7 @@ function InfoCard({closeRef, developerToolsEnabled}: InfoCardProps) {
       event.preventDefault();
       return;
     }
-    const target = getInfoTabFocusTarget(id, key, developerToolsEnabled);
+    const target = getInfoTabFocusTarget(id, key);
     if (!target) return;
     document.getElementById(target.tabId)?.focus({preventScroll: true});
     event.preventDefault();
@@ -126,7 +125,6 @@ function InfoCard({closeRef, developerToolsEnabled}: InfoCardProps) {
 
       {activeTab === 'info-objective' && <ObjectivePanel />}
       {activeTab === 'info-stats' && <StatsPanel />}
-      {activeTab === 'info-developer' && developerToolsEnabled && <DeveloperPanel />}
       {activeTab === 'info-prospecting' && <ProspectingPanel />}
       {activeTab === 'info-hazards' && <HazardsPanel />}
       {activeTab === 'info-controls' && <ControlsPanel />}
@@ -249,16 +247,20 @@ function ControlsPanel() {
 }
 
 /**
- * The audio switches and the one destructive action.
+ * The audio switches, the cheat menu, and the one destructive action.
  *
  * The switches are the HUD's, not a second set: they dispatch the same commands
  * and read the same store slices, so muting here moves the HUD button too.
  *
+ * The cheats are one disclosure rather than a tab of their own: they are a rarely
+ * used corner of Settings, not a seventh thing to read past on every visit. Their
+ * panel is mounted only while expanded, so the ship snapshot it prices its buttons
+ * from is subscribed to only while someone is looking at it.
+ *
  * Reset asks first, and it asks inline rather than through `window.confirm()`.
  * The panel is inside a modal `<dialog>`, so a native prompt would be a second
- * modal stacked on the first, and the two developer resets that do use it are
- * behind a build flag no player ever sets. The confirm state is local and the
- * panel unmounts with the tab, so leaving Settings always cancels it.
+ * modal stacked on the first. The confirm state is local and the panel unmounts
+ * with the tab, so leaving Settings always cancels it.
  *
  * Cancel takes the trigger's place and the keyboard, and the button that goes
  * through with it is elsewhere in the row: the second half of a double-click, or
@@ -270,6 +272,7 @@ function SettingsPanel() {
   const musicLabel = useUiStore(state => state.musicLabel);
   const sfxOn = useUiStore(state => state.sfxOn);
   const sfxLabel = useUiStore(state => state.sfxLabel);
+  const [cheatsOpen, setCheatsOpen] = useState(false);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
 
@@ -302,6 +305,17 @@ function SettingsPanel() {
           >{sfxOn ? 'On' : 'Muted'}</button>
         </li>
       </ul>
+
+      <h3 id="settings-cheats-title">Cheats</h3>
+      <button
+        id="cheatsToggleBtn"
+        type="button"
+        className={styles.cheatsToggle}
+        aria-expanded={cheatsOpen}
+        aria-controls={cheatsOpen ? 'cheat-menu' : undefined}
+        onClick={() => setCheatsOpen(open => !open)}
+      >{cheatsOpen ? 'Hide cheat menu' : 'Show cheat menu'}</button>
+      {cheatsOpen && <DeveloperPanel />}
 
       <h3 id="settings-reset-title">Reset game</h3>
       <div className={styles.resetGame} aria-labelledby="settings-reset-title">

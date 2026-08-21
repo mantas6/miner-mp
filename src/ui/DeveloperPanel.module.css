@@ -5,8 +5,15 @@
   border-radius: var(--r-lg);
   background: rgba(105, 14, 29, 0.22);
 }
+.section h4 {
+  margin: 0;
+  color: var(--gold);
+  font-size: var(--fs-md);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .warning {
-  margin: 8px 0 0;
+  margin: 0;
   color: #ffdce2;
   font-size: var(--fs-sm);
   line-height: 1.4;

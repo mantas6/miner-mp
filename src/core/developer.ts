@@ -3,11 +3,6 @@ import type { DeveloperControl } from './upgrades';
 
 export const DEVELOPER_CASH_GRANT = 1_000;
 
-/** Developer tooling requires both Vite's development mode and an exact explicit opt-in. */
-export function isDeveloperToolsEnabled(isDevelopment: boolean, flag?: string): boolean {
-  return isDevelopment && flag === 'true';
-}
-
 export const DEVELOPER_SERVICES = [
   { id: 'fuel', label: 'Refuel', resourceLabel: 'Fuel', current: 'fuel', max: 'fuelMax' },
   { id: 'hull', label: 'Repair Hull', resourceLabel: 'Hull', current: 'hull', max: 'hullMax' }

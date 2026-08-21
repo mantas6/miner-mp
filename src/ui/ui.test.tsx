@@ -964,35 +964,64 @@ describe('settings tab', () => {
   });
 });
 
-describe('developer tooling gate', () => {
-  it('omits the developer tab, cheats and resets by default', () => {
+describe('cheat menu', () => {
+  function openSettings(): void {
+    act(() => { uiStore.getState().setActiveOverlay('info'); });
+    act(() => { fireEvent.click(document.getElementById('info-tab-settings')!); });
+  }
+
+  /**
+   * Every player has the cheats, and no build flag or tab of their own: they are
+   * one disclosure in Settings, collapsed until it is asked for.
+   */
+  it('is reachable from Settings with no opt-in, and adds no tab of its own', () => {
     render(<MinerApp />);
-
-    expect(document.getElementById('info-developer')).toBeNull();
-    expect(document.getElementById('info-tab-developer')).toBeNull();
-    expect(document.getElementById('developerUpgrades')).toBeNull();
-    expect(document.getElementById('resetPlayerDataBtn')).toBeNull();
-    expect(document.getElementById('resetWorldStateBtn')).toBeNull();
-    expect(document.querySelector('[data-developer-cash]')).toBeNull();
-  });
-
-  it('renders the isolated developer panel with the explicit opt-in', () => {
-    const grantDeveloperUpgrade = vi.fn();
-    const runDeveloperService = vi.fn();
-    setUiCommands({grantDeveloperUpgrade, runDeveloperService});
-    render(<MinerApp developerToolsEnabled />);
     act(() => { uiStore.getState().setActiveOverlay('info'); });
 
-    expect(document.getElementById('info-tab-developer')).not.toBeNull();
-    // The panel is a tab of its own, so nothing of it exists until it is selected.
-    expect(document.getElementById('resetPlayerDataBtn')).toBeNull();
-    act(() => { fireEvent.click(document.getElementById('info-tab-developer')!); });
+    const tabs = [...document.querySelectorAll('[role="tab"]')].map(tab => tab.id);
+    expect(tabs).toEqual([
+      'info-tab-objective',
+      'info-tab-stats',
+      'info-tab-prospecting',
+      'info-tab-hazards',
+      'info-tab-controls',
+      'info-tab-settings'
+    ]);
+    expect(uiCommands.openInfo).toBeTypeOf('function');
 
-    expect(document.getElementById('resetPlayerDataBtn')).not.toBeNull();
-    expect(document.getElementById('resetWorldStateBtn')).not.toBeNull();
-    // Reset actions stay inside the developer panel, after the cheat controls.
-    const panel = document.getElementById('info-developer')!;
-    expect(panel.contains(document.getElementById('resetWorldStateBtn'))).toBe(true);
+    // Nothing of the menu is in the tree until Settings is open and it is expanded.
+    expect(document.getElementById('cheatsToggleBtn')).toBeNull();
+    act(() => { fireEvent.click(document.getElementById('info-tab-settings')!); });
+
+    const toggle = document.getElementById('cheatsToggleBtn') as HTMLButtonElement;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(document.getElementById('cheat-menu')).toBeNull();
+    expect(document.getElementById('developerUpgrades')).toBeNull();
+
+    act(() => { fireEvent.click(toggle); });
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.getAttribute('aria-controls')).toBe('cheat-menu');
+    expect(document.getElementById('cheat-menu')).not.toBeNull();
+
+    act(() => { fireEvent.click(toggle); });
+    expect(document.getElementById('cheat-menu')).toBeNull();
+  });
+
+  it('dispatches the cheats and keeps the resets inside the menu', () => {
+    const grantDeveloperCash = vi.fn();
+    const grantDeveloperUpgrade = vi.fn();
+    const runDeveloperService = vi.fn();
+    setUiCommands({grantDeveloperCash, grantDeveloperUpgrade, runDeveloperService});
+    render(<MinerApp />);
+    openSettings();
+    act(() => { fireEvent.click(document.getElementById('cheatsToggleBtn')!); });
+
+    const menu = document.getElementById('cheat-menu')!;
+    expect(menu.contains(document.getElementById('resetPlayerDataBtn'))).toBe(true);
+    expect(menu.contains(document.getElementById('resetWorldStateBtn'))).toBe(true);
+
+    fireEvent.click(document.querySelector<HTMLButtonElement>('[data-developer-cash]')!);
+    expect(grantDeveloperCash).toHaveBeenCalledOnce();
 
     // A full ship leaves the free services disabled; a granted upgrade dispatches.
     expect(document.querySelector<HTMLButtonElement>('[data-developer-service="fuel"]')?.disabled).toBe(true);
@@ -1005,20 +1034,18 @@ describe('developer tooling gate', () => {
     expect(runDeveloperService).toHaveBeenCalledWith('fuel');
   });
 
-  it('adds the developer tab to the navigation without disturbing the others', () => {
-    render(<MinerApp developerToolsEnabled />);
-    act(() => { uiStore.getState().setActiveOverlay('info'); });
+  /** The panel unmounts with the tab, so the 60 Hz sync cannot re-render it. */
+  it('collapses again when the Settings tab is left', () => {
+    render(<MinerApp />);
+    openSettings();
+    act(() => { fireEvent.click(document.getElementById('cheatsToggleBtn')!); });
+    expect(document.getElementById('cheat-menu')).not.toBeNull();
 
-    const tabs = [...document.querySelectorAll('[role="tab"]')].map(tab => tab.id);
-    expect(tabs).toEqual([
-      'info-tab-objective',
-      'info-tab-stats',
-      'info-tab-developer',
-      'info-tab-prospecting',
-      'info-tab-hazards',
-      'info-tab-controls',
-      'info-tab-settings'
-    ]);
-    expect(uiCommands.openInfo).toBeTypeOf('function');
+    act(() => { fireEvent.click(document.getElementById('info-tab-controls')!); });
+    expect(document.getElementById('cheat-menu')).toBeNull();
+
+    act(() => { fireEvent.click(document.getElementById('info-tab-settings')!); });
+    expect(document.getElementById('cheat-menu')).toBeNull();
+    expect(document.getElementById('cheatsToggleBtn')?.getAttribute('aria-expanded')).toBe('false');
   });
 });

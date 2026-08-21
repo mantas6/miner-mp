@@ -1,7 +1,6 @@
 import './styles/base.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { isDeveloperToolsEnabled } from './core/developer';
 import { createGameRuntime } from './game/game';
 import { AppErrorBoundary } from './ui/Failure';
 import { MinerApp } from './ui/ui';
@@ -10,15 +9,9 @@ import type { GameRuntimeFactory } from './ui/useGameRuntime';
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Missing #root element for React GUI shell.');
 
-const developerToolsEnabled = isDeveloperToolsEnabled(
-  import.meta.env.DEV,
-  import.meta.env.VITE_ENABLE_DEVELOPER_TOOLS
-);
-
 // One stable identity, so the effect that owns the runtime never re-runs for a
 // changed prop — only for an actual mount or unmount.
-const createRuntime: GameRuntimeFactory = surface =>
-  createGameRuntime({...surface, developerToolsEnabled});
+const createRuntime: GameRuntimeFactory = surface => createGameRuntime(surface);
 
 const root = createRoot(rootElement, {
   // <AppErrorBoundary> renders the visible surface for a crash; these two keep the
@@ -38,7 +31,7 @@ const root = createRoot(rootElement, {
 root.render(
   <StrictMode>
     <AppErrorBoundary>
-      <MinerApp developerToolsEnabled={developerToolsEnabled} createRuntime={createRuntime} />
+      <MinerApp createRuntime={createRuntime} />
     </AppErrorBoundary>
   </StrictMode>
 );

@@ -5,17 +5,18 @@ import { useUiStore } from './store';
 import styles from './DeveloperPanel.module.css';
 
 /**
- * Local-only cheats. Rendered only when the explicit Vite opt-in is set *and* the
- * tab is selected, so the ship snapshot it prices its buttons from is not
- * subscribed to while the panel is out of sight.
+ * The cheat menu, disclosed from the Settings tab.
+ *
+ * It is mounted only while that disclosure is expanded, so the ship snapshot it
+ * prices its buttons from is not subscribed to while the cheats are out of sight
+ * — a 60 Hz sync must not re-render a collapsed panel.
  */
 export function DeveloperPanel() {
   const player = useUiStore(state => state.player);
 
   return (
-    <section id="info-developer" className={styles.section} role="tabpanel" aria-labelledby="info-tab-developer" tabIndex={-1}>
-      <h3 id="developer-title">Development-only tooling</h3>
-      <p className={styles.warning}><strong>Local non-player tools:</strong> grant local-player cash, restore fuel or hull, or permanently grant normal player upgrades for exactly $0. These controls work above or below the surface and do not change shop prices.</p>
+    <div id="cheat-menu" className={styles.section} role="group" aria-labelledby="settings-cheats-title">
+      <p className={styles.warning}><strong>Cheats:</strong> grant local-player cash, restore fuel or hull, or permanently grant normal player upgrades for exactly $0. These controls work above or below the surface and do not change shop prices.</p>
       <div id="developerUpgrades" className={styles.upgrades} aria-label="Free developer upgrade controls">
         <div className={styles.upgrade}>
           <div>
@@ -60,7 +61,7 @@ export function DeveloperPanel() {
         })}
       </div>
       <div className={styles.playerDataReset} aria-labelledby="player-data-reset-title">
-        <h3 id="player-data-reset-title">Player Data</h3>
+        <h4 id="player-data-reset-title">Player Data</h4>
         <p>Start this player over without regenerating or repairing the shared mine terrain. Your saved relay URL is also preserved.</p>
         <button
           id="resetPlayerDataBtn"
@@ -69,7 +70,7 @@ export function DeveloperPanel() {
         >Reset All Player Data</button>
       </div>
       <div className={styles.worldStateReset} aria-labelledby="world-state-reset-title">
-        <h3 id="world-state-reset-title">Shared World State</h3>
+        <h4 id="world-state-reset-title">Shared World State</h4>
         <p>Regenerate terrain and world enemies for this mine without changing any player&apos;s cash, upgrades, inventory, stats, ship condition, or settings. Explored fog is cleared so regenerated terrain is not revealed.</p>
         <button
           id="resetWorldStateBtn"
@@ -77,6 +78,6 @@ export function DeveloperPanel() {
           onClick={event => { event.stopPropagation(); uiCommands.resetWorldState(); }}
         >Reset World State</button>
       </div>
-    </section>
+    </div>
   );
 }

@@ -70,9 +70,7 @@ import { createReadouts, type HudReadouts } from './readouts';
 import { createRun, type GameRun } from './run';
 import { createInput, type GameInput } from './input';
 
-export interface GameRuntimeOptions extends GameSurfaceRefs {
-  developerToolsEnabled?: boolean;
-}
+export type GameRuntimeOptions = GameSurfaceRefs;
 
 export interface GameRuntime {
   /**
@@ -88,7 +86,6 @@ export interface GameRuntime {
  * surface is unusable; the caller turns that into the visible `failed` state.
  */
 export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
-  const developerToolsEnabled = options.developerToolsEnabled === true;
   // Every side effect below registers its own undo here.
   const scope = createDisposalScope();
   const surface = createGameSurface(options, scope);
@@ -204,9 +201,8 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     }
   }
 
-  // --- Developer tools ------------------------------------------------------
+  // --- Cheat menu -----------------------------------------------------------
   function grantDeveloperUpgrade(id: PlayerUpgradeId){
-    if (!developerToolsEnabled) return;
     if (!applyPlayerUpgrade(state.player, id)) return toast('Developer upgrade already at maximum level.');
     if (id === 'visibility') revealAtPlayer();
     saveProgress();
@@ -214,13 +210,11 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     toast('Developer action: upgrade granted for $0.');
   }
   function grantDeveloperMoney(){
-    if (!developerToolsEnabled) return;
     grantDeveloperCash(state);
     saveProgress();
     toast(`Developer action: +$${DEVELOPER_CASH_GRANT.toLocaleString('en-US')} granted.`);
   }
   function runDeveloperService(id: DeveloperServiceId){
-    if (!developerToolsEnabled) return;
     const changed = id === 'fuel'
       ? developerRefuel(state.player)
       : developerRepairHull(state.player);
@@ -276,7 +270,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       runDeveloperService,
       grantDeveloperUpgrade,
       resetPlayerData: () => {
-        if (!developerToolsEnabled) return;
         if (!confirmPlayerDataReset(message => window.confirm(message))) return;
         progressSave.cancel();
         session.resetForPlayerData();
@@ -291,7 +284,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
         toast('Player data reset. Shared mine terrain preserved.');
       },
       resetWorldState: () => {
-        if (!developerToolsEnabled) return;
         if (!confirmWorldStateReset(message => window.confirm(message))) return;
         if (!session.requestWorldReset()) {
           run.clearWorldRuntime();

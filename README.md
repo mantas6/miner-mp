@@ -272,17 +272,14 @@ connection to 200 messages per second. Clients reconnect automatically with
 backoff (0.5 s, growing 1.5x per attempt, capped at 10 s) and re-hydrate through
 the normal snapshot-then-pair handshake.
 
-Player and shared-world reset controls are development-only tools. They are
-omitted from normal local play and production builds. To expose the visibly
-marked local developer tab while running Vite in development mode, opt in with:
-
-```bash
-VITE_ENABLE_DEVELOPER_TOOLS=true npm run dev
-```
+The cheat menu — cash grants, free refuel/repair, free upgrades, and the player
+and shared-world reset controls — lives in the **Settings** tab of Info / Cargo,
+behind a "Show cheat menu" disclosure. It is available in every build with no
+environment opt-in, and it is mounted only while that disclosure is expanded.
 
 The shared-world reset regenerates terrain, enemies, caches, and fog while
 preserving each player's cash, upgrades, inventory/cargo, stats, ship condition,
-and settings. The flag is ignored by production builds.
+and settings.
 
 The client connects to the relay via the `VITE_MP_SERVER_URL` environment
 variable, which defaults to `ws://localhost:8081`. The lobby pre-fills that URL

@@ -255,6 +255,11 @@
 .settingsList button[aria-pressed="false"] {
   color: var(--muted);
 }
+.cheatsToggle {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+}
 .resetGame {
   margin-top: 10px;
   padding: 12px;
