@@ -26,11 +26,14 @@
   background: transparent;
 }
 
+/* The card is a header over a scroller, not one scrolling block: only .body moves,
+   so the title row and its close button stay on screen at any scroll offset. */
 .card {
+  display: flex;
+  flex-direction: column;
   width: min(720px, 94vw);
   max-height: min(560px, 88vh);
-  overflow: auto;
-  padding: 20px;
+  overflow: hidden;
   border-radius: var(--r-xl);
   background: linear-gradient(145deg, rgba(12, 18, 29, 0.96), rgba(30, 40, 58, 0.94));
   border: 1px solid var(--hairline-3);
@@ -48,10 +51,18 @@
 }
 .header {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  padding: 20px 20px 12px;
+}
+/* The scrollport, so its scrollbar sits against the card edge as it did when the
+   card itself scrolled. */
+.body {
+  min-height: 0;
+  overflow: auto;
+  padding: 0 20px 20px;
 }
 .header h2,
 .card h3 {
@@ -299,8 +310,13 @@
   }
   .card {
     max-height: 86vh;
-    padding: 14px;
     border-radius: var(--r-lg);
+  }
+  .header {
+    padding: 14px 14px 10px;
+  }
+  .body {
+    padding: 0 14px 14px;
   }
   .navigation {
     gap: 5px;

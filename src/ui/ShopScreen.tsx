@@ -109,6 +109,8 @@ function ShopCard({closeRef}: {closeRef: RefObject<HTMLButtonElement | null>}) {
 
   return (
     <div id="shop-card" className={styles.card}>
+      {/* Outside the scrolling body on purpose: the close button stays reachable
+          however far the shelves below are scrolled. */}
       <div className={styles.header}>
         <div>
           <p className={styles.kicker}>Depot supply counter</p>
@@ -122,56 +124,58 @@ function ShopCard({closeRef}: {closeRef: RefObject<HTMLButtonElement | null>}) {
           onClick={event => { event.stopPropagation(); uiCommands.closeShop(); }}
         >×</button>
       </div>
-      <div className={styles.summary} aria-live="polite">
-        <strong data-shop-cash>{summary.cash}</strong>
-        <span data-shop-location>{summary.location}</span>
+      <div className={styles.body}>
+        <div className={styles.summary} aria-live="polite">
+          <strong data-shop-cash>{summary.cash}</strong>
+          <span data-shop-location>{summary.location}</span>
+        </div>
+
+        <section className={styles.section} aria-labelledby="shop-services-title">
+          <div className={styles.sectionHeading}><h3 id="shop-services-title">Depot Services</h3><span>Pay what you have for a proportional partial service</span></div>
+          <div className={styles.grid}>
+            {SHOP_SERVICES.map(service => (
+              <ShopItem
+                key={service.id}
+                row={serviceRowState(service.id, ...rowArgs)}
+                buttonId={service.id === 'fuel' ? 'fuelBtn' : 'repairBtn'}
+                marker={{'data-shop-service': service.id}}
+                onBuy={() => (service.id === 'fuel' ? uiCommands.refuel() : uiCommands.repair())}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="shop-upgrades-title">
+          <div className={styles.sectionHeading}><h3 id="shop-upgrades-title">Permanent Upgrades</h3><span>Installed permanently · prices rise by level</span></div>
+          <div className={styles.grid}>
+            {SHOP_UPGRADES.map(upgrade => (
+              <ShopItem
+                key={upgrade.id}
+                row={upgradeRowState(upgrade.id, ...rowArgs)}
+                buttonId={`${upgrade.id}Btn`}
+                marker={{'data-shop-upgrade': upgrade.id}}
+                onBuy={() => uiCommands.buyUpgrade(upgrade.id)}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="shop-equipment-title">
+          <div className={styles.sectionHeading}><h3 id="shop-equipment-title">Consumable Equipment</h3><span>Each use spends one carried item</span></div>
+          <div className={styles.grid}>
+            {SHOP_ITEMS.map(item => (
+              <ShopItem
+                key={item.id}
+                row={itemRowState(item.id, ...rowArgs)}
+                buttonId={ITEM_PURCHASES[item.id].buttonId}
+                hint={HINTS[item.id]}
+                marker={{'data-shop-item': item.id}}
+                onBuy={ITEM_PURCHASES[item.id].buy}
+              />
+            ))}
+          </div>
+        </section>
       </div>
-
-      <section className={styles.section} aria-labelledby="shop-services-title">
-        <div className={styles.sectionHeading}><h3 id="shop-services-title">Depot Services</h3><span>Pay what you have for a proportional partial service</span></div>
-        <div className={styles.grid}>
-          {SHOP_SERVICES.map(service => (
-            <ShopItem
-              key={service.id}
-              row={serviceRowState(service.id, ...rowArgs)}
-              buttonId={service.id === 'fuel' ? 'fuelBtn' : 'repairBtn'}
-              marker={{'data-shop-service': service.id}}
-              onBuy={() => (service.id === 'fuel' ? uiCommands.refuel() : uiCommands.repair())}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.section} aria-labelledby="shop-upgrades-title">
-        <div className={styles.sectionHeading}><h3 id="shop-upgrades-title">Permanent Upgrades</h3><span>Installed permanently · prices rise by level</span></div>
-        <div className={styles.grid}>
-          {SHOP_UPGRADES.map(upgrade => (
-            <ShopItem
-              key={upgrade.id}
-              row={upgradeRowState(upgrade.id, ...rowArgs)}
-              buttonId={`${upgrade.id}Btn`}
-              marker={{'data-shop-upgrade': upgrade.id}}
-              onBuy={() => uiCommands.buyUpgrade(upgrade.id)}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.section} aria-labelledby="shop-equipment-title">
-        <div className={styles.sectionHeading}><h3 id="shop-equipment-title">Consumable Equipment</h3><span>Each use spends one carried item</span></div>
-        <div className={styles.grid}>
-          {SHOP_ITEMS.map(item => (
-            <ShopItem
-              key={item.id}
-              row={itemRowState(item.id, ...rowArgs)}
-              buttonId={ITEM_PURCHASES[item.id].buttonId}
-              hint={HINTS[item.id]}
-              marker={{'data-shop-item': item.id}}
-              onBuy={ITEM_PURCHASES[item.id].buy}
-            />
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

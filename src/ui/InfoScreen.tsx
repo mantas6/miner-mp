@@ -67,11 +67,12 @@ interface InfoCardProps {
 function InfoCard({closeRef}: InfoCardProps) {
   const activeTab = useUiStore(state => state.infoTab);
   const sections = getInfoNavigationSections();
-  const cardRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
-  // Every tab starts at the top of the card, as the imperative version did.
+  // Every tab starts at the top of the card, as the imperative version did. Only
+  // the body scrolls — the header stays put — so it is the element to reset.
   useEffect(() => {
-    if (cardRef.current) cardRef.current.scrollTop = 0;
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
   }, [activeTab]);
 
   function selectTab(id: InfoTab): void {
@@ -93,7 +94,9 @@ function InfoCard({closeRef}: InfoCardProps) {
   }
 
   return (
-    <div id="info-card" ref={cardRef} className={styles.card}>
+    <div id="info-card" className={styles.card}>
+      {/* Outside the scrolling body on purpose: the close button stays reachable
+          however far the panel below is scrolled. */}
       <div className={styles.header}>
         <h2 id="info-title">Cargo &amp; Controls</h2>
         <button
@@ -104,31 +107,33 @@ function InfoCard({closeRef}: InfoCardProps) {
           onClick={event => { event.stopPropagation(); uiCommands.closeInfo(); }}
         >×</button>
       </div>
-      <div className={styles.navigation} aria-label="Info sections" role="tablist" aria-orientation="horizontal">
-        {sections.map(section => (
-          <button
-            key={section.id}
-            id={section.tabId}
-            type="button"
-            role="tab"
-            data-info-section={section.id}
-            // Only the selected panel is in the document, so only the selected tab
-            // can point at one.
-            aria-controls={section.id === activeTab ? section.id : undefined}
-            aria-selected={section.id === activeTab}
-            tabIndex={section.id === activeTab ? 0 : -1}
-            onClick={() => selectTab(section.id)}
-            onKeyDown={event => onTabKeyDown(event, section.id)}
-          >{section.label}</button>
-        ))}
-      </div>
+      <div ref={bodyRef} className={styles.body}>
+        <div className={styles.navigation} aria-label="Info sections" role="tablist" aria-orientation="horizontal">
+          {sections.map(section => (
+            <button
+              key={section.id}
+              id={section.tabId}
+              type="button"
+              role="tab"
+              data-info-section={section.id}
+              // Only the selected panel is in the document, so only the selected tab
+              // can point at one.
+              aria-controls={section.id === activeTab ? section.id : undefined}
+              aria-selected={section.id === activeTab}
+              tabIndex={section.id === activeTab ? 0 : -1}
+              onClick={() => selectTab(section.id)}
+              onKeyDown={event => onTabKeyDown(event, section.id)}
+            >{section.label}</button>
+          ))}
+        </div>
 
-      {activeTab === 'info-objective' && <ObjectivePanel />}
-      {activeTab === 'info-stats' && <StatsPanel />}
-      {activeTab === 'info-prospecting' && <ProspectingPanel />}
-      {activeTab === 'info-hazards' && <HazardsPanel />}
-      {activeTab === 'info-controls' && <ControlsPanel />}
-      {activeTab === 'info-settings' && <SettingsPanel />}
+        {activeTab === 'info-objective' && <ObjectivePanel />}
+        {activeTab === 'info-stats' && <StatsPanel />}
+        {activeTab === 'info-prospecting' && <ProspectingPanel />}
+        {activeTab === 'info-hazards' && <HazardsPanel />}
+        {activeTab === 'info-controls' && <ControlsPanel />}
+        {activeTab === 'info-settings' && <SettingsPanel />}
+      </div>
     </div>
   );
 }
