@@ -88,12 +88,12 @@ export const ECONOMY = Object.freeze({
   visibility: Object.freeze({ base: 175, growth: 1.45, step: 1 }),
   dynamite: Object.freeze({ price: 50, radius: 2 }),
   teleporter: Object.freeze({ price: 250 }),
-  scanner: Object.freeze({ price: 200 }),
+  scanner: Object.freeze({ price: 50 }),
   /**
    * One disposable Linebreaker: a barrel, a single round, and nothing to reload.
-   * Priced between the dynamite it competes with underground and the scanner,
-   * because one shot buys a guaranteed kill at range where a stick of dynamite
-   * buys a wider hole the player still has to run away from.
+   * Priced above the dynamite it competes with underground, because one shot
+   * buys a guaranteed kill at range where a stick of dynamite buys a wider hole
+   * the player still has to run away from.
    */
   gun: Object.freeze({ price: 150, range: 8, damage: 100 }),
   artifactReward: 5000

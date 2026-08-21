@@ -81,7 +81,7 @@ test.describe('gameplay', () => {
    *
    * The wallet and the first device are seeded through the save file rather than
    * earned, because everything under test here happens at the depot and mining
-   * $200 of ore first would test the drill instead.
+   * $50 of ore first would test the drill instead.
    */
   test('a bought scanner is carried in the bay and arms from its own slot', async ({page}) => {
     await page.addInitScript(() => {
