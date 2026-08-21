@@ -235,17 +235,22 @@ function ControlsPanel() {
   return (
     <section id="info-controls" role="tabpanel" aria-labelledby="info-tab-controls" tabIndex={-1}>
       <h3 id="controls-title">Controls</h3>
+      {/* Every row is exactly two cells: the keys that do the thing, then the
+          sentence about it. The keys are wrapped even when there is only one of
+          them, because the row is a grid — left loose, a second `<kbd>` and the
+          words between them become grid items of their own, and whichever badge
+          landed in the flexible column was stretched across it. */}
       <ul className={styles.controlList}>
-        <li><kbd>WASD</kbd> / <kbd>Arrows</kbd><span>Move, fly, and dig</span></li>
-        <li><strong>Fog map</strong><span>Movement permanently reveals the sensor footprint. Co-op miners share explored tiles.</span></li>
-        <li><kbd>Shift</kbd> + movement<span>Sprint through open space at increased fuel cost; open-space descent is free and drilling stays normal. Slamming a boosted ship into rock, a ceiling, or a wall buckles the hull.</span></li>
-        <li><kbd>Enter</kbd><span>Sell cargo at the surface depot</span></li>
-        <li><kbd>Space</kbd><span>Repair or refuel at the surface</span></li>
-        <li><kbd>E</kbd> / <strong>Dynamite slot</strong> then a mine tile<span>Plant one carried stick on explored, cleared ground. It blows a {ECONOMY.dynamite.radius}-tile radius after a {DYNAMITE.fuseSeconds}-second fuse: blasts yield no cargo, destroyed artifacts grant no cash, and a ship still inside the radius takes hull damage. Escape cancels.</span></li>
-        <li><kbd>T</kbd> / <kbd>Teleport</kbd><span>At 100 m or deeper, use one carried teleporter to visit the depot, then press T again to return to the same underground location</span></li>
-        <li><kbd>G</kbd> / <kbd>Arm Gun</kbd> then a direction key<span>Spend one carried Linebreaker on a shot up to {ECONOMY.gun.range} tiles; press G or Escape to cancel aiming without using it. Shots destroy the first eligible block or enemy, but valuables give no cargo or artifact cash.</span></li>
-        <li><strong>Scanner slot</strong> then a mine tile<span>Deploy one carried scanner onto explored, cleared ground; it maps its {SCANNER_DEVICE.size}×{SCANNER_DEVICE.size} surroundings, one fogged tile every {SCANNER_DEVICE.intervalSeconds} seconds, then goes inert. Escape cancels.</span></li>
-        <li><kbd>R</kbd> then <kbd>R</kbd><span>Confirm reset while alive</span></li>
+        <li><span className={styles.controlKeys}><kbd>WASD</kbd> / <kbd>Arrows</kbd></span><span>Move, fly, and dig</span></li>
+        <li><span className={styles.controlKeys}><strong>Fog map</strong></span><span>Movement permanently reveals the sensor footprint. Co-op miners share explored tiles.</span></li>
+        <li><span className={styles.controlKeys}><kbd>Shift</kbd> + movement</span><span>Sprint through open space at increased fuel cost; open-space descent is free and drilling stays normal. Slamming a boosted ship into rock, a ceiling, or a wall buckles the hull.</span></li>
+        <li><span className={styles.controlKeys}><kbd>Enter</kbd></span><span>Sell cargo at the surface depot</span></li>
+        <li><span className={styles.controlKeys}><kbd>Space</kbd></span><span>Repair or refuel at the surface</span></li>
+        <li><span className={styles.controlKeys}><kbd>E</kbd> / <strong>Dynamite slot</strong> then a mine tile</span><span>Plant one carried stick on explored, cleared ground. It blows a {ECONOMY.dynamite.radius}-tile radius after a {DYNAMITE.fuseSeconds}-second fuse: blasts yield no cargo, destroyed artifacts grant no cash, and a ship still inside the radius takes hull damage. Escape cancels.</span></li>
+        <li><span className={styles.controlKeys}><kbd>T</kbd> / <kbd>Teleport</kbd></span><span>At 100 m or deeper, use one carried teleporter to visit the depot, then press T again to return to the same underground location</span></li>
+        <li><span className={styles.controlKeys}><kbd>G</kbd> / <kbd>Arm Gun</kbd> then a direction key</span><span>Spend one carried Linebreaker on a shot up to {ECONOMY.gun.range} tiles; press G or Escape to cancel aiming without using it. Shots destroy the first eligible block or enemy, but valuables give no cargo or artifact cash.</span></li>
+        <li><span className={styles.controlKeys}><strong>Scanner slot</strong> then a mine tile</span><span>Deploy one carried scanner onto explored, cleared ground; it maps its {SCANNER_DEVICE.size}×{SCANNER_DEVICE.size} surroundings, one fogged tile every {SCANNER_DEVICE.intervalSeconds} seconds, then goes inert. Escape cancels.</span></li>
+        <li><span className={styles.controlKeys}><kbd>R</kbd> then <kbd>R</kbd></span><span>Confirm reset while alive</span></li>
       </ul>
     </section>
   );

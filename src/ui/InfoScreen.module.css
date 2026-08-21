@@ -207,8 +207,23 @@
   font-size: var(--fs-xs);
   line-height: 1.35;
 }
+/* Keys on the left, what they do on the right — the same two-cell shape as the
+   hazard guide, rather than the three-cell one the ore lists want. */
+.controlList li {
+  grid-template-columns: minmax(128px, 0.34fr) 1fr;
+  align-items: start;
+}
 .controlList li span {
   color: #dbe8ff;
+}
+/* Its own flow inside the one cell, so each badge is only as wide as its label
+   and a row of several keys wraps instead of stretching. */
+.controlList .controlKeys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  line-height: 1.35;
 }
 .oreIcon {
   width: 22px;
@@ -325,10 +340,15 @@
     padding: 7px 8px;
     font-size: var(--fs-3xs);
   }
-  .controlList li,
   .cargoList li {
     grid-template-columns: auto 1fr;
     padding: 8px 9px;
+  }
+  /* No room for a keys column beside the sentence, so the keys get their own line. */
+  .controlList li {
+    grid-template-columns: 1fr;
+    padding: 8px 9px;
+    gap: 4px;
   }
   .expeditionStats {
     grid-template-columns: 1fr;
