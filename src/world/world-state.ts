@@ -1,7 +1,7 @@
 import { placeAtSurfaceSpawn } from '../core/state';
 import type { GameState } from '../core/types';
 
-export const WORLD_STATE_RESET_CONFIRMATION = 'Reset world state for everyone? This permanently regenerates all terrain, restores dug-out blocks and world enemies, and clears explored fog. Player cash, upgrades, inventory, stats, settings, and ship condition are preserved.';
+export const WORLD_STATE_RESET_CONFIRMATION = 'Reset world state for everyone? This permanently regenerates all terrain, restores dug-out blocks and world enemies, clears explored fog, and removes deployed equipment along with anything stored in it. Player cash, upgrades, cargo bay, stats, settings, and ship condition are preserved.';
 
 export function confirmWorldStateReset(confirmReset: (message: string) => boolean): boolean {
   return confirmReset(WORLD_STATE_RESET_CONFIRMATION);
@@ -25,6 +25,9 @@ export function resetWorldTerrain(state: GameState): void {
   state.scannerDevices = [];
   // A stick burning in a tunnel that no longer exists has nothing left to blow up.
   state.placedDynamite = [];
+  // Likewise a crate: the tile it stood on is being regenerated, so it goes with
+  // the mine it was left in, and whatever was stored inside it goes too.
+  state.cargoContainers = [];
   state.particles = [];
   state.extractionPhase = 'none';
   state.teleportEffect = null;

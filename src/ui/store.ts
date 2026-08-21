@@ -24,6 +24,7 @@ import { createInitialState } from '../core/state';
 import { formatExpeditionStats, type ExpeditionStatRow } from '../core/stats';
 import { formatSurfaceActionHint } from '../core/surface-hint';
 import { countItem, createInventory, oreStacks, type Inventory, type InventoryItemKind } from '../core/inventory';
+import { CARGO_CONTAINER_ITEM } from '../core/cargo-container';
 import { DYNAMITE_ITEM } from '../core/dynamite';
 import { SCANNER_ITEM } from '../core/scanner-device';
 import { TELEPORTER_ITEM } from '../core/teleporter';
@@ -101,11 +102,12 @@ export type PlayerSnapshot = Pick<
   dynamite: number;
   guns: number;
   teleporters: number;
+  containers: number;
 };
 
 const PLAYER_KEYS = [
   'fuel', 'fuelMax', 'hull', 'hullMax', 'cargoMax', 'drill', 'visibility',
-  'scanners', 'dynamite', 'guns', 'teleporters'
+  'scanners', 'dynamite', 'guns', 'teleporters', 'containers'
 ] as const satisfies readonly (keyof PlayerSnapshot)[];
 
 export interface CargoRow {
@@ -162,7 +164,7 @@ export type UiPhase = 'intro' | 'lobby' | 'playing';
 export type RuntimeStatus = 'booting' | 'ready' | 'failed';
 
 /** The modal overlays that cover the mine. Exactly one of them, or none. */
-export type OverlayId = 'shop' | 'info';
+export type OverlayId = 'shop' | 'info' | 'container';
 
 /**
  * Which overlay is up. One field rather than a flag per overlay, because
@@ -177,6 +179,12 @@ export interface UiState {
   player: PlayerSnapshot;
   /** The cargo bay's slots, painted by the always-visible inventory panel. */
   inventorySlots: InventorySlotView[];
+  /**
+   * The open cargo container's slots, in the same shape. Written only while the
+   * transfer menu is up: the game pushes a crate's contents here when it opens one
+   * and after every transfer, so the menu never reaches into the simulation.
+   */
+  containerSlots: InventorySlotView[];
   cargoRows: CargoRow[];
   statRows: ExpeditionStatRow[];
   activeOverlay: ActiveOverlay;
@@ -209,6 +217,7 @@ export interface UiState {
   syncHud(next: Readonly<HudSnapshot>): void;
   syncPlayer(next: Readonly<PlayerSnapshot>): void;
   setInventorySlots(slots: InventorySlotView[]): void;
+  setContainerSlots(slots: InventorySlotView[]): void;
   setCargoRows(rows: CargoRow[]): void;
   setStatRows(rows: ExpeditionStatRow[]): void;
   /** Show one overlay, replacing whatever was up; `null` closes them all. */
@@ -311,7 +320,8 @@ function initialPlayer(): PlayerSnapshot {
     teleporters: countItem(player.inventory, TELEPORTER_ITEM.kind),
     scanners: countItem(player.inventory, SCANNER_ITEM.kind),
     dynamite: countItem(player.inventory, DYNAMITE_ITEM.kind),
-    guns: countItem(player.inventory, GUN_ITEM.kind)
+    guns: countItem(player.inventory, GUN_ITEM.kind),
+    containers: countItem(player.inventory, CARGO_CONTAINER_ITEM.kind)
   };
 }
 
@@ -346,6 +356,7 @@ export const uiStore = createStore<UiState>((set, get) => ({
   hud: initialHud(),
   player: initialPlayer(),
   inventorySlots: buildInventorySlots(createInventory()),
+  containerSlots: [],
   cargoRows: [],
   statRows: formatExpeditionStats({}),
   activeOverlay: null,
@@ -377,6 +388,11 @@ export const uiStore = createStore<UiState>((set, get) => ({
   setInventorySlots(slots) {
     if (sameInventorySlots(get().inventorySlots, slots)) return;
     set({inventorySlots: slots});
+  },
+
+  setContainerSlots(slots) {
+    if (sameInventorySlots(get().containerSlots, slots)) return;
+    set({containerSlots: slots});
   },
 
   setCargoRows(rows) {

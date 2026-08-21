@@ -24,8 +24,8 @@ const DOM_CONTRACT = [
   // The inventory panel ships expanded, so its slot list is part of the contract.
   'inventory', 'inventoryToggleBtn', 'inventorySlots',
   'surfaceHint', 'sell', 'shopBtn', 'teleporterBtn', 'gunBtn', 'infoBtn',
-  // Both overlays keep their dialog shell mounted; their contents do not.
-  'shop-screen', 'info-screen',
+  // Every overlay keeps its dialog shell mounted; their contents do not.
+  'shop-screen', 'info-screen', 'cargo-screen',
   'fuel-warning', 'toast'
 ];
 
@@ -33,8 +33,11 @@ const DOM_CONTRACT = [
 const SHOP_CONTRACT = [
   'shop-card', 'shopCloseBtn',
   'fuelBtn', 'repairBtn', 'cargoBtn', 'tankBtn', 'hullBtn', 'drillBtn', 'visibilityBtn',
-  'shopDynamiteBtn', 'shopTeleporterBtn', 'shopScannerBtn', 'shopGunBtn'
+  'shopDynamiteBtn', 'shopTeleporterBtn', 'shopScannerBtn', 'shopGunBtn', 'shopContainerBtn'
 ];
+
+/** Ids that exist only while a cargo container's transfer menu is up. */
+const CARGO_CONTRACT = ['cargo-card', 'cargoCloseBtn', 'containerSlots', 'shipSlots'];
 
 /** Ids that exist only while the info screen is up, on the tab it opens with. */
 const INFO_CONTRACT = ['info-card', 'infoCloseBtn', 'objectiveInfoStatus', 'extractionInfoStatus', 'cargoList'];
@@ -221,20 +224,25 @@ describe('one overlay at a time', () => {
 
 describe('closed overlays', () => {
   it('builds overlay contents only while that overlay is on screen', () => {
+    const all = [...SHOP_CONTRACT, ...INFO_CONTRACT, ...CARGO_CONTRACT];
     render(<MinerApp />);
 
-    for (const id of [...SHOP_CONTRACT, ...INFO_CONTRACT]) expect(document.getElementById(id), id).toBeNull();
+    for (const id of all) expect(document.getElementById(id), id).toBeNull();
 
     act(() => { uiStore.getState().setActiveOverlay('shop'); });
     for (const id of SHOP_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
-    for (const id of INFO_CONTRACT) expect(document.getElementById(id), id).toBeNull();
+    for (const id of [...INFO_CONTRACT, ...CARGO_CONTRACT]) expect(document.getElementById(id), id).toBeNull();
 
     act(() => { uiStore.getState().setActiveOverlay('info'); });
-    for (const id of SHOP_CONTRACT) expect(document.getElementById(id), id).toBeNull();
     for (const id of INFO_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
+    for (const id of [...SHOP_CONTRACT, ...CARGO_CONTRACT]) expect(document.getElementById(id), id).toBeNull();
+
+    act(() => { uiStore.getState().setActiveOverlay('container'); });
+    for (const id of CARGO_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
+    for (const id of [...SHOP_CONTRACT, ...INFO_CONTRACT]) expect(document.getElementById(id), id).toBeNull();
 
     act(() => { uiStore.getState().setActiveOverlay(null); });
-    for (const id of [...SHOP_CONTRACT, ...INFO_CONTRACT]) expect(document.getElementById(id), id).toBeNull();
+    for (const id of all) expect(document.getElementById(id), id).toBeNull();
   });
 
   it('mounts only the selected info panel', () => {

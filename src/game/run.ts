@@ -87,6 +87,7 @@ export function createRun(deps: GameRunDeps): GameRun {
       });
       state.scannerDevices = [];
       state.placedDynamite = [];
+      state.cargoContainers = [];
       state.exploredTiles.clear();
       state.stats = createDefaultStats();
       saveProgress();

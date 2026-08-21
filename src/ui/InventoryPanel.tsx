@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { useState } from 'react';
+import { CARGO_CONTAINER_ITEM } from '../core/cargo-container';
 import { DYNAMITE, DYNAMITE_ITEM } from '../core/dynamite';
 import type { InventoryItemKind } from '../core/inventory';
 import { SCANNER_ITEM } from '../core/scanner-device';
@@ -25,6 +26,12 @@ const PLACEABLE: Partial<Record<InventoryItemKind, {
     idle: 'Plant dynamite in the mine (E)',
     armed: `Click a mapped tile to plant · ${DYNAMITE.fuseSeconds} s fuse · Esc cancels`,
     toggle: () => uiCommands.toggleDynamitePlacement()
+  },
+  [CARGO_CONTAINER_ITEM.kind]: {
+    buttonId: 'containerSlotBtn',
+    idle: 'Set a cargo container down in the mine',
+    armed: 'Click a mapped tile to set it down · Esc cancels',
+    toggle: () => uiCommands.toggleContainerPlacement()
   }
 };
 

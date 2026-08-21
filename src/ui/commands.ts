@@ -7,6 +7,7 @@
 // rendering the UI without a running game — in tests, between a StrictMode
 // double-mount, after a crash — is harmless.
 
+import type { InventoryItemKind } from '../core/inventory';
 import type { DeveloperServiceId } from '../core/developer';
 import type { PlayerUpgradeId } from '../core/upgrades';
 
@@ -19,6 +20,7 @@ export interface UiCommands {
   buyTeleporter(): void;
   buyScanner(): void;
   buyGun(): void;
+  buyContainer(): void;
   useTeleporter(): void;
   toggleGunArmed(): void;
   /**
@@ -31,6 +33,17 @@ export interface UiCommands {
    * and lights. Arming one stands the other down: the mine takes one press.
    */
   toggleDynamitePlacement(): void;
+  /**
+   * The same gesture for a cargo container, which the press on the mine sets
+   * down. Arming any of the three stands the other two down.
+   */
+  toggleContainerPlacement(): void;
+  /** Shut the transfer menu; also what the dialog's own close request reports. */
+  closeContainer(): void;
+  /** Move one whole stack of this kind out of the bay into the open container. */
+  storeInContainer(kind: InventoryItemKind): void;
+  /** Move it back, as far as the cargo-bay limit allows. */
+  takeFromContainer(kind: InventoryItemKind): void;
   openShop(): void;
   closeShop(): void;
   openInfo(): void;
@@ -75,10 +88,15 @@ function noopCommands(): UiCommands {
     buyTeleporter: noop,
     buyScanner: noop,
     buyGun: noop,
+    buyContainer: noop,
     useTeleporter: noop,
     toggleGunArmed: noop,
     toggleScannerPlacement: noop,
     toggleDynamitePlacement: noop,
+    toggleContainerPlacement: noop,
+    closeContainer: noop,
+    storeInContainer: noop,
+    takeFromContainer: noop,
     openShop: noop,
     closeShop: noop,
     openInfo: noop,

@@ -34,6 +34,7 @@ import { createRenderer, type Renderer } from '../render/renderer';
 import { FUEL, ECONOMY } from '../core/balance';
 import { cargoCost, tankCost, hullCost, drillCost, visibilityCost, cargoValue } from '../core/economy';
 import { countItem, countOres, type Inventory } from '../core/inventory';
+import { CARGO_CONTAINER_ITEM } from '../core/cargo-container';
 import { DYNAMITE_ITEM } from '../core/dynamite';
 import { SCANNER_ITEM } from '../core/scanner-device';
 import { GUN_ITEM } from '../core/weapon';
@@ -66,6 +67,7 @@ import { createEnemySim, type EnemySim } from './enemies';
 import { createActions, type GameActions } from './actions';
 import { createScannerDevices, type ScannerDeviceSim } from './scanner-devices';
 import { createDynamiteSticks, type DynamiteSim } from './dynamite-sticks';
+import { createCargoContainers, type CargoContainerSim } from './cargo-containers';
 import { createMovement } from './move';
 import { createReadouts, type HudReadouts } from './readouts';
 import { createRun, type GameRun } from './run';
@@ -104,6 +106,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   let readouts: HudReadouts;
   let scanners: ScannerDeviceSim;
   let dynamite: DynamiteSim;
+  let containers: CargoContainerSim;
 
   state.stats = createDefaultStats();
 
@@ -245,11 +248,16 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       buyDynamite: () => actions.buyDynamite(),
       buyTeleporter: () => actions.buyTeleporter(),
       buyScanner: () => actions.buyScanner(),
-      // Only one press on the mine is available, so arming either deployable
-      // stands the other one down.
-      toggleScannerPlacement: () => { dynamite.disarm(); scanners.toggleArmed(); },
-      toggleDynamitePlacement: () => { scanners.disarm(); dynamite.toggleArmed(); },
+      // Only one press on the mine is available, so arming any deployable stands
+      // the other two down.
+      toggleScannerPlacement: () => { dynamite.disarm(); containers.disarm(); scanners.toggleArmed(); },
+      toggleDynamitePlacement: () => { scanners.disarm(); containers.disarm(); dynamite.toggleArmed(); },
+      toggleContainerPlacement: () => { scanners.disarm(); dynamite.disarm(); containers.toggleArmed(); },
+      closeContainer: () => containers.close(),
+      storeInContainer: kind => containers.store(kind),
+      takeFromContainer: kind => containers.take(kind),
       buyGun: () => actions.buyGun(),
+      buyContainer: () => actions.buyContainer(),
       useTeleporter: () => actions.useTeleporter(),
       toggleGunArmed: () => actions.setGunArmed(!state.input.gunArmed),
       openShop: openShopScreen,
@@ -306,10 +314,11 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   }
   /** Stand down whichever deployable is waiting for a press on the mine. */
   function disarmPlacements(): boolean {
-    // Both, and not short-circuited: only one can be armed, but a disarm must
+    // All three, and not short-circuited: only one can be armed, but a disarm must
     // never depend on which.
     const hadScanner = scanners.disarm();
-    return dynamite.disarm() || hadScanner;
+    const hadDynamite = dynamite.disarm();
+    return containers.disarm() || hadDynamite || hadScanner;
   }
   function openShopScreen(){
     if (!atSurface()) return toast('Shop is at the surface depot.');
@@ -352,6 +361,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     playerScratch.scanners = countItem(p.inventory, SCANNER_ITEM.kind);
     playerScratch.dynamite = countItem(p.inventory, DYNAMITE_ITEM.kind);
     playerScratch.guns = countItem(p.inventory, GUN_ITEM.kind);
+    playerScratch.containers = countItem(p.inventory, CARGO_CONTAINER_ITEM.kind);
     uiStore.getState().syncPlayer(playerScratch);
   }
   function syncInfoDetails(){
@@ -484,6 +494,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       // fuse must not burn down behind a title card.
       scanners.tick();
       dynamite.tick();
+      containers.tick();
       if (session.isGuestEnemyReplica()) {
         enemies.updatePresentation();
         enemies.updateBites();
@@ -686,6 +697,20 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       damagePlayer: run.damage,
       setArmedUi: value => uiStore.getState().setArmedPlacement(value ? DYNAMITE_ITEM.kind : null)
     });
+    containers = createCargoContainers({
+      state,
+      grid,
+      audio,
+      toast,
+      saveProgress,
+      setArmedUi: value => uiStore.getState().setArmedPlacement(value ? CARGO_CONTAINER_ITEM.kind : null),
+      setOpenUi: contents => {
+        const store = uiStore.getState();
+        if (!contents) return store.closeOverlay('container');
+        store.setContainerSlots(buildInventorySlots(contents));
+        store.setActiveOverlay('container');
+      }
+    });
     gameInput = createInput({
       state,
       actions,
@@ -695,23 +720,32 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       closeShopScreen,
       closeInfoScreen,
       cancelPlacement: disarmPlacements,
-      toggleDynamitePlacement: () => { scanners.disarm(); dynamite.toggleArmed(); },
+      toggleDynamitePlacement: () => { scanners.disarm(); containers.disarm(); dynamite.toggleArmed(); },
+      // A crate's menu covers the mine, so nothing may be left waiting for a
+      // press on it — including the two deployables this module does not own.
+      toggleContainer: () => { if (!containers.open) disarmPlacements(); containers.openNearest(); },
+      closeContainer: () => containers.close(),
       toast,
       tryAutoAudio
     });
   }
 
   /**
-   * A press on the mine while a deployable is armed puts it on the tile pressed.
-   * Registered on the canvas rather than the window so the HUD's own buttons —
-   * which sit over the same pixels — keep their clicks.
+   * A press on the mine while a deployable is armed puts it on the tile pressed;
+   * an unarmed one opens the cargo container standing on that tile, if the ship is
+   * beside it. Registered on the canvas rather than the window so the HUD's own
+   * buttons — which sit over the same pixels — keep their clicks.
    *
    * The press is deliberately left to run its course afterwards: it is also the
    * gesture that unlocks audio, and it is what hands the keyboard back to the
    * canvas after a click on the inventory slot took it away.
    */
   function handleMinePointerDown(event: PointerEvent){
-    if (!isPlaying() || !(scanners.armed || dynamite.armed)) return;
+    if (!isPlaying()) return;
+    const armed = scanners.armed || dynamite.armed || containers.armed;
+    // Nothing is armed and something is already over the mine: the press belongs
+    // to whatever is on top of it, not to the tile underneath.
+    if (!armed && uiStore.getState().activeOverlay !== null) return;
     const rect = surface.canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
     // The canvas may be laid out at a different size than it is drawn at, so the
@@ -723,7 +757,10 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       state.camY
     );
     if (scanners.armed) scanners.placeAt(point.x, point.y);
-    else dynamite.placeAt(point.x, point.y);
+    else if (dynamite.armed) dynamite.placeAt(point.x, point.y);
+    else if (containers.armed) containers.placeAt(point.x, point.y);
+    // A press on bare rock is not a refusal; it simply was not about a crate.
+    else containers.openAt(point.x, point.y);
   }
 
   /** Hand the runtime back to the mount that owns it. */
@@ -744,8 +781,10 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     resetUiCommands();
     uiStore.getState().clearToasts();
     // An armed slot outlives its runtime otherwise, and there is nothing left to
-    // take the press it is waiting for.
+    // take the press it is waiting for. A crate's transfer menu is worse: every
+    // button in it would dispatch into a table of no-ops.
     uiStore.getState().setArmedPlacement(null);
+    uiStore.getState().closeOverlay('container');
   }
 
   // --- Boot ------------------------------------------------------------------

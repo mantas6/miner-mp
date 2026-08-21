@@ -117,9 +117,9 @@ miner-mp/
 | `shared/tile-key.ts` | Canonical `"x,y"` coordinate key used by tile maps on both sides. |
 | `src/main.tsx` | Vite entry point: imports global styles and renders the app inside `<StrictMode>` and an error boundary, handing the game-runtime factory to it. |
 | `src/persistence.ts` | Local save/load of player progress, the ship's parked tile, explored tiles, and the solo world's tile diff (`localStorage`). |
-| `src/core/` | Pure gameplay rules and types: balance, economy, upgrades, shop catalog, movement, weapon, dynamite, teleporter, enemies, objectives, extraction, scanner, fuel reserve, depth milestones, spoken ship status, stats, danger, fixed-step clock, developer tools. |
+| `src/core/` | Pure gameplay rules and types: balance, economy, upgrades, shop catalog, movement, weapon, dynamite, teleporter, cargo containers, enemies, objectives, extraction, scanner, fuel reserve, depth milestones, spoken ship status, stats, danger, fixed-step clock, developer tools. |
 | `src/world/` | World generation, the tile diff that turns a saved or relayed world back into terrain (`tile-diff.ts`), shared world-state reset, and visible tile range. |
-| `src/game/` | Gameplay orchestration (`game.ts`, the `createGameRuntime()` factory) plus its feature modules — `session.ts` (relay session), `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `zoom.ts` (wheel/pinch camera zoom maths), `zoom-settings.ts` (the remembered zoom level), `readouts.ts` — the canvas surface factory (`dom.ts`) and the teardown registry every side effect registers with (`disposal.ts`). |
+| `src/game/` | Gameplay orchestration (`game.ts`, the `createGameRuntime()` factory) plus its feature modules — `session.ts` (relay session), `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `zoom.ts` (wheel/pinch camera zoom maths), `zoom-settings.ts` (the remembered zoom level), `readouts.ts`, `scanner-devices.ts`, `dynamite-sticks.ts`, `cargo-containers.ts` — the canvas surface factory (`dom.ts`) and the teardown registry every side effect registers with (`disposal.ts`). |
 | `src/net/` | Relay client (partysocket, auto-reconnect), wire protocol codec, and multiplayer settings. |
 | `src/render/` | Canvas drawing, terrain/fog chunk cache policy, and partner indicator. |
 | `src/audio/` | Web Audio graph, sound effects, soundtrack playback, and autoplay permission. |
@@ -308,6 +308,9 @@ zooming the camera with the wheel or a trackpad.
 | Depot service | `Space` (sells cargo first, then refuels, then repairs) | Shop & Equipment -> Refuel / Repair |
 | Plant dynamite (5 s fuse) | `E`, then press a mine tile | Dynamite inventory slot, then a mine tile |
 | Deploy a scanner | — | Scanner inventory slot, then a mine tile |
+| Set a cargo container down | — | Container inventory slot, then a mine tile |
+| Open a placed cargo container (on it or beside it) | `C` | Press the crate on the mine |
+| Move a stack between the crate and the bay | — | Press the stack in either column |
 | Cancel a placement | `Escape` | The armed slot again |
 | Teleporter round trip (100 m+, spends one carried teleporter) | `T` | Teleport button |
 | Fire a carried Linebreaker (single use) | `G` then a direction key | Arm Gun button, then a direction key |
@@ -334,9 +337,10 @@ zooming the camera with the wheel or a trackpad.
   fuel banner are live regions, and `#game-status` politely announces the ship's
   situation — at the depot, in the mine, holds full, hull critical, ship lost. It is
   driven by thresholds, so the 60 Hz HUD sync never makes it talk.
-- **Native dialogs.** The intro prompt and its MP button are `<button>`s; the lobby, shop and info
-  overlays are modal `<dialog>`s, so the browser contains Tab, makes the rest of the
-  page inert, and each close returns focus to the control that opened it.
+- **Native dialogs.** The intro prompt and its MP button are `<button>`s; the lobby,
+  shop, info and cargo-container overlays are modal `<dialog>`s, so the browser
+  contains Tab, makes the rest of the page inert, and each close returns focus to
+  the control that opened it.
 - **`prefers-reduced-motion`.** The looping start-prompt, low-fuel and HUD-alert
   animations stop; the alert colours stay.
 
@@ -350,8 +354,9 @@ zooming the camera with the wheel or a trackpad.
   upgrade's total ore cap. Selling empties every ore stack at once.
 - Refuel and repair at the surface depot.
 - The depot shop sells five upgrades — Cargo Bay, Fuel Tank, Hull, Drill, Sensor
-  Array — plus the consumables: dynamite, teleporters, scanners, and Linebreaker
-  guns. Upgrade prices rise with each level; consumables are a flat price each.
+  Array — plus the consumables: dynamite, teleporters, scanners, Linebreaker guns,
+  and cargo containers. Upgrade prices rise with each level; consumables are a flat
+  price each.
 - Artifacts pay out immediately in cash and never take a cargo slot; dynamite
   and gunfire destroy valuables without any payout.
 - Dynamite and scanners are carried in the cargo bay and placed from their own
@@ -364,6 +369,17 @@ zooming the camera with the wheel or a trackpad.
 - Teleporters ride in the bay too, and are also spent rather than placed: from
   100 m or deeper one takes the ship to the depot and leaves a return point
   behind. The trip up costs the item; the trip back is free.
+- Cargo containers (`src/core/cargo-container.ts`) are the one purchase that is
+  never used up. Set one down on explored, cleared ground from its inventory slot
+  and it becomes five more inventory slots standing in the mine, obeying the same
+  stacking rules as the bay. Press it from an adjacent tile — or `C` while on or
+  beside it — to open a two-column transfer menu; a press on a stack sends it to
+  the other side. A crate keeps what it holds through death, reload and the sale of
+  everything aboard, which makes it the only way to protect ore from a lost run.
+  Ore taken back out still obeys the Cargo Bay upgrade's total ore cap, so a crate
+  buys storage, never carrying capacity. Six may stand in the mine at once, and
+  like scanners and dynamite they are local to this client rather than shared with
+  a co-op partner.
 - Low fuel warnings appear below 25%; return to the surface quickly.
 - The HUD reserve readout forecasts the climb home (safe/caution/urgent), the
   scanner reads the tile the drill is aimed at, and the depth readout counts

@@ -11,6 +11,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react';
 import { ECONOMY } from '../core/balance';
+import { CARGO_CONTAINER } from '../core/cargo-container';
 import { buildDangerGuideRows } from '../core/danger';
 import { DYNAMITE } from '../core/dynamite';
 import { PROSPECTING_TIP, buildArtifactGuideRows, buildProspectingGuideRows } from '../core/prospecting';
@@ -250,6 +251,8 @@ function ControlsPanel() {
         <li><span className={styles.controlKeys}><kbd>T</kbd> / <kbd>Teleport</kbd></span><span>At 100 m or deeper, spend one teleporter from the cargo bay to visit the depot, then press T again to return to the same underground location for free</span></li>
         <li><span className={styles.controlKeys}><kbd>G</kbd> / <kbd>Arm Gun</kbd> then a direction key</span><span>Spend one carried Linebreaker on a shot up to {ECONOMY.gun.range} tiles; press G or Escape to cancel aiming without using it. Shots destroy the first eligible block or enemy, but valuables give no cargo or artifact cash.</span></li>
         <li><span className={styles.controlKeys}><strong>Scanner slot</strong> then a mine tile</span><span>Deploy one carried scanner onto explored, cleared ground; it maps its {SCANNER_DEVICE.size}×{SCANNER_DEVICE.size} surroundings, one fogged tile every {SCANNER_DEVICE.intervalSeconds} seconds, then goes inert. Escape cancels.</span></li>
+        <li><span className={styles.controlKeys}><strong>Container slot</strong> then a mine tile</span><span>Set one carried cargo container down on explored, cleared ground. Escape cancels.</span></li>
+        <li><span className={styles.controlKeys}><kbd>C</kbd> / press the crate</span><span>Open a placed container the ship is standing on or beside. Press a stack in either column to move it across; the crate holds {CARGO_CONTAINER.slots} stacks and keeps them through death and reload, and ore taken back aboard still obeys the cargo-bay limit.</span></li>
         <li><span className={styles.controlKeys}><kbd>R</kbd> then <kbd>R</kbd></span><span>Confirm reset while alive</span></li>
       </ul>
     </section>

@@ -28,6 +28,7 @@ export function resetPlayerData(state: GameState): void {
   state.exploredTiles = fresh.exploredTiles;
   state.scannerDevices = fresh.scannerDevices;
   state.placedDynamite = fresh.placedDynamite;
+  state.cargoContainers = fresh.cargoContainers;
   state.input = fresh.input;
   Object.assign(state.player, fresh.player);
 

@@ -12,6 +12,7 @@
 
 import { TILE, WORLD_W } from '../../shared/constants';
 import { ECONOMY } from '../core/balance';
+import { CARGO_CONTAINER_ITEM } from '../core/cargo-container';
 import { cargoValue, partialFill, refuelCost, repairCost } from '../core/economy';
 import { DYNAMITE_ITEM } from '../core/dynamite';
 import { addItem, countItem, isFullFor, removeItem, removeOres, type InventoryItem } from '../core/inventory';
@@ -62,6 +63,8 @@ export interface GameActions {
   buyScanner(): void;
   /** Buy one single-use Linebreaker into the cargo bay; refused when it has no room. */
   buyGun(): void;
+  /** Buy one cargo container into the cargo bay; refused when it has no room. */
+  buyContainer(): void;
   setGunArmed(armed: boolean): void;
   /** Fire the carried Linebreaker, spending it. Reports whether the shot went off. */
   fireGun(direction: Direction): boolean;
@@ -178,10 +181,10 @@ export function createActions(deps: GameActionsDeps): GameActions {
   }
 
   /**
-   * Single-use equipment — scanners, dynamite, guns, teleporters — takes a cargo
-   * slot, so the bay itself can refuse the sale. Checked before the money changes
-   * hands, and only at the depot, so the "come back to the surface" refusal still
-   * comes first.
+   * Bought equipment — scanners, dynamite, guns, teleporters, containers — takes
+   * a cargo slot, so the bay itself can refuse the sale. Checked before the money
+   * changes hands, and only at the depot, so the "come back to the surface"
+   * refusal still comes first.
    */
   function buyDeployable(item: InventoryItem, price: number, fullMessage: string, loadedMessage: string): void {
     if (atSurface() && isFullFor(state.player.inventory, item.kind)) {
@@ -227,6 +230,15 @@ export function createActions(deps: GameActionsDeps): GameActions {
       ECONOMY.gun.price,
       'Cargo bay is full. Sell the cargo before buying a Linebreaker.',
       'Linebreaker loaded. Press G, then a direction, to spend it on one shot.'
+    );
+  }
+
+  function buyContainer(): void {
+    buyDeployable(
+      CARGO_CONTAINER_ITEM,
+      ECONOMY.container.price,
+      'Cargo bay is full. Sell the cargo before buying a container.',
+      'Container loaded. Press its inventory slot, then a mine tile, to set it down.'
     );
   }
 
@@ -327,6 +339,7 @@ export function createActions(deps: GameActionsDeps): GameActions {
     buyTeleporter,
     buyScanner,
     buyGun,
+    buyContainer,
     setGunArmed,
     fireGun,
     useTeleporter

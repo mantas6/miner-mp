@@ -24,7 +24,8 @@ export function respawnPlayer(player: Player): void {
     fuel: player.fuelMax,
     hull: player.hullMax,
     // Ore never survives a death; bought equipment — dynamite, scanners, guns,
-    // teleporters — rides out of the wreck with the miner.
+    // teleporters, containers — rides out of the wreck with the miner. Ore stored
+    // in a crate is not aboard at all, so it is not lost either.
     inventory: removeOres(player.inventory)
   });
 }
@@ -66,6 +67,7 @@ export function createInitialState(): GameState {
     exploredTiles: new Set<number>(),
     scannerDevices: [],
     placedDynamite: [],
+    cargoContainers: [],
     input: {
       keyImpulse: null,
       sprintDirection: null,

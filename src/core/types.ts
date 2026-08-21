@@ -4,6 +4,7 @@ import type { EnemyKind, Tile } from '../../shared/world-schema';
 // Type-only: neither the track registry nor the tile diff becomes a runtime
 // dependency of this module.
 import type { TrackId } from '../audio/tracks';
+import type { PlacedContainer } from './cargo-container';
 import type { PlacedDynamite } from './dynamite';
 import type { Inventory } from './inventory';
 import type { ScannerDevice } from './scanner-device';
@@ -46,8 +47,8 @@ export interface Player {
   /**
    * The slot-based cargo bay. Mined ore stacks here awaiting sale at the depot
    * (artifacts are banked instead), capped by both a free slot and `cargoMax`.
-   * Bought equipment — dynamite, scanners, Linebreaker guns, teleporters — rides
-   * here too.
+   * Bought equipment — dynamite, scanners, Linebreaker guns, teleporters, cargo
+   * containers — rides here too.
    */
   inventory: Inventory;
 }
@@ -183,6 +184,12 @@ export interface GameState {
    * the simulation that lit it.
    */
   placedDynamite: PlacedDynamite[];
+  /**
+   * Cargo containers standing in the mine, each with its own slots. Local to this
+   * client, like the scanners and the dynamite: the crate is one miner's property
+   * left in a shared world, and nothing about it needs the peer's agreement.
+   */
+  cargoContainers: PlacedContainer[];
 }
 
 export interface AudioController {

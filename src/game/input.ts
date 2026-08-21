@@ -24,7 +24,7 @@ const RESET_CONFIRM_MS = 3500;
 
 /** The mine is the only surface that scrolls; the dialogs above it keep their own. */
 const ZOOM_SURFACE = '#game-panel';
-const DIALOG_SURFACES = '#shop-screen, #info-screen';
+const DIALOG_SURFACES = '#shop-screen, #info-screen, #cargo-screen';
 
 const movementKeys: Record<string, Direction> = {
   arrowleft: [-1, 0], a: [-1, 0],
@@ -71,6 +71,10 @@ export interface GameInputDeps {
   cancelPlacement(): boolean;
   /** E: arm a carried stick of dynamite for planting, or stand it down again. */
   toggleDynamitePlacement(): void;
+  /** C: open the cargo container under or beside the ship, or shut the open one. */
+  toggleContainer(): void;
+  /** Escape while the transfer menu is up. */
+  closeContainer(): void;
   toast(message: string): void;
   /** Enable sound on the first trusted gesture, when the browser allows it. */
   tryAutoAudio(event?: Event): void;
@@ -158,6 +162,11 @@ export function createInput(deps: GameInputDeps): GameInput {
       if (key === 'escape') { deps.closeInfoScreen(); e.preventDefault(); e.stopPropagation(); }
       return;
     }
+    if (ui.activeOverlay === 'container') {
+      // C shuts the crate it opened, so the one key is the whole round trip.
+      if (key === 'escape' || key === 'c') { deps.closeContainer(); e.preventDefault(); e.stopPropagation(); }
+      return;
+    }
     const dir = movementKeys[key];
     if (key === 'shift') {
       keys.add(key);
@@ -183,6 +192,7 @@ export function createInput(deps: GameInputDeps): GameInput {
     // for planting, and the press on the mine that follows is what lights it.
     if (key === 'e') { if (!e.repeat) deps.toggleDynamitePlacement(); e.preventDefault(); e.stopPropagation(); return; }
     if (key === 't') { if (!e.repeat) actions.useTeleporter(); e.preventDefault(); e.stopPropagation(); return; }
+    if (key === 'c') { if (!e.repeat) deps.toggleContainer(); e.preventDefault(); e.stopPropagation(); return; }
     if (key === 'r') { if (!e.repeat) requestReset(); e.preventDefault(); e.stopPropagation(); }
   }
 

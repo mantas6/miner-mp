@@ -119,7 +119,8 @@ describe('shop dialog', () => {
       buyDynamite: vi.fn(),
       buyTeleporter: vi.fn(),
       buyScanner: vi.fn(),
-      buyGun: vi.fn()
+      buyGun: vi.fn(),
+      buyContainer: vi.fn()
     };
     setUiCommands(commands);
     open({cash: 1_000_000, player: {fuel: 10, hull: 10}});
@@ -140,6 +141,8 @@ describe('shop dialog', () => {
     expect(commands.buyScanner).toHaveBeenCalledOnce();
     fireEvent.click(document.getElementById('shopGunBtn')!);
     expect(commands.buyGun).toHaveBeenCalledOnce();
+    fireEvent.click(document.getElementById('shopContainerBtn')!);
+    expect(commands.buyContainer).toHaveBeenCalledOnce();
   });
 
   it('repaints rows when the ship snapshot changes', () => {
@@ -149,7 +152,7 @@ describe('shop dialog', () => {
 
     act(() => {
       const store = uiStore.getState();
-      store.syncPlayer({...store.player, dynamite: 4, scanners: 2, guns: 3, teleporters: 1});
+      store.syncPlayer({...store.player, dynamite: 4, scanners: 2, guns: 3, teleporters: 1, containers: 5});
     });
 
     // Every consumable tally comes out of the cargo bay, not off the ship.
@@ -157,6 +160,7 @@ describe('shop dialog', () => {
     expect(row('scanner').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 2');
     expect(row('gun').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 3');
     expect(row('teleporter').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 1');
+    expect(row('container').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 5');
     // The gun is a consumable now: carrying some never closes the shelf, and the
     // ammunition shelf is gone with the magazine.
     expect(button('gun').disabled).toBe(false);

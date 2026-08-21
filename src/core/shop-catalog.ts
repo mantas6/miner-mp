@@ -8,6 +8,7 @@
 // shop row paints.
 
 import { ECONOMY } from './balance';
+import { CARGO_CONTAINER } from './cargo-container';
 import { DYNAMITE } from './dynamite';
 import { cargoCost, drillCost, hullCost, refuelCost, repairCost, tankCost, visibilityCost } from './economy';
 import { SCANNER_DEVICE } from './scanner-device';
@@ -20,13 +21,16 @@ export type ShopPlayer = Pick<
   'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility'
 > & {
   /**
-   * Single-use equipment in the cargo bay. Counted out of the inventory rather
-   * than kept on the ship, because each occupies a slot the way ore does.
+   * Consumable equipment in the cargo bay. Counted out of the inventory rather
+   * than kept on the ship, because each occupies a slot the way ore does. Every
+   * one of them is spent on use except the container, which is spent on being
+   * put down and then stays where it was put.
    */
   scanners: number;
   dynamite: number;
   guns: number;
   teleporters: number;
+  containers: number;
 };
 
 export interface ShopRowState {
@@ -141,6 +145,13 @@ export const SHOP_ITEMS = [
     title: 'Linebreaker Gun',
     copy: `Single-use precision weapon. Fires one round up to ${ECONOMY.gun.range} tiles and is spent with the shot; rock, depot structure, boundaries, and Motherlode are protected.`,
     price: ECONOMY.gun.price
+  },
+  {
+    id: 'container',
+    icon: 'container',
+    title: 'Cargo Container',
+    copy: `Permanent ${CARGO_CONTAINER.slots}-slot store. Set it down on cleared ground from the inventory panel, then press it from an adjacent tile to move stacks between it and the cargo bay. It keeps what it holds through death and reload; ore taken back aboard still obeys the cargo-bay limit.`,
+    price: ECONOMY.container.price
   }
 ] as const;
 
@@ -151,7 +162,8 @@ const ITEM_COUNTS: Record<ShopItemId, (player: ShopPlayer) => number> = {
   dynamite: player => player.dynamite,
   teleporter: player => player.teleporters,
   scanner: player => player.scanners,
-  gun: player => player.guns
+  gun: player => player.guns,
+  container: player => player.containers
 };
 
 /** The shared "can I buy this right now?" verdict for a fixed-price purchase. */

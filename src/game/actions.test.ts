@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ORES, START_Y } from '../../shared/constants';
 import { ECONOMY, LIMITS, STARTING } from '../core/balance';
+import { CARGO_CONTAINER_ITEM } from '../core/cargo-container';
 import { cargoCost, drillCost, partialFill, refuelCost, repairCost } from '../core/economy';
 import { DYNAMITE_ITEM } from '../core/dynamite';
 import { INVENTORY_SLOTS, addItem, addOre, countItem, countOres, createInventory } from '../core/inventory';
@@ -282,7 +283,8 @@ describe('buying equipment', () => {
     ['scanner', SCANNER_ITEM.kind, ECONOMY.scanner.price, (actions: GameActions) => actions.buyScanner()],
     ['dynamite', DYNAMITE_ITEM.kind, ECONOMY.dynamite.price, (actions: GameActions) => actions.buyDynamite()],
     ['gun', GUN_ITEM.kind, ECONOMY.gun.price, (actions: GameActions) => actions.buyGun()],
-    ['teleporter', TELEPORTER_ITEM.kind, ECONOMY.teleporter.price, (actions: GameActions) => actions.buyTeleporter()]
+    ['teleporter', TELEPORTER_ITEM.kind, ECONOMY.teleporter.price, (actions: GameActions) => actions.buyTeleporter()],
+    ['container', CARGO_CONTAINER_ITEM.kind, ECONOMY.container.price, (actions: GameActions) => actions.buyContainer()]
   ])('loads a %s into a cargo slot, and refuses one the bay cannot hold', (_name, kind, price, buy) => {
     const h = harness();
     h.state.cash = price * 2;

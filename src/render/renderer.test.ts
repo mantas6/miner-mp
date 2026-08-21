@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TILE } from '../../shared/constants';
 import { explorationIndex } from '../../shared/exploration-codec';
-import { DYNAMITE } from '../core/dynamite';
+import { createPlacedContainer } from '../core/cargo-container';
+import { DYNAMITE, DYNAMITE_ITEM } from '../core/dynamite';
+import { addItem } from '../core/inventory';
 import type { Direction } from '../core/types';
 
 const mocks = vi.hoisted(() => {
@@ -433,6 +435,37 @@ describe('terrain cache lifecycle', () => {
     renderer.draw();
 
     expect(mocks.mainContext.translate.mock.calls.some(call => call[0] === TILE*2.5 && call[1] === TILE*4.5)).toBe(false);
+  });
+
+  /**
+   * A crate says one thing on the canvas — whether it is worth the detour — and it
+   * says it with a lit panel a lamp is drawn for. An empty one paints no lamp glow.
+   */
+  it('lights a loaded container and leaves an empty one dark and unpainted under fog', () => {
+    const container = createPlacedContainer(12, 24);
+    const state = {
+      world: [], camX: 10, camY: 20, tick: 4, gameOver: false, reducedMotion: false,
+      exploredTiles: new Set([explorationIndex(12, 24)]), teleportEffect: null,
+      particles: [], enemies: [], remotePlayers: [], cargoContainers: [container],
+      player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+    const renderer = createRenderer({state, get: () => ({type:'air'}), rand: () => 0});
+    const at = (call: unknown[]) => call[0] === TILE*2.5 && call[1] === TILE*4.5;
+
+    renderer.draw();
+    expect(mocks.mainContext.translate.mock.calls.some(at)).toBe(true);
+    expect(mocks.mainContext.shadowColor).not.toBe('#ffc857');
+
+    vi.clearAllMocks();
+    container.inventory = addItem(container.inventory, DYNAMITE_ITEM, 1)!;
+    renderer.draw();
+    expect(mocks.mainContext.shadowColor).toBe('#ffc857');
+
+    // And a crate out in the fog is not drawn at all, like everything else there.
+    vi.clearAllMocks();
+    state.exploredTiles = new Set<number>();
+    renderer.draw();
+    expect(mocks.mainContext.translate.mock.calls.some(at)).toBe(false);
   });
 
   it('keeps reduced-motion boost flames static across render frames', () => {

@@ -4,7 +4,9 @@ import { getPartnerIndicator } from './partner-indicator';
 import { getVisibleTileRange } from '../world/visible-tile-range';
 import { isTileExplored } from '../../shared/exploration-codec';
 import { getEnemyType } from '../core/enemy-types';
+import { type PlacedContainer } from '../core/cargo-container';
 import { isDynamiteFuseLit, type PlacedDynamite } from '../core/dynamite';
+import { totalItems } from '../core/inventory';
 import { isScannerDone, type ScannerDevice } from '../core/scanner-device';
 import { TERRAIN_CHUNK_TILES, terrainCacheScale, terrainChunkCoordinate, terrainChunkKeyForTile } from './terrain-cache-policy';
 import type {
@@ -46,6 +48,8 @@ export interface RendererState {
   scannerDevices?: readonly ScannerDevice[];
   /** Dynamite still burning in the mine. Absent or empty means none is planted. */
   placedDynamite?: readonly PlacedDynamite[];
+  /** Cargo containers standing in the mine. Absent or empty means none is placed. */
+  cargoContainers?: readonly PlacedContainer[];
   teleportEffect?: TeleportEffect | null;
   input?: {sprintDirection?: Direction | null};
 }
@@ -231,6 +235,7 @@ export function createRenderer({ state, canvas, ctx, get, rand }: RendererDeps):
     drawTerrainDamage(camX, camY);
     drawTerrainBlendOverlay(camY);
     drawSurface(camX, camY);
+    drawCargoContainers(camX, camY);
     drawScannerDevices(camX, camY);
     drawPlacedDynamite(camX, camY);
     drawEnemies(camX, camY);
@@ -388,6 +393,49 @@ export function createRenderer({ state, canvas, ctx, get, rand }: RendererDeps):
       ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-7, -9); ctx.lineTo(-3, 0); ctx.lineTo(-7, 9); ctx.closePath(); ctx.fill();
       ctx.restore();
     }
+  }
+  /**
+   * Cargo containers, as a banded crate. A crate with something in it shows a lit
+   * panel and a loaded lid; an empty one sits open and dark, so a miner picking a
+   * way back through their own tunnels can see which stash is worth the detour
+   * without opening anything.
+   */
+  function drawCargoContainers(camX: number, camY: number) {
+    const containers = state.cargoContainers;
+    if (!containers?.length) return;
+    for (const container of containers) {
+      if (!isExplored(container.x, container.y)) continue;
+      const sx = (container.x - camX) * TILE, sy = (container.y - camY) * TILE;
+      if (sx < -TILE || sy < -TILE || sx > viewport.worldWidthPx + TILE || sy > viewport.worldHeightPx + TILE) continue;
+      drawContainerBody(sx, sy, totalItems(container.inventory) > 0);
+    }
+  }
+  function drawContainerBody(sx: number, sy: number, loaded: boolean) {
+    ctx.save();
+    ctx.translate(sx + TILE*.5, sy + TILE*.5);
+    // Body, sitting on the floor of the tile rather than floating in the middle.
+    ctx.fillStyle = '#7a5a22';
+    ctx.fillRect(-TILE*.30, -TILE*.08, TILE*.60, TILE*.38);
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.fillRect(-TILE*.30, TILE*.18, TILE*.60, TILE*.12);
+    // Lid, raised a hair while the crate holds something.
+    ctx.fillStyle = loaded ? '#c8912f' : '#6d5423';
+    ctx.fillRect(-TILE*.33, -TILE*.15, TILE*.66, TILE*.09);
+    // Frame and banding, which is most of what makes it read as a crate at this
+    // size. One path, so the outline and the two staves cost a single stroke.
+    ctx.strokeStyle = '#3b2c11'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-TILE*.30, -TILE*.08);
+    ctx.lineTo(TILE*.30, -TILE*.08); ctx.lineTo(TILE*.30, TILE*.30);
+    ctx.lineTo(-TILE*.30, TILE*.30); ctx.closePath();
+    ctx.moveTo(-TILE*.10, -TILE*.08); ctx.lineTo(-TILE*.10, TILE*.30);
+    ctx.moveTo(TILE*.10, -TILE*.08); ctx.lineTo(TILE*.10, TILE*.30);
+    ctx.stroke();
+    // Contents lamp: the one bit of state the crate publishes to the canvas.
+    ctx.fillStyle = loaded ? '#ffe58a' : '#2a333c';
+    if (loaded) { ctx.shadowColor = '#ffc857'; ctx.shadowBlur = 8; }
+    ctx.beginPath(); ctx.arc(0, TILE*.04, TILE*.05, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
   }
   /**
    * Deployed scanners, as a lit dish on a tripod. A working one sweeps a ring

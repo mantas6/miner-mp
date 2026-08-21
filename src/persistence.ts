@@ -1,7 +1,13 @@
 import { MAX_WORLD_ROW, START_Y, SURFACE_HEIGHT, WORLD_W } from '../shared/constants';
 import { ECONOMY, LIMITS, STARTING } from './core/balance';
+import {
+  CARGO_CONTAINER,
+  CARGO_CONTAINER_ITEM,
+  createPlacedContainer,
+  type PlacedContainer
+} from './core/cargo-container';
 import { DYNAMITE, DYNAMITE_ITEM, type PlacedDynamite } from './core/dynamite';
-import { addItem, countItem } from './core/inventory';
+import { addItem, countItem, inventoryStacks, type InventoryItem, type InventoryItemKind } from './core/inventory';
 import { SCANNER_DEVICE, SCANNER_ITEM, type ScannerDevice } from './core/scanner-device';
 import { TELEPORTER_ITEM } from './core/teleporter';
 import { GUN_ITEM } from './core/weapon';
@@ -33,12 +39,17 @@ import type { GameState, GameStats } from './core/types';
 //   * v9: `teleporters` keeps its meaning — the number carried — but is now
 //     counted out of the cargo bay rather than off the ship, so an older save's
 //     teleporters simply come back as a stack.
+//   * v10: `containers` — the crates carried in the bay — and `cargoContainers`,
+//     the ones standing in the mine *with their contents*, which is the one place
+//     a save records individual stacks rather than a count.
 // Older blobs still load; they just restore a pristine mine, and pre-v5 saves
 // start at the depot the way they always did.
 //
 // The cargo bay itself is deliberately *not* saved: ore is lost with the run.
-// Scanners, dynamite, guns and teleporters are equipment rather than cargo, so
-// they are stored as counts and re-stacked into the bay on load.
+// Scanners, dynamite, guns, teleporters and containers are equipment rather than
+// cargo, so they are stored as counts and re-stacked into the bay on load. Ore
+// inside a placed container is the exception, and deliberately so: it is not
+// aboard, so it is not lost with the run either.
 
 /** The persisted save file. Every field is re-validated on load. */
 interface SavedProgress {
@@ -57,13 +68,17 @@ interface SavedProgress {
   scanners?: unknown;
   scannerDevices?: unknown;
   guns?: unknown;
+  containers?: unknown;
+  cargoContainers?: unknown;
   visibility?: unknown;
   explored?: unknown;
   stats?: Partial<Record<keyof GameStats, unknown>>;
 }
 
 export const SAVE_KEY = 'moleload-progress-v1';
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
+/** A stored stack is a count, not a licence to write an unbounded number. */
+const MAX_SAVED_STACK = 9999;
 const LEGACY_CARGO_STEP = 10;
 const CARGO_BALANCE_SAVE_VERSION = 2;
 
@@ -122,6 +137,71 @@ export function parsePlacedDynamite(value: unknown): PlacedDynamite[] {
   return sticks;
 }
 
+/**
+ * One stack out of a saved container. Unlike every other item the save records,
+ * this one carries its own label, colour and price: an ore stack has to come back
+ * sellable, and the ore table a future build ships may not agree with the one the
+ * stack was mined from.
+ */
+function parseStoredStack(entry: unknown): {item: InventoryItem; count: number} | null {
+  if (!entry || typeof entry !== 'object') return null;
+  const saved = entry as {kind?: unknown; count?: unknown; label?: unknown; color?: unknown; value?: unknown};
+  if (typeof saved.kind !== 'string' || saved.kind === '') return null;
+  const count = Math.floor(numeric(saved.count, 0, 0, MAX_SAVED_STACK));
+  if (count <= 0) return null;
+  const kind = saved.kind as InventoryItemKind;
+  return {
+    item: {
+      kind,
+      label: typeof saved.label === 'string' && saved.label !== '' ? saved.label : kind,
+      color: typeof saved.color === 'string' && saved.color !== '' ? saved.color : '#8c9aa8',
+      value: numeric(saved.value, 0, 0)
+    },
+    count
+  };
+}
+
+/**
+ * Rebuild the crates and what is in them. Contents go back through `addItem`
+ * rather than being written into slots directly, so a hand-edited save cannot
+ * produce a container the game's own stacking rules could never have built.
+ */
+export function parseCargoContainers(value: unknown): PlacedContainer[] {
+  if (!Array.isArray(value)) return [];
+  const containers: PlacedContainer[] = [];
+  for (const entry of value) {
+    if (containers.length >= CARGO_CONTAINER.maxPlaced) break;
+    const tile = parsePlacedTile(entry);
+    if (!tile) continue;
+    const container = createPlacedContainer(tile.x, tile.y);
+    const {items} = entry as {items?: unknown};
+    if (Array.isArray(items)) {
+      for (const rawStack of items) {
+        const stack = parseStoredStack(rawStack);
+        if (!stack) continue;
+        container.inventory = addItem(container.inventory, stack.item, stack.count) ?? container.inventory;
+      }
+    }
+    containers.push(container);
+  }
+  return containers;
+}
+
+/** One crate, flattened: where it stands and one entry per stack inside it. */
+function serializeContainer(container: PlacedContainer) {
+  return {
+    x: container.x,
+    y: container.y,
+    items: inventoryStacks(container.inventory).map(stack => ({
+      kind: stack.kind,
+      count: stack.count,
+      label: stack.item.label,
+      color: stack.item.color,
+      value: stack.item.value
+    }))
+  };
+}
+
 export function load(state: GameState): void {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
@@ -148,8 +228,11 @@ export function load(state: GameState): void {
     if (guns > 0) p.inventory = addItem(p.inventory, GUN_ITEM, guns) ?? p.inventory;
     const teleporters = Math.floor(numeric(save.teleporters, 0, LIMITS.teleporters.min, LIMITS.teleporters.max));
     if (teleporters > 0) p.inventory = addItem(p.inventory, TELEPORTER_ITEM, teleporters) ?? p.inventory;
+    const containers = Math.floor(numeric(save.containers, 0, LIMITS.containers.min, LIMITS.containers.max));
+    if (containers > 0) p.inventory = addItem(p.inventory, CARGO_CONTAINER_ITEM, containers) ?? p.inventory;
     state.scannerDevices = parseScannerDevices(save.scannerDevices);
     state.placedDynamite = parsePlacedDynamite(save.dynamiteSticks);
+    state.cargoContainers = parseCargoContainers(save.cargoContainers);
     // The ship resumes on the tile it parked on, render position included so it
     // appears there instead of easing in from the depot. The clamps are the ones
     // `movementDestination` enforces, so no save can park a miner in a wall.
@@ -189,6 +272,8 @@ export function save(state: GameState): void {
     scanners: countItem(p.inventory, SCANNER_ITEM.kind),
     scannerDevices: state.scannerDevices.slice(0, SCANNER_DEVICE.maxPlaced).map(({x, y, timer}) => ({x, y, timer})),
     dynamiteSticks: state.placedDynamite.slice(0, DYNAMITE.maxPlaced).map(({x, y, fuse}) => ({x, y, fuse})),
+    containers: countItem(p.inventory, CARGO_CONTAINER_ITEM.kind),
+    cargoContainers: state.cargoContainers.slice(0, CARGO_CONTAINER.maxPlaced).map(serializeContainer),
     explored: encodeExploration(state.exploredTiles),
     tiles: capTileEntries(tileDiffEntries(state.soloTileDiff)),
     stats: state.stats,

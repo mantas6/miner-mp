@@ -28,6 +28,7 @@ function createActionsSpy() {
     buyTeleporter: vi.fn(),
     buyScanner: vi.fn(),
     buyGun: vi.fn(),
+    buyContainer: vi.fn(),
     setGunArmed: vi.fn(),
     fireGun: vi.fn(() => true),
     useTeleporter: vi.fn()
@@ -44,6 +45,8 @@ interface Harness {
   closeInfoScreen: ReturnType<typeof vi.fn>;
   cancelPlacement: ReturnType<typeof vi.fn>;
   toggleDynamitePlacement: ReturnType<typeof vi.fn>;
+  toggleContainer: ReturnType<typeof vi.fn>;
+  closeContainer: ReturnType<typeof vi.fn>;
   toast: ReturnType<typeof vi.fn>;
   tryAutoAudio: ReturnType<typeof vi.fn>;
 }
@@ -65,6 +68,8 @@ function harness(): Harness {
     // Nothing armed by default, so Escape stays as unhandled as it ever was.
     cancelPlacement: vi.fn(() => false),
     toggleDynamitePlacement: vi.fn(),
+    toggleContainer: vi.fn(),
+    closeContainer: vi.fn(),
     toast: vi.fn(),
     tryAutoAudio: vi.fn()
   };
@@ -155,6 +160,41 @@ describe('phase gating', () => {
     press('Escape');
     expect(h.closeInfoScreen).toHaveBeenCalledOnce();
     expect(h.closeShopScreen).toHaveBeenCalledOnce();
+
+    uiStore.getState().setActiveOverlay('container');
+    press('Escape');
+    expect(h.closeContainer).toHaveBeenCalledOnce();
+    expect(h.closeInfoScreen).toHaveBeenCalledOnce();
+  });
+});
+
+describe('the cargo container key', () => {
+  it('opens the crate under the ship on C, once per press, and only during a run', () => {
+    const h = harness();
+
+    press('c');
+    expect(h.toggleContainer).not.toHaveBeenCalled();
+
+    uiStore.getState().setPhase('playing');
+    press('c');
+    expect(h.toggleContainer).toHaveBeenCalledOnce();
+    // Holding the key down must not open and shut it over and over.
+    window.dispatchEvent(new KeyboardEvent('keydown', {key: 'c', repeat: true, bubbles: true, cancelable: true}));
+    expect(h.toggleContainer).toHaveBeenCalledOnce();
+  });
+
+  it('shuts the open menu rather than reopening it, and never moves the ship', () => {
+    const h = harness();
+    uiStore.getState().setPhase('playing');
+    uiStore.getState().setActiveOverlay('container');
+
+    press('c');
+    press('d');
+    h.input.tick();
+
+    expect(h.closeContainer).toHaveBeenCalledOnce();
+    expect(h.toggleContainer).not.toHaveBeenCalled();
+    expect(h.move).not.toHaveBeenCalled();
   });
 });
 

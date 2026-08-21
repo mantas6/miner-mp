@@ -201,6 +201,32 @@
   background: #ffeaa0;
   box-shadow: 0 0 8px #ffd35f;
 }
+/* A banded crate with a lid: the cargo container left standing in the mine. */
+.icon-container::before {
+  top: 16px;
+  width: 30px;
+  height: 22px;
+  border: 3px solid #3b2c11;
+  border-radius: 2px;
+  background: linear-gradient(#a8762a, #6d5423);
+}
+.icon-container::after {
+  top: 10px;
+  width: 34px;
+  height: 7px;
+  border: 3px solid #3b2c11;
+  border-radius: 2px;
+  background: #c8912f;
+}
+.icon-container i {
+  top: 22px;
+  width: 3px;
+  height: 13px;
+  background: #3b2c11;
+  box-shadow:
+    -8px 0 0 #3b2c11,
+    8px 0 0 #3b2c11;
+}
 @media (max-width: 760px) {
   .equipment-icon {
     width: 42px;

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createPlacedContainer } from '../core/cargo-container';
 import { addItem } from '../core/inventory';
 import { createInitialState } from '../core/state';
 import { TELEPORTER_ITEM } from '../core/teleporter';
@@ -11,7 +12,7 @@ describe('world state reset', () => {
     const confirm = vi.fn(() => false);
     expect(confirmWorldStateReset(confirm)).toBe(false);
     expect(confirm).toHaveBeenCalledWith(WORLD_STATE_RESET_CONFIRMATION);
-    expect(WORLD_STATE_RESET_CONFIRMATION).toContain('Player cash, upgrades, inventory, stats, settings, and ship condition are preserved');
+    expect(WORLD_STATE_RESET_CONFIRMATION).toContain('Player cash, upgrades, cargo bay, stats, settings, and ship condition are preserved');
   });
 
   it('regenerates terrain/entities/view state while preserving player progression and inventory', () => {
@@ -30,6 +31,7 @@ describe('world state reset', () => {
     state.exploredTiles.add(400);
     state.extractionPhase = 'returning';
     state.teleportReturnPosition = {x: 17, y: 200};
+    state.cargoContainers = [createPlacedContainer(12, 300)];
     const playerBefore = structuredClone(state.player);
     const statsBefore = structuredClone(state.stats);
 
@@ -41,6 +43,8 @@ describe('world state reset', () => {
     expect(state.soloTileDiff.size).toBe(0);
     expect(state.enemies).toEqual([]);
     expect(state.exploredTiles.size).toBe(0);
+    // A crate belongs to the mine it was left in, not to the ship.
+    expect(state.cargoContainers).toEqual([]);
     expect(state.extractionPhase).toBe('none');
     expect(state.teleportReturnPosition).toBeNull();
     expect(state.cash).toBe(9999);

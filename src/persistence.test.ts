@@ -3,8 +3,9 @@ import { SAVE_KEY, SAVE_VERSION, load, numeric, save } from './persistence';
 import { SURFACE_SPAWN_X, createInitialState } from './core/state';
 import { ECONOMY, LIMITS } from './core/balance';
 import { cargoCost } from './core/economy';
+import { CARGO_CONTAINER, CARGO_CONTAINER_ITEM, createPlacedContainer } from './core/cargo-container';
 import { DYNAMITE, DYNAMITE_ITEM, createPlacedDynamite } from './core/dynamite';
-import { addItem, countItem, countOres } from './core/inventory';
+import { addItem, countItem, countOres, oreItem } from './core/inventory';
 import { SCANNER_DEVICE, SCANNER_ITEM, createScannerDevice } from './core/scanner-device';
 import { TELEPORTER_ITEM } from './core/teleporter';
 import { GUN_ITEM } from './core/weapon';
@@ -15,6 +16,9 @@ import type { TileEntry } from '../shared/world-schema';
 import { createTileDiff, tileDiffEntries } from './world/tile-diff';
 
 afterEach(() => vi.unstubAllGlobals());
+
+/** One ore with a full price/colour record, for the stacks a crate has to keep. */
+const GOLD = {name: 'Gold', color: '#ffd65c', value: 70, min: 152, max: 602, chance: 0.04};
 
 /** Stub localStorage with an in-memory store, optionally pre-seeded with a save. */
 function stubStorage(existingSave?: unknown): Map<string, string> {
@@ -284,6 +288,122 @@ describe('dynamite persistence', () => {
     expect(state.placedDynamite).toHaveLength(DYNAMITE.maxPlaced);
     // A zero fuse would go off on the first step of the resumed run.
     expect(state.placedDynamite.every(stick => stick.fuse === 1)).toBe(true);
+  });
+});
+
+describe('cargo container persistence', () => {
+  it('round-trips carried crates into the bay and the placed ones with their contents', () => {
+    const stored = stubStorage();
+    const state = createInitialState();
+    state.player.inventory = addItem(state.player.inventory, CARGO_CONTAINER_ITEM, 2)!;
+    const crate = createPlacedContainer(12, 640);
+    crate.inventory = addItem(addItem(crate.inventory, oreItem(GOLD), 4)!, DYNAMITE_ITEM, 3)!;
+    state.cargoContainers = [crate, createPlacedContainer(44, 700)];
+
+    save(state);
+
+    expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({
+      version: SAVE_VERSION,
+      containers: 2,
+      cargoContainers: [
+        {x: 12, y: 640, items: [
+          {kind: 'ore:Gold', count: 4, label: 'Gold', color: GOLD.color, value: GOLD.value},
+          {kind: 'dynamite', count: 3, label: 'Dynamite', color: DYNAMITE_ITEM.color, value: 0}
+        ]},
+        {x: 44, y: 700, items: []}
+      ]
+    });
+
+    const restored = createInitialState();
+    load(restored);
+    expect(countItem(restored.player.inventory, CARGO_CONTAINER_ITEM.kind)).toBe(2);
+    expect(restored.cargoContainers).toEqual(state.cargoContainers);
+  });
+
+  /**
+   * Ore in the bay is lost with the run; ore in a crate is not aboard at all, so
+   * it comes back exactly as it was left — which is the whole point of the crate.
+   */
+  it('keeps stored ore across a reload that empties the bay', () => {
+    stubStorage();
+    const state = createInitialState();
+    const crate = createPlacedContainer(12, 640);
+    crate.inventory = addItem(crate.inventory, oreItem(GOLD), 7)!;
+    state.cargoContainers = [crate];
+    state.player.inventory = addItem(state.player.inventory, oreItem(GOLD), 5)!;
+
+    save(state);
+
+    const restored = createInitialState();
+    load(restored);
+    expect(countOres(restored.player.inventory)).toBe(0);
+    expect(countOres(restored.cargoContainers[0].inventory)).toBe(7);
+    expect(restored.cargoContainers[0].inventory[0]?.item).toEqual(oreItem(GOLD));
+  });
+
+  it('gives a save written before containers existed neither one', () => {
+    stubStorage({version: 9, cash: 90});
+    const state = createInitialState();
+
+    load(state);
+
+    expect(countItem(state.player.inventory, CARGO_CONTAINER_ITEM.kind)).toBe(0);
+    expect(state.cargoContainers).toEqual([]);
+  });
+
+  it.each([
+    ['a crate outside the side walls', [{x: -3, y: 400}]],
+    ['a crate above the mine', [{x: 10, y: 0}]],
+    ['a nonsense crate', [{x: 'deep', y: null}]],
+    ['something that is not a crate at all', ['crate']],
+    ['a crate list that is not a list', 'crate']
+  ])('drops %s on load', (_name, cargoContainers) => {
+    stubStorage({version: SAVE_VERSION, cargoContainers});
+    const state = createInitialState();
+
+    load(state);
+
+    expect(state.cargoContainers).toEqual([]);
+  });
+
+  it('clamps a hand-edited save to what the game could have placed and carried', () => {
+    stubStorage({
+      version: SAVE_VERSION,
+      containers: 10_000,
+      cargoContainers: Array.from({length: CARGO_CONTAINER.maxPlaced + 4}, (_, index) => ({x: index, y: 400}))
+    });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(countItem(state.player.inventory, CARGO_CONTAINER_ITEM.kind)).toBe(LIMITS.containers.max);
+    expect(state.cargoContainers).toHaveLength(CARGO_CONTAINER.maxPlaced);
+  });
+
+  it('drops junk stacks but keeps the sound ones beside them', () => {
+    stubStorage({
+      version: SAVE_VERSION,
+      cargoContainers: [{
+        x: 12, y: 640,
+        items: [
+          {kind: '', count: 4},
+          {kind: 'dynamite', count: 0},
+          {kind: 'ore:Gold', count: '2', label: 'Gold', color: GOLD.color, value: GOLD.value},
+          'not a stack',
+          // No label or colour: it still comes back, named after its own kind.
+          {kind: 'scanner', count: 1}
+        ]
+      }]
+    });
+    const state = createInitialState();
+
+    load(state);
+
+    const crate = state.cargoContainers[0].inventory;
+    expect(countOres(crate)).toBe(2);
+    expect(countItem(crate, 'scanner')).toBe(1);
+    expect(countItem(crate, 'dynamite')).toBe(0);
+    expect(crate.filter(slot => slot !== null)).toHaveLength(2);
   });
 });
 
