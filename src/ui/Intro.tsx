@@ -30,15 +30,6 @@ import '../styles/intro-art.css';
  * so it cannot leak into the run.
  */
 export function Intro() {
-  // The lyric voice-over is scoped to this overlay: mounting starts the loop and
-  // unmounting stops it, so dismissing the splash cannot leave a line talking
-  // over the run. The game owns the player and the mute state (`commands.ts`),
-  // so this is a plain start/stop and nothing more.
-  useEffect(() => {
-    uiCommands.startIntroVoice();
-    return () => uiCommands.stopIntroVoice();
-  }, []);
-
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key !== 'Enter' && event.key !== ' ') return;

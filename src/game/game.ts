@@ -29,7 +29,6 @@ import { recenteredCamera } from './zoom';
 import { loadZoomLevel, saveZoomLevel } from './zoom-settings';
 import { createAudio } from '../audio/audio';
 import { shouldAttemptAutoAudio } from '../audio/audio-permission';
-import { createIntroVoice, type IntroVoice } from '../audio/intro-voice';
 import { createDefaultStats, createInitialState } from '../core/state';
 import { createRenderer, type Renderer } from '../render/renderer';
 import { FUEL, ECONOMY } from '../core/balance';
@@ -95,7 +94,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   const surface = createGameSurface(options, scope);
   const state = createInitialState();
   let audio: AudioController;
-  let introVoice: IntroVoice;
   let renderer: Renderer | undefined;
 
   // Feature modules, constructed by wireModules() once audio exists.
@@ -267,8 +265,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       toggleMusic: () => { void audio.toggleMusic(); },
       toggleSfx: () => { void audio.toggleSfx(); },
       openMultiplayer: event => openMultiplayer(event),
-      startIntroVoice: () => introVoice.start(),
-      stopIntroVoice: () => introVoice.stop(),
       connect: url => {
         if (!url) { session.setConnectionStatus(RELAY_PROBLEM_STATUS.noUrl); return; }
         saveServerUrl(url);
@@ -558,20 +554,16 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
    * Enter or Space that reaches it from the canvas, comes here.
    *
    * The press that got us here is also the audio-unlock gesture, spent by
-   * `startGame()` at the end of `session.playSolo()`. Silence the lyric voice-over
-   * before it does, so the last line cannot talk over the first bar. Unmounting
-   * the overlay would stop it anyway; this just makes the hand-off ordered.
+   * `startGame()` at the end of `session.playSolo()`.
    */
   function playSolo(event?: Event){
     if (uiStore.getState().phase !== 'intro') return;
-    introVoice.stop();
     session.playSolo(event);
   }
   /** Splash → relay panel, the one thing on the card that is not "start". */
   function openMultiplayer(event?: Event){
     const store = uiStore.getState();
     if (store.phase !== 'intro') return;
-    introVoice.stop();
     tryAutoAudio(event);
     store.setPhase('lobby');
   }
@@ -752,7 +744,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     progressSave.cancel();
     saveProgress();
     flushZoomSave();
-    introVoice.stop();
     audio.stopMusic();
     // A leaked AudioContext survives the mount and browsers only allow a handful.
     void audio.ctx?.close().catch(() => { /* already closed */ });
@@ -771,8 +762,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   /** Construct the world, wire the listeners, and start the loop. */
   function boot(): void {
     audio = createAudio(toast);
-    // The lyrics are part of the song, so they follow the music switch.
-    introVoice = createIntroVoice({wantsVoice: () => audio.musicEnabled});
     state.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     // Adopt the remembered framing before anything reads the viewport: the tile
     // extents it derives feed the renderer's caches and the camera, and jumping
@@ -808,10 +797,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     focusGame();
     scope.timeout(focusGame, 60);
     scope.frameLoop(loop);
-    // The splash is mounted before the runtime exists, so its own start command may
-    // have landed on the placeholder no-op. Starting here too makes the order
-    // irrelevant: `start()` on a running loop does nothing.
-    if (uiStore.getState().phase === 'intro') introVoice.start();
   }
 
   boot();

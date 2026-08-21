@@ -375,21 +375,6 @@ describe('boot phase machine', () => {
     expect(openMultiplayer.mock.calls[0][0]).toBeInstanceOf(Event);
   });
 
-  it('runs the lyric voice-over for exactly as long as the intro is mounted', () => {
-    const startIntroVoice = vi.fn();
-    const stopIntroVoice = vi.fn();
-    setUiCommands({startIntroVoice, stopIntroVoice});
-    render(<MinerApp />);
-
-    expect(startIntroVoice).toHaveBeenCalledTimes(1);
-    expect(stopIntroVoice).not.toHaveBeenCalled();
-
-    act(() => { uiStore.getState().setPhase('lobby'); });
-
-    expect(stopIntroVoice).toHaveBeenCalledTimes(1);
-    expect(startIntroVoice).toHaveBeenCalledTimes(1);
-  });
-
   it('stops listening for the intro keys once the relay panel takes over', () => {
     const playSolo = vi.fn();
     setUiCommands({playSolo});

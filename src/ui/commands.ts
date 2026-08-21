@@ -40,9 +40,6 @@ export interface UiCommands {
   toggleSfx(): void;
   /** Leave the splash for the relay panel; the press doubles as the audio gesture. */
   openMultiplayer(event?: Event): void;
-  /** Begin the lyric voice-over that loops for as long as the splash is up. */
-  startIntroVoice(): void;
-  stopIntroVoice(): void;
   connect(url: string): void;
   /** Leave the relay panel for the splash, dropping any pending connection. */
   leaveMultiplayer(): void;
@@ -91,8 +88,6 @@ function noopCommands(): UiCommands {
     toggleMusic: noop,
     toggleSfx: noop,
     openMultiplayer: noop,
-    startIntroVoice: noop,
-    stopIntroVoice: noop,
     connect: noop,
     leaveMultiplayer: noop,
     playSolo: noop,
