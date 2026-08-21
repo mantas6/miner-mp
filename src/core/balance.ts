@@ -9,7 +9,6 @@ export const STARTING = Object.freeze({
   hullMax: 100,
   cargoMax: 10,
   drill: 1,
-  teleporters: 0,
   visibility: 3
 });
 
@@ -20,6 +19,7 @@ export const LIMITS = Object.freeze({
   drill: Object.freeze({ min: 1, max: 100 }),
   /** Carried (not yet planted) sticks of dynamite; they live in the cargo bay. */
   dynamite: Object.freeze({ min: 0, max: 999 }),
+  /** Carried (not yet used) teleporters; they live in the cargo bay. */
   teleporters: Object.freeze({ min: 0, max: 999 }),
   /** Carried (not yet deployed) scanner devices; they live in the cargo bay. */
   scanners: Object.freeze({ min: 0, max: 999 }),
@@ -87,6 +87,12 @@ export const ECONOMY = Object.freeze({
   drill: Object.freeze({ base: 200, growth: 1.55, step: 1 }),
   visibility: Object.freeze({ base: 175, growth: 1.45, step: 1 }),
   dynamite: Object.freeze({ price: 50, radius: 2 }),
+  /**
+   * One disposable teleporter: a round trip to the depot and back to the tile it
+   * was used on. The dearest consumable on the shelf, and the price it always
+   * carried, because it saves the whole fuel-and-hull cost of the climb home and
+   * hands back the deep position afterwards.
+   */
   teleporter: Object.freeze({ price: 250 }),
   scanner: Object.freeze({ price: 50 }),
   /**

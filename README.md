@@ -309,7 +309,7 @@ zooming the camera with the wheel or a trackpad.
 | Plant dynamite (5 s fuse) | `E`, then press a mine tile | Dynamite inventory slot, then a mine tile |
 | Deploy a scanner | — | Scanner inventory slot, then a mine tile |
 | Cancel a placement | `Escape` | The armed slot again |
-| Teleporter round trip (100 m+) | `T` | Teleport button |
+| Teleporter round trip (100 m+, spends one carried teleporter) | `T` | Teleport button |
 | Fire a carried Linebreaker (single use) | `G` then a direction key | Arm Gun button, then a direction key |
 | Cancel gun aim | `G` or `Escape` | Arm Gun button again |
 | Cargo, stats and guides | — | Info / Cargo button |
@@ -361,6 +361,9 @@ zooming the camera with the wheel or a trackpad.
 - The Linebreaker gun rides in the cargo bay the same way, but is spent rather
   than placed: arming it and pressing a direction fires one shot up to 8 tiles
   and removes the item from the bay. There is no ammunition — a shot costs a gun.
+- Teleporters ride in the bay too, and are also spent rather than placed: from
+  100 m or deeper one takes the ship to the depot and leaves a return point
+  behind. The trip up costs the item; the trip back is free.
 - Low fuel warnings appear below 25%; return to the surface quickly.
 - The HUD reserve readout forecasts the climb home (safe/caution/urgent), the
   scanner reads the tile the drill is aimed at, and the depth readout counts

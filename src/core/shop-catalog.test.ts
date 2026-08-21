@@ -14,7 +14,7 @@ import { createInitialState } from './state';
 
 /** A shop-shaped ship: the run's player plus the bay-counted consumable tallies. */
 function ship(overrides: Partial<ShopPlayer> = {}): ShopPlayer {
-  return {...createInitialState().player, scanners: 0, dynamite: 0, guns: 0, ...overrides};
+  return {...createInitialState().player, scanners: 0, dynamite: 0, guns: 0, teleporters: 0, ...overrides};
 }
 
 function everyRow(player: ShopPlayer, cash: number, atSurface: boolean) {
@@ -83,8 +83,8 @@ describe('shop rows', () => {
     expect(serviceRowState('fuel', ship(), 5, true).status).toBe('Full');
     expect(serviceRowState('fuel', player, 0, true).status).toBe('No cash');
     expect(itemRowState('dynamite', player, 5, true).current).toBe('Carried: 3');
+    // Every consumable tally, the teleporter included, is counted out of the bay.
     expect(itemRowState('teleporter', player, 5, true).current).toBe('Carried: 1');
-    // Scanners and dynamite are the deployables, counted out of the cargo bay.
     expect(itemRowState('scanner', player, 5, true).current).toBe('Carried: 2');
     expect(itemRowState('scanner', player, ECONOMY.scanner.price, true)).toMatchObject({
       buttonLabel: `Buy one · $${ECONOMY.scanner.price}`,
@@ -105,6 +105,21 @@ describe('shop rows', () => {
     // Owning one never closes the shelf: every shot spends an item, so the next
     // one is always for sale.
     expect(itemRowState('gun', ship({guns: 2}), ECONOMY.gun.price, true)).toMatchObject({
+      current: 'Carried: 2',
+      status: 'Ready',
+      buttonDisabled: false
+    });
+  });
+
+  it('prices the teleporter as one more carried consumable', () => {
+    expect(itemRowState('teleporter', ship(), ECONOMY.teleporter.price - 1, true)).toMatchObject({
+      current: 'Carried: 0',
+      buttonLabel: `Buy one · $${ECONOMY.teleporter.price}`,
+      status: 'Need $1',
+      buttonDisabled: true
+    });
+    // Carrying some never closes the shelf: every trip up spends one.
+    expect(itemRowState('teleporter', ship({teleporters: 2}), ECONOMY.teleporter.price, true)).toMatchObject({
       current: 'Carried: 2',
       status: 'Ready',
       buttonDisabled: false

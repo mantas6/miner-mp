@@ -55,6 +55,11 @@ test.describe('gameplay', () => {
   });
 
   test('leaving the surface swaps the depot actions for the underground ones', async ({page}) => {
+    // The teleport button is the underground action here, and it only appears
+    // with a teleporter in the bay, so the run starts with one aboard.
+    await page.addInitScript(() => {
+      localStorage.setItem('moleload-progress-v1', JSON.stringify({version: 9, teleporters: 1}));
+    });
     await startSoloRun(page);
     await expect(page.locator('#shopBtn')).toBeVisible();
     await expect(page.locator('#teleporterBtn')).toBeHidden();

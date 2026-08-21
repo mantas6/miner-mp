@@ -8,9 +8,10 @@ import styles from './ActionBar.module.css';
  * The surface/underground action buttons. Keyboard equivalents live in input.ts.
  *
  * Deployables are not here: a scanner and a stick of dynamite are placed from the
- * inventory slot that holds them. The Linebreaker is carried the same way but
- * kept on the bar, because aiming it is a direction key rather than a press on a
- * tile, and the button is where that aiming mode is entered and shown.
+ * inventory slot that holds them. The Linebreaker and the teleporter are carried
+ * the same way but kept on the bar, because neither is aimed at a tile: one takes
+ * a direction key and the other acts on the ship, and the bar is where the state
+ * of both — armed, deep enough, how many are left — is shown.
  */
 export function ActionBar() {
   const atSurface = useUiStore(state => state.hud.atSurface);
@@ -41,9 +42,12 @@ export function ActionBar() {
         hidden={!atSurface}
         onClick={event => { event.stopPropagation(); uiCommands.openShop(); }}
       >Shop &amp; Equipment</button>
+      {/* Underground the button is only worth showing with a teleporter aboard,
+          the way the gun button follows its own stack; at the depot it is the
+          stored return point, not an item, that the trip back spends. */}
       <button
         id="teleporterBtn"
-        hidden={atSurface && !teleportReturn}
+        hidden={atSurface ? !teleportReturn : teleporters <= 0}
         disabled={gameOver || !teleportUsable}
         onClick={() => uiCommands.useTeleporter()}
       >{teleportLabel}</button>

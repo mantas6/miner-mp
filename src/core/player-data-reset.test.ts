@@ -5,6 +5,7 @@ import { addItem, addOre, createInventory } from './inventory';
 import { confirmPlayerDataReset, resetPlayerData } from './player-data-reset';
 import { SAVE_KEY } from '../persistence';
 import { createInitialState } from './state';
+import { TELEPORTER_ITEM } from './teleporter';
 import { GUN_ITEM } from './weapon';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -27,8 +28,12 @@ describe('player-data reset', () => {
     Object.assign(state.player, {
       x: 8, y: 80, drawX: 7, drawY: 79, facing: -1, bob: 1, drillAnim: 2,
       drillDx: 1, drillDy: 0, fuel: 2, fuelMax: 400, hull: 3, hullMax: 300,
-      cargoMax: 80, drill: 40, teleporters: 8, visibility: 20,
-      inventory: addItem(addOre(createInventory(), ORES[3], 80)!, GUN_ITEM, 2)!
+      cargoMax: 80, drill: 40, visibility: 20,
+      inventory: addItem(
+        addItem(addOre(createInventory(), ORES[3], 80)!, GUN_ITEM, 2)!,
+        TELEPORTER_ITEM,
+        8
+      )!
     });
     state.cash = 9999;
     state.tick = 500;

@@ -23,8 +23,8 @@ export function respawnPlayer(player: Player): void {
   Object.assign(player, {
     fuel: player.fuelMax,
     hull: player.hullMax,
-    // Ore never survives a death; bought equipment does, exactly as the
-    // teleporters counted on the ship do.
+    // Ore never survives a death; bought equipment — dynamite, scanners, guns,
+    // teleporters — rides out of the wreck with the miner.
     inventory: removeOres(player.inventory)
   });
 }
@@ -91,7 +91,6 @@ export function createInitialState(): GameState {
       hullMax: STARTING.hullMax,
       cargoMax: STARTING.cargoMax,
       drill: STARTING.drill,
-      teleporters: STARTING.teleporters,
       visibility: STARTING.visibility,
       inventory: createInventory()
     }

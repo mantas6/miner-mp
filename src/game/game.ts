@@ -52,7 +52,7 @@ import { buildCargoRows, buildInventorySlots, pushToast as toast, uiStore, type 
 import { formatExtractionPresentation } from '../core/extraction-presentation';
 import { interpolateRemotePlayers } from '../net/net-protocol';
 import { saveServerUrl } from '../net/multiplayer-settings';
-import { advanceTeleportEffect, canTeleportToSurface, canUseTeleporter } from '../core/teleporter';
+import { TELEPORTER_ITEM, advanceTeleportEffect, canTeleportToSurface, canUseTeleporter } from '../core/teleporter';
 import type { AudioController } from '../core/types';
 import { applyPlayerUpgrade, type PlayerUpgradeId } from '../core/upgrades';
 import { revealFootprint } from '../../shared/exploration-codec';
@@ -348,7 +348,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     playerScratch.cargoMax = p.cargoMax;
     playerScratch.drill = p.drill;
     playerScratch.visibility = p.visibility;
-    playerScratch.teleporters = p.teleporters;
+    playerScratch.teleporters = countItem(p.inventory, TELEPORTER_ITEM.kind);
     playerScratch.scanners = countItem(p.inventory, SCANNER_ITEM.kind);
     playerScratch.dynamite = countItem(p.inventory, DYNAMITE_ITEM.kind);
     playerScratch.guns = countItem(p.inventory, GUN_ITEM.kind);
@@ -435,7 +435,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     hudScratch.gameOver = state.gameOver;
     hudScratch.gunArmed = state.input.gunArmed;
     hudScratch.guns = countItem(p.inventory, GUN_ITEM.kind);
-    hudScratch.teleporters = p.teleporters;
+    hudScratch.teleporters = countItem(p.inventory, TELEPORTER_ITEM.kind);
     hudScratch.teleportReturn = state.teleportReturnPosition !== null;
     hudScratch.teleportDepthReached = canTeleportToSurface(p.y);
     hudScratch.teleportUsable = canUseTeleporter(p, state.teleportReturnPosition);

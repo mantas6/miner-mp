@@ -17,7 +17,7 @@ import { PLAYER_UPGRADES, getPlayerUpgradeProgress, type PlayerUpgradeId } from 
 
 export type ShopPlayer = Pick<
   Player,
-  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility' | 'teleporters'
+  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility'
 > & {
   /**
    * Single-use equipment in the cargo bay. Counted out of the inventory rather
@@ -26,6 +26,7 @@ export type ShopPlayer = Pick<
   scanners: number;
   dynamite: number;
   guns: number;
+  teleporters: number;
 };
 
 export interface ShopRowState {
@@ -124,7 +125,7 @@ export const SHOP_ITEMS = [
     id: 'teleporter',
     icon: 'teleporter',
     title: 'Teleporter',
-    copy: `Emergency round trip from ${MIN_TELEPORT_DEPTH_METERS} m or deeper to the depot without unloading or servicing the ship.`,
+    copy: `Single-use emergency round trip from ${MIN_TELEPORT_DEPTH_METERS} m or deeper to the depot and back to the same tile. Spent on the way up; the return trip is free.`,
     price: ECONOMY.teleporter.price
   },
   {
@@ -145,7 +146,7 @@ export const SHOP_ITEMS = [
 
 export type ShopItemId = typeof SHOP_ITEMS[number]['id'];
 
-/** What "Carried" counts for each consumable; all but the teleporter live in the bay. */
+/** What "Carried" counts for each consumable; every one of them lives in the bay. */
 const ITEM_COUNTS: Record<ShopItemId, (player: ShopPlayer) => number> = {
   dynamite: player => player.dynamite,
   teleporter: player => player.teleporters,

@@ -4,6 +4,7 @@ import { ORES, START_Y, WORLD_W } from '../../shared/constants';
 import { DYNAMITE_ITEM } from './dynamite';
 import { INVENTORY_SLOTS, addItem, addOre, countItem, countOres, createInventory } from './inventory';
 import { createInitialState, respawnPlayer } from './state';
+import { TELEPORTER_ITEM } from './teleporter';
 import { GUN_ITEM } from './weapon';
 
 describe('initial game state', () => {
@@ -15,7 +16,7 @@ describe('initial game state', () => {
     expect(countOres(state.player.inventory)).toBe(0);
     expect(countItem(state.player.inventory, DYNAMITE_ITEM.kind)).toBe(0);
     expect(countItem(state.player.inventory, GUN_ITEM.kind)).toBe(0);
-    expect(state.player.teleporters).toBe(0);
+    expect(countItem(state.player.inventory, TELEPORTER_ITEM.kind)).toBe(0);
     expect(state.extractionPhase).toBe('none');
     expect(state.stats.motherlodeExtractions).toBe(0);
     expect(state.input.sprintDirection).toBeNull();
@@ -41,11 +42,13 @@ describe('player respawn', () => {
     player.fuelMax += ECONOMY.tank.step;
     player.cargoMax += ECONOMY.cargo.step;
     player.drill += ECONOMY.drill.step;
-    player.teleporters = 1;
     // Ore and equipment share the bay, and only the ore is lost with the ship.
     player.inventory = addItem(
-      addItem(addOre(createInventory(), ORES[0], player.cargoMax)!, DYNAMITE_ITEM, 2)!,
-      GUN_ITEM
+      addItem(
+        addItem(addOre(createInventory(), ORES[0], player.cargoMax)!, DYNAMITE_ITEM, 2)!,
+        GUN_ITEM
+      )!,
+      TELEPORTER_ITEM
     )!;
 
     respawnPlayer(player);
@@ -57,11 +60,11 @@ describe('player respawn', () => {
       fuelMax: STARTING.fuelMax + ECONOMY.tank.step,
       hull: player.hullMax,
       cargoMax: STARTING.cargoMax + ECONOMY.cargo.step,
-      drill: STARTING.drill + ECONOMY.drill.step,
-      teleporters: 1
+      drill: STARTING.drill + ECONOMY.drill.step
     });
     expect(countItem(player.inventory, DYNAMITE_ITEM.kind)).toBe(2);
     expect(countItem(player.inventory, GUN_ITEM.kind)).toBe(1);
+    expect(countItem(player.inventory, TELEPORTER_ITEM.kind)).toBe(1);
     expect(countOres(player.inventory)).toBe(0);
     expect(player.inventory).toHaveLength(INVENTORY_SLOTS);
   });

@@ -6,6 +6,7 @@ import { cargoCost } from './core/economy';
 import { DYNAMITE, DYNAMITE_ITEM, createPlacedDynamite } from './core/dynamite';
 import { addItem, countItem, countOres } from './core/inventory';
 import { SCANNER_DEVICE, SCANNER_ITEM, createScannerDevice } from './core/scanner-device';
+import { TELEPORTER_ITEM } from './core/teleporter';
 import { GUN_ITEM } from './core/weapon';
 import { claimArtifact } from './core/artifacts';
 import { ARTIFACTS, MAX_SAVED_TILE_ENTRIES, START_Y } from '../shared/constants';
@@ -100,27 +101,38 @@ describe('cargo balance persistence', () => {
   });
 });
 
-describe('carried item persistence', () => {
-  it('round-trips teleporters through save and load', () => {
+describe('teleporter persistence', () => {
+  it('round-trips the carried teleporters as a count and re-stacks them into the bay', () => {
     const stored = stubStorage();
     const state = createInitialState();
-    state.player.teleporters = 2;
+    state.player.inventory = addItem(state.player.inventory, TELEPORTER_ITEM, 2)!;
     save(state);
 
     const restored = createInitialState();
     load(restored);
 
-    expect(restored.player.teleporters).toBe(2);
+    expect(countItem(restored.player.inventory, TELEPORTER_ITEM.kind)).toBe(2);
     expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({teleporters: 2});
   });
 
-  it('gives a legacy save no teleporters', () => {
+  it('re-stacks a pre-v9 save\'s ship-borne teleporters into the bay', () => {
+    // `teleporters` never changed meaning — it is still the number carried — so a
+    // save written while they were counted on the ship simply arrives as a stack.
+    stubStorage({ cash: 90, teleporters: 3 });
+    const state = createInitialState();
+
+    load(state);
+
+    expect(countItem(state.player.inventory, TELEPORTER_ITEM.kind)).toBe(3);
+  });
+
+  it('gives a legacy save without the field no teleporters', () => {
     stubStorage({ cash: 90 });
     const state = createInitialState();
 
     load(state);
 
-    expect(state.player.teleporters).toBe(0);
+    expect(countItem(state.player.inventory, TELEPORTER_ITEM.kind)).toBe(0);
   });
 });
 

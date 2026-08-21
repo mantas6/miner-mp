@@ -3,9 +3,9 @@
 //
 // The two deployables — scanners and dynamite — are only *bought* here; arming
 // and placing them lives with the devices themselves, in `scanner-devices.ts`
-// and `dynamite-sticks.ts`. The Linebreaker is bought the same way but fired
-// from here, because a shot resolves against the world in one press instead of
-// being left behind in it.
+// and `dynamite-sticks.ts`. The Linebreaker and the teleporter are bought the
+// same way but spent from here, because each resolves in a single press instead
+// of being left behind in the mine.
 //
 // Each one is a small transaction — validate, charge, mutate, toast, play a
 // sound — so they are grouped here rather than scattered through the loop code.
@@ -18,10 +18,12 @@ import { addItem, countItem, isFullFor, removeItem, removeOres, type InventoryIt
 import { SCANNER_ITEM } from '../core/scanner-device';
 import {
   MIN_TELEPORT_DEPTH_METERS,
+  TELEPORTER_ITEM,
   canTeleportToSurface,
   createTeleportEffect,
   teleportPlayerToReturn,
-  teleportPlayerToSurface
+  teleportPlayerToSurface,
+  teleportersCarried
 } from '../core/teleporter';
 import type { AudioController, Direction, GameState } from '../core/types';
 import { applyPlayerUpgrade, getPlayerUpgradeProgress, type PlayerUpgradeId } from '../core/upgrades';
@@ -54,6 +56,7 @@ export interface GameActions {
   buyUpgrade(id: PlayerUpgradeId, cost: number, message: string): void;
   /** Buy one stick of dynamite into the cargo bay; refused when it has no room. */
   buyDynamite(): void;
+  /** Buy one single-use teleporter into the cargo bay; refused when it has no room. */
   buyTeleporter(): void;
   /** Buy one scanner device into the cargo bay; refused when it has no room. */
   buyScanner(): void;
@@ -174,15 +177,11 @@ export function createActions(deps: GameActionsDeps): GameActions {
     toast('Cargo empty, hull and fuel are full.');
   }
 
-  function buyTeleporter(): void {
-    spend(ECONOMY.teleporter.price, () => state.player.teleporters++, `Teleporter loaded. Press T or Teleport at ${MIN_TELEPORT_DEPTH_METERS} m or deeper.`);
-  }
-
   /**
-   * Single-use equipment — scanners, dynamite, guns — takes a cargo slot, so
-   * unlike a teleporter the bay itself can refuse the sale. Checked before the
-   * money changes hands, and only at the depot, so the "come back to the surface"
-   * refusal still comes first.
+   * Single-use equipment — scanners, dynamite, guns, teleporters — takes a cargo
+   * slot, so the bay itself can refuse the sale. Checked before the money changes
+   * hands, and only at the depot, so the "come back to the surface" refusal still
+   * comes first.
    */
   function buyDeployable(item: InventoryItem, price: number, fullMessage: string, loadedMessage: string): void {
     if (atSurface() && isFullFor(state.player.inventory, item.kind)) {
@@ -201,6 +200,15 @@ export function createActions(deps: GameActionsDeps): GameActions {
       ECONOMY.dynamite.price,
       'Cargo bay is full. Sell the cargo before buying dynamite.',
       'Dynamite loaded. Press E or its inventory slot, then a mine tile, to plant it.'
+    );
+  }
+
+  function buyTeleporter(): void {
+    buyDeployable(
+      TELEPORTER_ITEM,
+      ECONOMY.teleporter.price,
+      'Cargo bay is full. Sell the cargo before buying a teleporter.',
+      `Teleporter loaded. Press T or Teleport at ${MIN_TELEPORT_DEPTH_METERS} m or deeper to spend it.`
     );
   }
 
@@ -282,7 +290,7 @@ export function createActions(deps: GameActionsDeps): GameActions {
     if (state.gameOver) return;
     const surf = atSurface();
     if (surf && !state.teleportReturnPosition) return toast('No underground teleport return point.');
-    if (!surf && p.teleporters <= 0) { audio.alarm(); return toast('No teleporter. Buy one at the surface depot.'); }
+    if (!surf && teleportersCarried(p) <= 0) { audio.alarm(); return toast('No teleporter aboard. Buy one at the surface depot.'); }
     if (!surf && !canTeleportToSurface(p.y)) { audio.alarm(); return toast(`Teleport requires a depth of at least ${MIN_TELEPORT_DEPTH_METERS} m.`); }
     const camX = Math.max(0, Math.min(WORLD_W - viewport.tilesX, state.camX));
     const camY = Math.max(0, state.camY);

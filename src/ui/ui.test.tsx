@@ -538,6 +538,25 @@ describe('store-driven HUD', () => {
     expect(useTeleporter).toHaveBeenCalledOnce();
   });
 
+  it('hides the teleport button underground with an empty bay, and at the depot without a return point', () => {
+    render(<MinerApp />);
+
+    patchHud({atSurface: false, teleporters: 0, teleportDepthReached: true, teleportUsable: false});
+    expect((document.getElementById('teleporterBtn') as HTMLButtonElement).hidden).toBe(true);
+
+    patchHud({teleporters: 1});
+    expect((document.getElementById('teleporterBtn') as HTMLButtonElement).hidden).toBe(false);
+
+    // At the depot the trip back rides on the stored point, not on an item.
+    patchHud({atSurface: true, teleporters: 0, teleportReturn: false});
+    expect((document.getElementById('teleporterBtn') as HTMLButtonElement).hidden).toBe(true);
+
+    patchHud({teleportReturn: true, teleportUsable: true});
+    const teleporter = document.getElementById('teleporterBtn') as HTMLButtonElement;
+    expect(teleporter.hidden).toBe(false);
+    expect(teleporter.textContent).toBe('Return (T)');
+  });
+
   it('prompts for the depot key only while a press would do something', () => {
     render(<MinerApp />);
     const hint = document.getElementById('surfaceHint') as HTMLElement;

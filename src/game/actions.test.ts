@@ -1,11 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
-import { ORES } from '../../shared/constants';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ORES, START_Y } from '../../shared/constants';
 import { ECONOMY, LIMITS, STARTING } from '../core/balance';
 import { cargoCost, drillCost, partialFill, refuelCost, repairCost } from '../core/economy';
 import { DYNAMITE_ITEM } from '../core/dynamite';
 import { INVENTORY_SLOTS, addItem, addOre, countItem, countOres, createInventory } from '../core/inventory';
 import { SCANNER_ITEM } from '../core/scanner-device';
 import { createInitialState } from '../core/state';
+import { TELEPORTER_ITEM } from '../core/teleporter';
 import { GUN_ITEM } from '../core/weapon';
 import type { GameState, Tile } from '../core/types';
 import { createActions, type GameActions } from './actions';
@@ -271,16 +272,17 @@ describe('buying equipment', () => {
     h.actions.buyDynamite();
     h.actions.buyTeleporter();
 
-    // Dynamite is cargo now; only the teleporter is still counted on the ship.
+    // Every consumable is cargo now, each kind in a slot of its own.
     expect(countItem(h.state.player.inventory, DYNAMITE_ITEM.kind)).toBe(1);
-    expect(h.state.player).toMatchObject({teleporters: 1});
+    expect(countItem(h.state.player.inventory, TELEPORTER_ITEM.kind)).toBe(1);
     expect(h.state.cash).toBe(0);
   });
 
   it.each([
     ['scanner', SCANNER_ITEM.kind, ECONOMY.scanner.price, (actions: GameActions) => actions.buyScanner()],
     ['dynamite', DYNAMITE_ITEM.kind, ECONOMY.dynamite.price, (actions: GameActions) => actions.buyDynamite()],
-    ['gun', GUN_ITEM.kind, ECONOMY.gun.price, (actions: GameActions) => actions.buyGun()]
+    ['gun', GUN_ITEM.kind, ECONOMY.gun.price, (actions: GameActions) => actions.buyGun()],
+    ['teleporter', TELEPORTER_ITEM.kind, ECONOMY.teleporter.price, (actions: GameActions) => actions.buyTeleporter()]
   ])('loads a %s into a cargo slot, and refuses one the bay cannot hold', (_name, kind, price, buy) => {
     const h = harness();
     h.state.cash = price * 2;
@@ -381,5 +383,74 @@ describe('firing the Linebreaker', () => {
 
     expect(countItem(h.state.player.inventory, GUN_ITEM.kind)).toBe(1);
     expect(h.state.input.gunArmed).toBe(true);
+  });
+});
+
+describe('using the teleporter', () => {
+  // The jump asks the browser about reduced motion, and this suite has no DOM.
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** A ship well past the 100 m threshold, with `count` teleporters in the bay. */
+  function deepWithTeleporters(h: Harness, count: number): void {
+    vi.stubGlobal('window', {});
+    const y = START_Y + 40;
+    Object.assign(h.state.player, {x: 20, y, drawX: 20, drawY: y});
+    h.state.player.inventory = addItem(createInventory(), TELEPORTER_ITEM, count)!;
+    h.flags.atSurface = false;
+  }
+
+  it('spends one teleporter on the trip up and nothing on the trip back', () => {
+    const h = harness();
+    deepWithTeleporters(h, 2);
+
+    h.actions.useTeleporter();
+
+    expect(countItem(h.state.player.inventory, TELEPORTER_ITEM.kind)).toBe(1);
+    expect(h.state.player.y).toBe(START_Y);
+    expect(h.state.teleportReturnPosition).toEqual({x: 20, y: START_Y + 40});
+    expect(h.saveProgress).toHaveBeenCalled();
+    expect(h.toasts.saw('Teleported safely to the depot')).toBe(true);
+
+    h.flags.atSurface = true;
+    h.actions.useTeleporter();
+
+    // The return point is the receipt for the charge already spent.
+    expect(countItem(h.state.player.inventory, TELEPORTER_ITEM.kind)).toBe(1);
+    expect(h.state.player.y).toBe(START_Y + 40);
+    expect(h.state.teleportReturnPosition).toBeNull();
+  });
+
+  it('frees the slot once the last teleporter is spent', () => {
+    const h = harness();
+    deepWithTeleporters(h, 1);
+
+    h.actions.useTeleporter();
+
+    expect(countItem(h.state.player.inventory, TELEPORTER_ITEM.kind)).toBe(0);
+    expect(h.state.player.inventory.every(slot => slot === null)).toBe(true);
+  });
+
+  it('refuses the jump with nothing in the bay', () => {
+    const h = harness();
+    deepWithTeleporters(h, 0);
+
+    h.actions.useTeleporter();
+
+    expect(h.state.player.y).toBe(START_Y + 40);
+    expect(h.state.teleportReturnPosition).toBeNull();
+    expect(h.toasts.saw('No teleporter aboard')).toBe(true);
+    expect(h.audio.played).toContain('alarm');
+  });
+
+  it('keeps the teleporter when the ship is too shallow to use it', () => {
+    const h = harness();
+    deepWithTeleporters(h, 1);
+    Object.assign(h.state.player, {y: START_Y + 1, drawY: START_Y + 1});
+
+    h.actions.useTeleporter();
+
+    expect(countItem(h.state.player.inventory, TELEPORTER_ITEM.kind)).toBe(1);
+    expect(h.toasts.saw('depth of at least')).toBe(true);
+    expect(h.audio.played).toContain('alarm');
   });
 });

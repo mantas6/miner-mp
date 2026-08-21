@@ -149,13 +149,14 @@ describe('shop dialog', () => {
 
     act(() => {
       const store = uiStore.getState();
-      store.syncPlayer({...store.player, dynamite: 4, scanners: 2, guns: 3});
+      store.syncPlayer({...store.player, dynamite: 4, scanners: 2, guns: 3, teleporters: 1});
     });
 
     // Every consumable tally comes out of the cargo bay, not off the ship.
     expect(row('dynamite').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 4');
     expect(row('scanner').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 2');
     expect(row('gun').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 3');
+    expect(row('teleporter').querySelector('[data-shop-current]')?.textContent).toBe('Carried: 1');
     // The gun is a consumable now: carrying some never closes the shelf, and the
     // ammunition shelf is gone with the magazine.
     expect(button('gun').disabled).toBe(false);

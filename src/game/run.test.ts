@@ -3,6 +3,7 @@ import { ORES, START_Y, WORLD_W } from '../../shared/constants';
 import { ECONOMY, STARTING } from '../core/balance';
 import { addItem, addOre, countItem, countOres, createInventory } from '../core/inventory';
 import { createInitialState } from '../core/state';
+import { TELEPORTER_ITEM } from '../core/teleporter';
 import { GUN_ITEM } from '../core/weapon';
 import type { GameState } from '../core/types';
 import { createTileDiff } from '../world/tile-diff';
@@ -41,10 +42,12 @@ function harness(): Harness {
     fuelMax: STARTING.fuelMax + ECONOMY.tank.step,
     cargoMax: STARTING.cargoMax + ECONOMY.cargo.step,
     drill: STARTING.drill + 1,
-    teleporters: 1,
     visibility: 5,
-    // Ore to lose with the ship, and one Linebreaker that survives it.
-    inventory: addItem(addOre(addOre(createInventory(), ORES[0], 99)!, ORES[1], 99)!, GUN_ITEM)!
+    // Ore to lose with the ship, and equipment that survives it.
+    inventory: addItem(
+      addItem(addOre(addOre(createInventory(), ORES[0], 99)!, ORES[1], 99)!, GUN_ITEM)!,
+      TELEPORTER_ITEM
+    )!
   });
   state.cash = 900;
   state.stats.maxDepth = 570;
@@ -154,11 +157,11 @@ describe('restarting after a death', () => {
       y: START_Y,
       fuel: STARTING.fuelMax + ECONOMY.tank.step,
       hull: STARTING.hullMax,
-      teleporters: 1,
       visibility: 5
     });
-    // Equipment is not cargo: the replacement ship keeps the carried gun.
+    // Equipment is not cargo: the replacement ship keeps the gun and the teleporter.
     expect(countItem(h.state.player.inventory, GUN_ITEM.kind)).toBe(1);
+    expect(countItem(h.state.player.inventory, TELEPORTER_ITEM.kind)).toBe(1);
     expect(countOres(h.state.player.inventory)).toBe(0);
     expect(h.state.gameOver).toBe(false);
     expect(h.input.reset).toHaveBeenCalled();
@@ -285,10 +288,10 @@ describe('a full player reset', () => {
       hullMax: STARTING.hullMax,
       cargoMax: STARTING.cargoMax,
       drill: STARTING.drill,
-      visibility: STARTING.visibility,
-      teleporters: STARTING.teleporters
+      visibility: STARTING.visibility
     });
     expect(countItem(h.state.player.inventory, GUN_ITEM.kind)).toBe(0);
+    expect(countItem(h.state.player.inventory, TELEPORTER_ITEM.kind)).toBe(0);
     expect(countOres(h.state.player.inventory)).toBe(0);
     expect(h.state.exploredTiles.size).toBe(0);
     expect(h.state.stats).toMatchObject({maxDepth: 0, oreMined: 0, deaths: 0});
