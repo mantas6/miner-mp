@@ -663,14 +663,14 @@ describe('inventory panel', () => {
     return [...document.querySelectorAll('#inventorySlots > li')].map(slot => slot.textContent ?? '');
   }
 
-  it('shows every slot of the bay, empty ones included', () => {
+  it('shows an empty bay as one placeholder row over a 0/capacity header', () => {
     render(<MinerApp />);
 
-    expect(slotText()).toEqual(['Empty', 'Empty', 'Empty', 'Empty', 'Empty']);
-    expect(document.getElementById('inventoryToggleBtn')?.textContent).toContain('0/5');
+    expect(slotText()).toEqual(['Empty']);
+    expect(document.getElementById('inventoryToggleBtn')?.textContent).toContain('0/20');
   });
 
-  it('paints the stacks the game synced, one row per kind', () => {
+  it('paints the stacks the game synced, one row per kind, and counts the items', () => {
     render(<MinerApp />);
 
     act(() => {
@@ -679,8 +679,9 @@ describe('inventory panel', () => {
       ));
     });
 
-    expect(slotText()).toEqual(['Coal×2', 'Copper×1', 'Empty', 'Empty', 'Empty']);
-    expect(document.getElementById('inventoryToggleBtn')?.textContent).toContain('2/5');
+    expect(slotText()).toEqual(['Coal×2', 'Copper×1']);
+    // Three items across two stacks, against the starting capacity.
+    expect(document.getElementById('inventoryToggleBtn')?.textContent).toContain('3/20');
   });
 
   /** Collapsing leaves the header and takes the list out of the document. */

@@ -36,13 +36,14 @@ const PLACEABLE: Partial<Record<InventoryItemKind, {
 };
 
 /**
- * The cargo bay's slots, on screen.
+ * The cargo bay, on screen.
  *
- * Empty slots are drawn too: the bay's shape is the information — how much room
- * is left, and for which kinds — and a list that only showed what is aboard
- * would say nothing until it was already too late to plan around.
+ * The bay is bounded by a total item count, not a fixed row of slots, so the
+ * header carries the whole "how full" story — `12/20` items — and the list below
+ * shows only the stacks actually aboard. An empty bay is an empty list under a
+ * `0/20`, which says as much as a row of "Empty" boxes did and takes less room.
  *
- * The slot holding a deployable is also the control that places it: pressing it
+ * The stack holding a deployable is also the control that places it: pressing it
  * arms placement, and the next press on the mine puts the item down. That keeps
  * the whole gesture inside the panel that already shows the item, rather than
  * adding a button to the action bar for something used a handful of times a run.
@@ -53,10 +54,11 @@ const PLACEABLE: Partial<Record<InventoryItemKind, {
  */
 export function InventoryPanel() {
   const slots = useUiStore(state => state.inventorySlots);
+  const capacity = useUiStore(state => state.hud.cargoMax);
   const gameOver = useUiStore(state => state.hud.gameOver);
   const armedPlacement = useUiStore(state => state.armedPlacement);
   const [collapsed, setCollapsed] = useState(false);
-  const used = slots.reduce((count, slot) => count + (slot.kind === null ? 0 : 1), 0);
+  const used = slots.reduce((count, slot) => count + slot.count, 0);
 
   return (
     <section id="inventory" className={styles.inventory} aria-label="Inventory" hidden={gameOver}>
@@ -70,25 +72,24 @@ export function InventoryPanel() {
         onClick={() => setCollapsed(value => !value)}
       >
         <span className={styles.title}>Inventory</span>
-        <span className={styles.used}>{used}/{slots.length}</span>
+        <span className={styles.used}>{used}/{capacity}</span>
         <span className={styles.chevron} aria-hidden="true">{collapsed ? '▸' : '▾'}</span>
       </button>
       {!collapsed && (
         <ul id="inventorySlots" className={styles.slots}>
+          {slots.length === 0 && <li className={clsx(styles.slot, styles.empty)}><span className={styles.emptyLabel}>Empty</span></li>}
           {slots.map(slot => {
-            const stack = slot.kind === null
-              ? <span className={styles.emptyLabel}>Empty</span>
-              : (
-                <>
-                  <span className={styles.icon} style={{background: slot.color}} aria-hidden="true" />
-                  <span className={styles.label}>{slot.label}</span>
-                  <span className={styles.count}>×{slot.count}</span>
-                </>
-              );
-            const placeable = slot.kind === null ? undefined : PLACEABLE[slot.kind];
+            const stack = (
+              <>
+                <span className={styles.icon} style={{background: slot.color}} aria-hidden="true" />
+                <span className={styles.label}>{slot.label}</span>
+                <span className={styles.count}>×{slot.count}</span>
+              </>
+            );
+            const placeable = PLACEABLE[slot.kind];
             const armed = placeable !== undefined && armedPlacement === slot.kind;
             return (
-              <li key={slot.index} className={clsx(styles.slot, slot.kind === null && styles.empty)}>
+              <li key={slot.index} className={styles.slot}>
                 {placeable
                   ? (
                     <button

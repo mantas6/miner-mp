@@ -31,8 +31,8 @@ describe('shop rows', () => {
 
     const cargo = upgradeRowState('cargo', ship(), state.cash, true);
 
-    expect(cargo.current).toBe('Level 0/198 · 10/1000 slots');
-    expect(cargo.benefit).toBe('Next: 10 → 15 slots');
+    expect(cargo.current).toBe('Level 0/98 · 20/1000 items');
+    expect(cargo.benefit).toBe('Next: 20 → 30 items');
     expect(cargo.buttonLabel).toBe('Buy · $120');
     expect(cargo.buttonDisabled).toBe(true);
     expect(cargo.status).toBe('Need $60');

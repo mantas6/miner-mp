@@ -74,10 +74,10 @@ describe('artifact payout persistence', () => {
 
 describe('cargo balance persistence', () => {
   it.each([
-    [10, 10, 120],
-    [20, 15, 159],
-    [30, 20, 210],
-    [40, 25, 276]
+    [10, 20, 120],
+    [20, 30, 159],
+    [30, 40, 210],
+    [40, 50, 276]
   ])('maps legacy capacity %i to rebalanced capacity %i at the same price level', (legacyCapacity, capacity, nextCost) => {
     stubStorage({ version: 1, cargoMax: legacyCapacity });
     const state = createInitialState();
@@ -97,10 +97,10 @@ describe('cargo balance persistence', () => {
     const restored = createInitialState();
     load(restored);
 
-    expect(restored.player.cargoMax).toBe(20);
+    expect(restored.player.cargoMax).toBe(40);
     expect(JSON.parse(stored.get(SAVE_KEY) || '{}')).toMatchObject({
       version: SAVE_VERSION,
-      cargoMax: 20
+      cargoMax: 40
     });
   });
 });
@@ -470,7 +470,8 @@ describe('fog exploration persistence', () => {
     load(state);
 
     expect(state.cash).toBe(90);
-    expect(state.player.cargoMax).toBe(20);
+    // A v2 save's cargoMax of 20 was two upgrades on the old scale, rebuilt to 40.
+    expect(state.player.cargoMax).toBe(40);
     expect(state.player.visibility).toBe(3);
     expect(state.exploredTiles.size).toBe(0);
   });

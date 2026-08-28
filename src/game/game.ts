@@ -32,7 +32,7 @@ import { createDefaultStats, createInitialState } from '../core/state';
 import { createRenderer, type Renderer } from '../render/renderer';
 import { FUEL, ECONOMY } from '../core/balance';
 import { cargoCost, tankCost, hullCost, drillCost, visibilityCost, cargoValue } from '../core/economy';
-import { countItem, countOres, type Inventory, type InventoryItemKind } from '../core/inventory';
+import { countItem, totalItems, type Inventory, type InventoryItemKind } from '../core/inventory';
 import { isPlaceableKind } from '../core/placement-overlay';
 import { CARGO_CONTAINER_ITEM } from '../core/cargo-container';
 import { DYNAMITE_ITEM } from '../core/dynamite';
@@ -178,7 +178,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     uiStore.getState().setArmedPlacement(kind);
   }
 
-  function cargoUsed(){ return countOres(state.player.inventory); }
+  function cargoUsed(){ return totalItems(state.player.inventory); }
   function currentCargoValue(){ return cargoValue(state.player.inventory); }
   function atSurface(){ return state.player.y < SURFACE_HEIGHT; }
 

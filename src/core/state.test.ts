@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { STARTING, ECONOMY } from './balance';
 import { ORES, START_Y, WORLD_W } from '../../shared/constants';
 import { DYNAMITE_ITEM } from './dynamite';
-import { INVENTORY_SLOTS, addItem, addOre, countItem, countOres, createInventory } from './inventory';
+import { addItem, addOre, countItem, countOres, createInventory } from './inventory';
 import { createInitialState, respawnPlayer } from './state';
 import { TELEPORTER_ITEM } from './teleporter';
 import { GUN_ITEM } from './weapon';
@@ -12,7 +12,7 @@ describe('initial game state', () => {
     const state = createInitialState();
 
     expect(state.player.cargoMax).toBe(STARTING.cargoMax);
-    expect(state.player.inventory).toHaveLength(INVENTORY_SLOTS);
+    expect(state.player.inventory).toHaveLength(0);
     expect(countOres(state.player.inventory)).toBe(0);
     expect(countItem(state.player.inventory, DYNAMITE_ITEM.kind)).toBe(0);
     expect(countItem(state.player.inventory, GUN_ITEM.kind)).toBe(0);
@@ -45,11 +45,11 @@ describe('player respawn', () => {
     // Ore and equipment share the bay, and only the ore is lost with the ship.
     player.inventory = addItem(
       addItem(
-        addItem(addOre(createInventory(), ORES[0], player.cargoMax)!, DYNAMITE_ITEM, 2)!,
+        addItem(addOre(createInventory(), ORES[0], player.cargoMax)!, DYNAMITE_ITEM, 2),
         GUN_ITEM
-      )!,
+      ),
       TELEPORTER_ITEM
-    )!;
+    );
 
     respawnPlayer(player);
 
@@ -66,6 +66,7 @@ describe('player respawn', () => {
     expect(countItem(player.inventory, GUN_ITEM.kind)).toBe(1);
     expect(countItem(player.inventory, TELEPORTER_ITEM.kind)).toBe(1);
     expect(countOres(player.inventory)).toBe(0);
-    expect(player.inventory).toHaveLength(INVENTORY_SLOTS);
+    // Ore gone, the three equipment stacks remain.
+    expect(player.inventory).toHaveLength(3);
   });
 });

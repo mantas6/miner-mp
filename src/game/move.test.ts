@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ORES, START_Y, WORLD_W } from '../../shared/constants';
 import { FUEL, HULL, STARTING } from '../core/balance';
-import { INVENTORY_SLOTS, addOre, countOres, createInventory, oreKind } from '../core/inventory';
+import { addOre, countOres, createInventory, oreKind } from '../core/inventory';
 import { createInitialState } from '../core/state';
 import type { Enemy, GameState, Tile } from '../core/types';
 import { createMovement, type GameMovement } from './move';
@@ -311,25 +311,24 @@ describe('digging', () => {
     expect(h.toasts.saw('Cargo bay full')).toBe(true);
   });
 
-  /** The other refusal: room under `cargoMax`, but no slot left to open. */
-  it('leaves ore in the ground when every inventory slot is claimed', () => {
+  /** Capacity is an item count, so a fresh ore kind loads while there is room. */
+  it('takes on a new ore kind as long as the bay is under capacity', () => {
     const h = harness();
     h.state.player.drill = 5;
     h.state.player.cargoMax = 99;
     let inventory = createInventory();
-    for (const ore of ORES.slice(0, INVENTORY_SLOTS)) inventory = addOre(inventory, ore, 99)!;
+    for (const ore of ORES.slice(0, 6)) inventory = addOre(inventory, ore, 99)!;
     h.state.player.inventory = inventory;
-    h.grid.put(10, 41, {type: 'ore', ore: ORES[INVENTORY_SLOTS], hp: 1, maxHp: 1});
+    h.grid.put(10, 41, {type: 'ore', ore: ORES[6], hp: 1, maxHp: 1});
 
     h.movement.move(0, 1);
 
-    expect(countOres(h.state.player.inventory)).toBe(INVENTORY_SLOTS);
-    expect(h.grid.get(10, 41)).toMatchObject({type: 'ore', hp: 1});
-    expect(h.state.player.y).toBe(40);
-    expect(h.toasts.saw('No free inventory slot')).toBe(true);
+    expect(countOres(h.state.player.inventory)).toBe(7);
+    expect(h.grid.get(10, 41).type).toBe('air');
+    expect(h.state.player.y).toBe(41);
   });
 
-  it('pays artifacts out as cash immediately without using a cargo slot', () => {
+  it('pays artifacts out as cash immediately without using cargo room', () => {
     const h = harness();
     h.state.player.drill = 9;
     const artifact = {name: 'Alien Reliquary', color: '#ff78e1', value: 900, min: 0, max: 9999, chance: 1};

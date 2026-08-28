@@ -19,12 +19,12 @@ import {
 } from './cargo-container';
 import { DYNAMITE_ITEM } from './dynamite';
 import {
-  INVENTORY_SLOTS,
   addItem,
   countItem,
   countOres,
   createInventory,
   oreItem,
+  totalItems,
   type Inventory
 } from './inventory';
 import type { Ore } from './types';
@@ -34,7 +34,7 @@ const IRON: Ore = {name: 'Iron', color: '#9aa7b4', value: 12, min: 0, max: 900, 
 
 /** A bay holding `count` of one ore. */
 function withOre(ore: Ore, count: number, bay: Inventory = createInventory()): Inventory {
-  return addItem(bay, oreItem(ore), count)!;
+  return addItem(bay, oreItem(ore), count);
 }
 
 describe('placing a container', () => {
@@ -119,16 +119,25 @@ describe('storing a stack', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(countOres(result.container)).toBe(5);
-    // One kind, one slot: a stack that lands on an open one takes no second slot.
-    expect(result.container.filter(slot => slot !== null)).toHaveLength(1);
+    // One kind, one stack: a stack that lands on an open one opens no second one.
+    expect(result.container).toHaveLength(1);
   });
 
-  it('refuses a full crate and changes nothing', () => {
-    // Every slot taken by a kind the incoming stack cannot join.
-    const crate = [COPPER, IRON, ...Array.from({length: INVENTORY_SLOTS - 2}, (_, i) => ({
-      ...COPPER, name: `Filler${i}`
-    }))].reduce<Inventory>((bay, ore) => withOre(ore, 1, bay), createInventory());
-    const ship = addItem(createInventory(), DYNAMITE_ITEM, 2)!;
+  it('fills only up to the crate\'s remaining item room, and reports a partial move', () => {
+    const crate = withOre(COPPER, CARGO_CONTAINER.capacity - 2);
+    const result = storeInContainer(withOre(IRON, 5), crate, oreItem(IRON).kind);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Two units fit; the other three stay aboard.
+    expect(result.moved).toBe(2);
+    expect(totalItems(result.container)).toBe(CARGO_CONTAINER.capacity);
+    expect(countItem(result.ship, oreItem(IRON).kind)).toBe(3);
+  });
+
+  it('refuses a crate already at its item capacity and changes nothing', () => {
+    const crate = withOre(COPPER, CARGO_CONTAINER.capacity);
+    const ship = addItem(createInventory(), DYNAMITE_ITEM, 2);
 
     const result = storeInContainer(ship, crate, DYNAMITE_ITEM.kind);
 
@@ -145,10 +154,10 @@ describe('storing a stack', () => {
 });
 
 describe('taking a stack back', () => {
-  it('moves equipment across without any cap on it', () => {
-    const crate = addItem(createInventory(), DYNAMITE_ITEM, 4)!;
+  it('moves equipment across up to the bay capacity, counting what is already aboard', () => {
+    const crate = addItem(createInventory(), DYNAMITE_ITEM, 4);
 
-    const result = takeFromContainer(createInventory(), crate, DYNAMITE_ITEM.kind, 0);
+    const result = takeFromContainer(createInventory(), crate, DYNAMITE_ITEM.kind, 10);
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -158,10 +167,10 @@ describe('taking a stack back', () => {
 
   /**
    * The rule that keeps a $200 crate from quietly buying every level of the cargo
-   * upgrade: a crate stores ore without limit, but the ship still carries what the
-   * bay says it carries.
+   * upgrade: a crate stores freely, but the ship still carries what the bay says
+   * it carries — and everything aboard, ore or equipment, counts toward that.
    */
-  it('takes only as much ore as the cargo-bay upgrade still allows', () => {
+  it('takes only as much as the cargo-bay capacity still allows', () => {
     const crate = withOre(COPPER, 10);
 
     const result = takeFromContainer(withOre(IRON, 8), crate, oreItem(COPPER).kind, 10);
@@ -174,25 +183,25 @@ describe('taking a stack back', () => {
     expect(countOres(result.container)).toBe(8);
   });
 
-  it('refuses ore outright once the bay is at its ore limit', () => {
+  it('counts equipment aboard against the same capacity as ore', () => {
+    const ship = addItem(createInventory(), DYNAMITE_ITEM, 8);
+    const crate = withOre(COPPER, 5);
+
+    const result = takeFromContainer(ship, crate, oreItem(COPPER).kind, 10);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Eight sticks aboard leave room for only two units of ore.
+    expect(result.moved).toBe(2);
+    expect(totalItems(result.ship)).toBe(10);
+  });
+
+  it('refuses outright once the bay is at its item capacity', () => {
     const result = takeFromContainer(withOre(IRON, 10), withOre(COPPER, 1), oreItem(COPPER).kind, 10);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.refusal).toContain('Cargo bay is full at 10 ore');
-  });
-
-  it('refuses when the bay has no slot left for the kind', () => {
-    const ship = [COPPER, IRON, ...Array.from({length: INVENTORY_SLOTS - 2}, (_, i) => ({
-      ...COPPER, name: `Filler${i}`
-    }))].reduce<Inventory>((bay, ore) => withOre(ore, 1, bay), createInventory());
-    const crate = addItem(createInventory(), DYNAMITE_ITEM, 1)!;
-
-    const result = takeFromContainer(ship, crate, DYNAMITE_ITEM.kind, 999);
-
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.refusal).toContain('Cargo bay is full');
+    expect(result.refusal).toContain('Cargo bay is full at 10 items');
   });
 
   it('reports a kind the crate does not hold', () => {
@@ -203,10 +212,10 @@ describe('taking a stack back', () => {
 });
 
 describe('a fresh container', () => {
-  it('opens with the bay\'s own number of empty slots', () => {
+  it('opens empty with its whole item capacity free', () => {
     const crate = createPlacedContainer(40, 100);
 
-    expect(crate.inventory).toHaveLength(CARGO_CONTAINER.slots);
-    expect(crate.inventory.every(slot => slot === null)).toBe(true);
+    expect(crate.inventory).toHaveLength(0);
+    expect(totalItems(crate.inventory)).toBe(0);
   });
 });

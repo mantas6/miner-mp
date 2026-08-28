@@ -118,14 +118,14 @@ export interface CargoRow {
 }
 
 /**
- * One slot of the HUD inventory panel, empty ones included: the panel shows the
- * bay's shape, so a free slot is as much a fact as a full one.
+ * One stack of the HUD inventory panel. The bay is capacity-bounded by item
+ * count, not by a fixed row of slots, so the panel lists only what is aboard and
+ * shows the room left as a number rather than as empty boxes.
  */
 export interface InventorySlotView {
-  /** Slot position, and the stable React key an empty slot has nothing else for. */
+  /** Position in the stack list, and the stable React key. */
   index: number;
-  /** What is stacked here, or `null` while the slot is free. */
-  kind: InventoryItemKind | null;
+  kind: InventoryItemKind;
   label: string;
   color: string;
   count: number;
@@ -475,11 +475,15 @@ export function useUiStore<T>(selector: (state: UiState) => T): T {
   return useStore(uiStore, selector);
 }
 
-/** Paint every slot of the bay, empty ones included, for the HUD panel. */
+/** Paint the occupied stacks of the bay for the HUD panel and the transfer menu. */
 export function buildInventorySlots(inventory: Inventory): InventorySlotView[] {
-  return inventory.map((slot, index) => slot
-    ? {index, kind: slot.kind, label: slot.item.label, color: slot.item.color, count: slot.count}
-    : {index, kind: null, label: '', color: '', count: 0});
+  return inventory.map((stack, index) => ({
+    index,
+    kind: stack.kind,
+    label: stack.item.label,
+    color: stack.item.color,
+    count: stack.count
+  }));
 }
 
 /** Build the cargo-bay rows shown in the Info overlay from the ore stacks. */

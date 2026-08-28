@@ -33,7 +33,7 @@ describe('expedition objective helper', () => {
       cargoCount: 2,
       currentCargoValue: cargoValue,
       atSurface: false
-    })).toBe('Objective: return and sell $24; Cargo +5 is ready after sale.');
+    })).toBe('Objective: return and sell $24; Cargo +10 is ready after sale.');
   });
 
   it('prioritizes low fuel return warnings underground', () => {

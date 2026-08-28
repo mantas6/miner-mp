@@ -300,18 +300,15 @@ describe('moving cargo across', () => {
     h.containers.take(oreItem(COPPER).kind);
 
     expect(countOres(h.state.player.inventory)).toBe(2);
-    expect(h.toasts.saw('Cargo bay is full at 2 ore')).toBe(true);
+    expect(h.toasts.saw('Cargo bay is full at 2 items')).toBe(true);
     expect(h.audio.played).toContain('alarm');
   });
 
   it('refuses a stack a full crate cannot take', () => {
     const h = opened(0);
-    h.state.player.inventory = addItem(h.state.player.inventory, DYNAMITE_ITEM, 2)!;
-    // Every slot of the crate spoken for by a kind the dynamite cannot join.
-    h.state.cargoContainers[0].inventory = Array.from(
-      {length: CARGO_CONTAINER.slots},
-      (_, index) => ({...COPPER, name: `Filler${index}`})
-    ).reduce<Inventory>((bay, ore) => addItem(bay, oreItem(ore), 1)!, createInventory());
+    h.state.player.inventory = addItem(h.state.player.inventory, DYNAMITE_ITEM, 2);
+    // The crate is already holding its whole item capacity.
+    h.state.cargoContainers[0].inventory = addItem(createInventory(), oreItem(COPPER), CARGO_CONTAINER.capacity);
 
     h.containers.store(DYNAMITE_ITEM.kind);
 

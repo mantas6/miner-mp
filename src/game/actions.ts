@@ -15,7 +15,7 @@ import { ECONOMY } from '../core/balance';
 import { CARGO_CONTAINER_ITEM } from '../core/cargo-container';
 import { cargoValue, partialFill, refuelCost, repairCost } from '../core/economy';
 import { DYNAMITE_ITEM } from '../core/dynamite';
-import { addItem, countItem, isFullFor, removeItem, removeOres, type InventoryItem } from '../core/inventory';
+import { addItem, countItem, isFull, removeItem, removeOres, type InventoryItem } from '../core/inventory';
 import { SCANNER_ITEM } from '../core/scanner-device';
 import {
   MIN_TELEPORT_DEPTH_METERS,
@@ -179,19 +179,18 @@ export function createActions(deps: GameActionsDeps): GameActions {
   }
 
   /**
-   * Bought equipment — scanners, dynamite, guns, teleporters, containers — takes
-   * a cargo slot, so the bay itself can refuse the sale. Checked before the money
-   * changes hands, and only at the depot, so the "come back to the surface"
-   * refusal still comes first.
+   * Bought equipment — scanners, dynamite, guns, teleporters, containers — counts
+   * toward the same capacity as ore, so a full bay can refuse the sale. Checked
+   * before the money changes hands, and only at the depot, so the "come back to
+   * the surface" refusal still comes first.
    */
   function buyDeployable(item: InventoryItem, price: number, fullMessage: string, loadedMessage: string): void {
-    if (atSurface() && isFullFor(state.player.inventory, item.kind)) {
+    if (atSurface() && isFull(state.player.inventory, state.player.cargoMax)) {
       audio.alarm();
       return toast(fullMessage);
     }
     spend(price, () => {
-      const loaded = addItem(state.player.inventory, item);
-      if (loaded) state.player.inventory = loaded;
+      state.player.inventory = addItem(state.player.inventory, item);
     }, loadedMessage);
   }
 

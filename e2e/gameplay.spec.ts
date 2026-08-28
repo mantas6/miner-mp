@@ -157,7 +157,7 @@ test.describe('gameplay', () => {
     await expect(page.locator('#toast')).toContainText('Scanner deployed');
     // The device left the bay with the press, and the slot with it.
     await expect(page.locator('#scannerSlotBtn')).toHaveCount(0);
-    await expect(page.locator('#inventoryToggleBtn')).toContainText('0/5');
+    await expect(page.locator('#inventoryToggleBtn')).toContainText('0/20');
     // The keyboard is back on the mine, so play resumes without a second click.
     await expect(canvas).toBeFocused();
   });

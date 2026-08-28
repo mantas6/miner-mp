@@ -60,8 +60,8 @@ export interface ShopUpgradeEntry {
 const UPGRADE_PRESENTATION: Record<PlayerUpgradeId, Omit<ShopUpgradeEntry, 'id' | 'label'>> = {
   cargo: {
     icon: 'cargo',
-    purpose: 'Carry more ore before returning to sell.',
-    unit: 'slots',
+    purpose: 'Carry more cargo before returning to sell.',
+    unit: 'items',
     cost: cargoCost
   },
   tank: {
@@ -150,7 +150,7 @@ export const SHOP_ITEMS = [
     id: 'container',
     icon: 'container',
     title: 'Cargo Container',
-    copy: `Permanent ${CARGO_CONTAINER.slots}-slot store. Set it down on cleared ground from the inventory panel, then press it from an adjacent tile to move stacks between it and the cargo bay. It keeps what it holds through death and reload; ore taken back aboard still obeys the cargo-bay limit.`,
+    copy: `Permanent ${CARGO_CONTAINER.capacity}-item store. Set it down on cleared ground from the inventory panel, then press it from an adjacent tile to move stacks between it and the cargo bay. It keeps what it holds through death and reload; anything taken back aboard still obeys the cargo-bay limit.`,
     price: ECONOMY.container.price
   }
 ] as const;

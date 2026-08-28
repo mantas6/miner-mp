@@ -12,20 +12,19 @@
 // bay uses. All this module adds is the two things a crate has and a bay does not:
 // a position in the world, and a transfer across the gap between the two.
 //
-// One rule survives the transfer: `cargoMax`. Ore may be stored without limit,
-// because a crate is not a ship, but taking it back aboard is still capped by the
-// cargo-bay upgrade — otherwise a $200 crate would quietly buy every level of it.
+// The crate has its own item-count capacity, larger than a fresh bay so it earns
+// its price as a stash. Taking anything back aboard is still capped by the ship's
+// own `cargoMax`, counting every item the bay already holds — otherwise a crate
+// would quietly buy the player unlimited carrying capacity.
 //
 // Everything here is pure and DOM-free.
 
 import {
-  INVENTORY_SLOTS,
   addItem,
-  countOres,
   createInventory,
   findStack,
-  isOreKind,
   removeItem,
+  roomLeft,
   type Inventory,
   type InventoryItem,
   type InventoryItemKind
@@ -33,8 +32,12 @@ import {
 import { placementRefusal, type PlacementCopy } from './placement';
 
 export const CARGO_CONTAINER = Object.freeze({
-  /** Slots inside one crate. The bay's own count: one is a spare of the other. */
-  slots: INVENTORY_SLOTS,
+  /**
+   * Total items one crate holds, across every stack inside it. Generous next to a
+   * fresh bay, because a crate is bought for storage and never spent — a single
+   * $200 purchase keeps paying out for the rest of the save.
+   */
+  capacity: 50,
   /**
    * Crates that may stand in the mine at once. A soft cap, like the scanner's: it
    * keeps a save bounded, and a mine wallpapered with storage is a map the player
@@ -66,7 +69,7 @@ export interface PlacedContainer {
 }
 
 export function createPlacedContainer(x: number, y: number): PlacedContainer {
-  return {x, y, inventory: createInventory(CARGO_CONTAINER.slots)};
+  return {x, y, inventory: createInventory()};
 }
 
 /** The crate standing on this tile, or `null`. */
@@ -132,9 +135,8 @@ export type ContainerTransfer =
   | {ok: false; refusal: string};
 
 /**
- * Move a whole stack of `kind` from `from` into `to`, up to `limit` units.
- * `null` when the stack is not there, or when the destination has neither an
- * open stack of that kind nor a free slot.
+ * Move a stack of `kind` from `from` into `to`, up to `limit` units. `null` when
+ * the stack is not there or `limit` is nothing, so the caller can word why.
  */
 function moveStack(
   from: Inventory,
@@ -147,28 +149,32 @@ function moveStack(
   const moved = Math.min(stack.count, limit);
   if (moved <= 0) return null;
   const loaded = addItem(to, stack.item, moved);
-  if (!loaded) return null;
   return {from: removeItem(from, kind, moved), to: loaded, moved, item: stack.item};
 }
 
 /**
- * Bay → crate. The whole stack goes in one press: a menu that moved one unit per
- * click would ask for forty presses to empty a full load of ore.
+ * Bay → crate, capped by the crate's own item capacity. A partial load is a
+ * success — the crate takes what fits and the rest stays aboard — but the whole
+ * stack goes in one press when there is room, because a menu that moved one unit
+ * per click would ask for forty presses to empty a full load of ore.
  */
 export function storeInContainer(ship: Inventory, container: Inventory, kind: InventoryItemKind): ContainerTransfer {
-  const moved = moveStack(ship, container, kind, Infinity);
-  if (!moved) {
+  const room = roomLeft(container, CARGO_CONTAINER.capacity);
+  if (room <= 0) {
     return findStack(ship, kind)
       ? {ok: false, refusal: 'Container is full. Take something out before storing more.'}
       : {ok: false, refusal: 'Nothing of that kind is aboard.'};
   }
+  const moved = moveStack(ship, container, kind, room);
+  if (!moved) return {ok: false, refusal: 'Nothing of that kind is aboard.'};
   return {ok: true, ship: moved.from, container: moved.to, moved: moved.moved, label: moved.item.label};
 }
 
 /**
- * Crate → bay, capped by the cargo-bay upgrade for ore. A partial load is a
- * success: taking four of the six ore a crate holds is what a ship one slot short
- * of `cargoMax` should be able to do, and the rest stays where it was.
+ * Crate → bay, capped by the cargo-bay upgrade. Room is measured against every
+ * item already aboard, so equipment counts the same as ore. A partial load is a
+ * success: taking two of the ten ore a crate holds is what a ship two short of
+ * `cargoMax` should be able to do, and the rest stays where it was.
  */
 export function takeFromContainer(
   ship: Inventory,
@@ -176,15 +182,11 @@ export function takeFromContainer(
   kind: InventoryItemKind,
   cargoMax: number
 ): ContainerTransfer {
-  const room = isOreKind(kind) ? cargoMax - countOres(ship) : Infinity;
+  const room = roomLeft(ship, cargoMax);
   if (room <= 0) {
-    return {ok: false, refusal: `Cargo bay is full at ${cargoMax} ore. Sell some before taking more aboard.`};
+    return {ok: false, refusal: `Cargo bay is full at ${cargoMax} items. Sell or unload before taking more aboard.`};
   }
   const moved = moveStack(container, ship, kind, room);
-  if (!moved) {
-    return findStack(container, kind)
-      ? {ok: false, refusal: 'Cargo bay is full. Free a slot before taking that aboard.'}
-      : {ok: false, refusal: 'Nothing of that kind is in the container.'};
-  }
+  if (!moved) return {ok: false, refusal: 'Nothing of that kind is in the container.'};
   return {ok: true, ship: moved.to, container: moved.from, moved: moved.moved, label: moved.item.label};
 }

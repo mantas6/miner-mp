@@ -7,7 +7,9 @@ export const STARTING = Object.freeze({
   fuelMax: 100,
   hull: 100,
   hullMax: 100,
-  cargoMax: 10,
+  // Cargo capacity is a total item count now, not a slot count: the bay holds up
+  // to this many units across every stack, ore and equipment alike.
+  cargoMax: 20,
   drill: 1,
   visibility: 3
 });
@@ -83,7 +85,7 @@ export const ENEMY = Object.freeze({
 export const ECONOMY = Object.freeze({
   refuel: Object.freeze({ base: 20, perTank: 0.35 }),
   repair: Object.freeze({ base: 30, perHull: 0.45 }),
-  cargo: Object.freeze({ base: 120, growth: 1.32, step: 5 }),
+  cargo: Object.freeze({ base: 120, growth: 1.32, step: 10 }),
   tank: Object.freeze({ base: 150, growth: 1.34, step: 20 }),
   hull: Object.freeze({ base: 180, growth: 1.38, step: 20 }),
   drill: Object.freeze({ base: 200, growth: 1.55, step: 1 }),

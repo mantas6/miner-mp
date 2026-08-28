@@ -20,7 +20,7 @@ describe('developer player upgrades', () => {
     expect(applyPlayerUpgrade(state.player, 'visibility')).toBe(true);
 
     expect(state.cash).toBe(cash);
-    expect(state.player).toMatchObject({ cargoMax: 15, fuel: 120, fuelMax: 120, hull: 120, hullMax: 120, drill: 2, visibility: 4 });
+    expect(state.player).toMatchObject({ cargoMax: 30, fuel: 120, fuelMax: 120, hull: 120, hullMax: 120, drill: 2, visibility: 4 });
   });
 
   it('stops safely at each category cap and reports max levels', () => {
@@ -35,7 +35,7 @@ describe('developer player upgrades', () => {
       expect(getPlayerUpgradeProgress(state.player, id).atMax).toBe(true);
       expect(applyPlayerUpgrade(state.player, id)).toBe(false);
     }
-    expect(getPlayerUpgradeProgress(state.player, 'cargo')).toMatchObject({ level: 198, maxLevel: 198 });
+    expect(getPlayerUpgradeProgress(state.player, 'cargo')).toMatchObject({ level: 98, maxLevel: 98 });
   });
 
   it('continues saved fuel and hull progression beyond the former caps', () => {

@@ -23,10 +23,8 @@ function open(): HTMLDialogElement {
   const rendered = render(<CargoScreen />);
   act(() => {
     const store = uiStore.getState();
-    store.setContainerSlots(buildInventorySlots(
-      addItem(createInventory(CARGO_CONTAINER.slots), oreItem(COPPER), 4)!
-    ));
-    store.setInventorySlots(buildInventorySlots(addItem(createInventory(), DYNAMITE_ITEM, 2)!));
+    store.setContainerSlots(buildInventorySlots(addItem(createInventory(), oreItem(COPPER), 4)));
+    store.setInventorySlots(buildInventorySlots(addItem(createInventory(), DYNAMITE_ITEM, 2)));
     store.setActiveOverlay('container');
   });
   return rendered.container.querySelector('dialog')!;
@@ -57,14 +55,13 @@ describe('cargo transfer dialog', () => {
     expect(stack('store', 'dynamite').textContent).toContain('×2');
   });
 
-  it('shows every slot of the crate, empty ones included', () => {
+  it('lists only the stacks aboard and heads each side with how full it is', () => {
     open();
 
-    expect(document.querySelectorAll('#containerSlots > li')).toHaveLength(CARGO_CONTAINER.slots);
-    // Four of the five say so rather than saying nothing.
-    const empty = [...document.querySelectorAll('#containerSlots > li')]
-      .filter(slot => slot.textContent === 'Empty');
-    expect(empty).toHaveLength(CARGO_CONTAINER.slots - 1);
+    // One copper stack in the crate, one dynamite stack in the bay.
+    expect(document.querySelectorAll('#containerSlots > li')).toHaveLength(1);
+    expect(document.querySelectorAll('#shipSlots > li')).toHaveLength(1);
+    expect(document.getElementById('containerSlots-title')?.textContent).toContain(`4/${CARGO_CONTAINER.capacity}`);
   });
 
   it('is not built at all until it is opened, and drops its contents when it shuts', () => {
@@ -116,10 +113,13 @@ describe('cargo transfer dialog', () => {
     open();
 
     act(() => {
-      uiStore.getState().setContainerSlots(buildInventorySlots(createInventory(CARGO_CONTAINER.slots)));
+      uiStore.getState().setContainerSlots(buildInventorySlots(createInventory()));
     });
 
     expect(document.querySelector('[data-cargo-action="take"]')).toBeNull();
-    expect(document.querySelectorAll('#containerSlots > li')).toHaveLength(CARGO_CONTAINER.slots);
+    // Empty now: no stacks, just the one "Empty" placeholder row.
+    const rows = [...document.querySelectorAll('#containerSlots > li')];
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toBe('Empty');
   });
 });

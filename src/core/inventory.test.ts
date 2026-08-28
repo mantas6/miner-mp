@@ -1,22 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { ORES } from '../../shared/constants';
 import {
-  INVENTORY_SLOTS,
+  INVENTORY_CAPACITY,
   addItem,
   addOre,
   countItem,
   countOres,
   createInventory,
   findStack,
-  hasRoomFor,
   inventoryStacks,
-  isFullFor,
+  isFull,
   isOreKind,
   oreItem,
   oreKind,
   oreStacks,
   removeItem,
   removeOres,
+  roomLeft,
   totalItems,
   type Inventory
 } from './inventory';
@@ -26,46 +26,41 @@ const copper = ORES[1];
 const silver = ORES[2];
 
 /** Fill the bay with one unit of each of the first `count` ore types. */
-function withOreTypes(count: number, cargoMax = 99): Inventory {
+function withOreTypes(count: number, capacity = 99): Inventory {
   let inventory = createInventory();
-  for (const ore of ORES.slice(0, count)) inventory = addOre(inventory, ore, cargoMax)!;
+  for (const ore of ORES.slice(0, count)) inventory = addOre(inventory, ore, capacity)!;
   return inventory;
 }
 
 describe('a fresh inventory', () => {
-  it('has five empty slots', () => {
+  it('starts empty with a positive item capacity', () => {
     const inventory = createInventory();
 
-    expect(INVENTORY_SLOTS).toBe(5);
-    expect(inventory).toHaveLength(5);
-    expect(inventory.every(slot => slot === null)).toBe(true);
+    expect(INVENTORY_CAPACITY).toBeGreaterThan(0);
+    expect(inventory).toHaveLength(0);
     expect(totalItems(inventory)).toBe(0);
     expect(inventoryStacks(inventory)).toEqual([]);
-  });
-
-  it('takes the slot count it is asked for', () => {
-    expect(createInventory(2)).toHaveLength(2);
-    expect(createInventory(0)).toHaveLength(0);
+    expect(roomLeft(inventory, INVENTORY_CAPACITY)).toBe(INVENTORY_CAPACITY);
   });
 });
 
 describe('stacking', () => {
-  it('puts the first unit of a kind in the first empty slot', () => {
-    const inventory = addItem(createInventory(), oreItem(coal))!;
+  it('puts the first unit of a kind in a new stack', () => {
+    const inventory = addItem(createInventory(), oreItem(coal));
 
+    expect(inventory).toHaveLength(1);
     expect(inventory[0]).toEqual({kind: oreKind('Coal'), count: 1, item: oreItem(coal)});
-    expect(inventory.slice(1).every(slot => slot === null)).toBe(true);
   });
 
-  it('grows the open stack instead of claiming a second slot', () => {
+  it('grows the open stack instead of opening a second', () => {
     let inventory = createInventory();
-    for (let i = 0; i < 4; i++) inventory = addItem(inventory, oreItem(coal))!;
+    for (let i = 0; i < 4; i++) inventory = addItem(inventory, oreItem(coal));
 
     expect(countItem(inventory, oreKind('Coal'))).toBe(4);
     expect(inventoryStacks(inventory)).toHaveLength(1);
   });
 
-  it('gives every kind its own slot, in arrival order', () => {
+  it('gives every kind its own stack, in arrival order', () => {
     const inventory = withOreTypes(3);
 
     expect(inventoryStacks(inventory).map(stack => stack.item.label)).toEqual(['Coal', 'Copper', 'Silver']);
@@ -74,7 +69,7 @@ describe('stacking', () => {
   });
 
   it('adds several units at once, and ignores a non-positive count', () => {
-    const inventory = addItem(createInventory(), oreItem(copper), 3)!;
+    const inventory = addItem(createInventory(), oreItem(copper), 3);
 
     expect(countItem(inventory, oreKind('Copper'))).toBe(3);
     expect(addItem(inventory, oreItem(copper), 0)).toBe(inventory);
@@ -83,45 +78,45 @@ describe('stacking', () => {
 
   it('never mutates the inventory it was handed', () => {
     const before = createInventory();
-    const after = addItem(before, oreItem(coal))!;
+    const after = addItem(before, oreItem(coal));
 
-    expect(before.every(slot => slot === null)).toBe(true);
+    expect(before).toHaveLength(0);
     expect(after).not.toBe(before);
   });
 });
 
 describe('a full inventory', () => {
-  it('refuses a new kind once every slot is claimed', () => {
-    const inventory = withOreTypes(INVENTORY_SLOTS);
+  it('reports full once the total item count reaches capacity', () => {
+    const inventory = addItem(createInventory(), oreItem(coal), 5);
 
-    expect(isFullFor(inventory, oreKind('Emerald'))).toBe(true);
-    expect(addItem(inventory, oreItem(ORES[5]))).toBeNull();
+    expect(isFull(inventory, 5)).toBe(true);
+    expect(roomLeft(inventory, 5)).toBe(0);
+    expect(isFull(inventory, 6)).toBe(false);
+    expect(roomLeft(inventory, 6)).toBe(1);
   });
 
-  it('still accepts a kind that already has a stack', () => {
-    const inventory = withOreTypes(INVENTORY_SLOTS);
+  it('measures fullness across every stack, not by the number of kinds', () => {
+    const inventory = withOreTypes(3, 3);
 
-    expect(hasRoomFor(inventory, oreKind('Coal'))).toBe(true);
-    expect(isFullFor(inventory, oreKind('Coal'))).toBe(false);
-    expect(countItem(addItem(inventory, oreItem(coal))!, oreKind('Coal'))).toBe(2);
+    expect(totalItems(inventory)).toBe(3);
+    expect(isFull(inventory, 3)).toBe(true);
   });
 });
 
 describe('removing', () => {
-  it('takes units off a stack and frees the slot when it empties', () => {
-    let inventory = addItem(createInventory(), oreItem(coal), 3)!;
+  it('takes units off a stack and drops the stack when it empties', () => {
+    let inventory = addItem(createInventory(), oreItem(coal), 3);
 
     inventory = removeItem(inventory, oreKind('Coal'), 2);
     expect(countItem(inventory, oreKind('Coal'))).toBe(1);
 
     inventory = removeItem(inventory, oreKind('Coal'));
     expect(countItem(inventory, oreKind('Coal'))).toBe(0);
-    expect(inventory[0]).toBeNull();
-    expect(inventory).toHaveLength(INVENTORY_SLOTS);
+    expect(inventory).toHaveLength(0);
   });
 
   it('drops a whole stack when more is taken than it holds', () => {
-    const inventory = removeItem(addItem(createInventory(), oreItem(coal), 2)!, oreKind('Coal'), 9);
+    const inventory = removeItem(addItem(createInventory(), oreItem(coal), 2), oreKind('Coal'), 9);
 
     expect(totalItems(inventory)).toBe(0);
   });
@@ -140,38 +135,37 @@ describe('ore', () => {
     expect(isOreKind('dynamite')).toBe(false);
   });
 
-  it('counts every ore unit across the slots', () => {
-    let inventory = addItem(createInventory(), oreItem(coal), 4)!;
-    inventory = addItem(inventory, oreItem(silver), 2)!;
+  it('counts every ore unit across the stacks', () => {
+    let inventory = addItem(createInventory(), oreItem(coal), 4);
+    inventory = addItem(inventory, oreItem(silver), 2);
 
     expect(countOres(inventory)).toBe(6);
     expect(oreStacks(inventory).map(stack => stack.item.value)).toEqual([coal.value, silver.value]);
   });
 
-  it('caps loading at the cargo bay upgrade, even with slots to spare', () => {
+  it('caps loading at the cargo-bay capacity, whatever the mix of kinds', () => {
     let inventory = createInventory();
     for (let i = 0; i < 3; i++) inventory = addOre(inventory, coal, 3)!;
 
     expect(countOres(inventory)).toBe(3);
     expect(addOre(inventory, coal, 3)).toBeNull();
-    // A different ore has an empty slot waiting, and is refused all the same.
+    // A different ore is refused the same way once the bay is full.
     expect(addOre(inventory, copper, 3)).toBeNull();
     expect(addOre(inventory, copper, 4)).not.toBeNull();
   });
 
-  it('refuses ore that has no slot even when the bay is under its cap', () => {
-    const inventory = withOreTypes(INVENTORY_SLOTS, 99);
+  it('lets any number of ore kinds share the bay while there is room', () => {
+    const inventory = withOreTypes(6, 99);
 
-    expect(countOres(inventory)).toBe(INVENTORY_SLOTS);
-    expect(addOre(inventory, ORES[6], 99)).toBeNull();
+    expect(inventoryStacks(inventory)).toHaveLength(6);
+    expect(countOres(inventory)).toBe(6);
   });
 
-  it('clears every ore stack on a sale, keeping the slot count', () => {
+  it('clears every ore stack on a sale', () => {
     const sold = removeOres(withOreTypes(3));
 
     expect(countOres(sold)).toBe(0);
-    expect(sold).toHaveLength(INVENTORY_SLOTS);
-    expect(sold.every(slot => slot === null)).toBe(true);
+    expect(sold).toHaveLength(0);
   });
 
   it('leaves an inventory with nothing to sell untouched', () => {

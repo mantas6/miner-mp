@@ -42,6 +42,10 @@ import type { GameState, GameStats } from './core/types';
 //   * v10: `containers` — the crates carried in the bay — and `cargoContainers`,
 //     the ones standing in the mine *with their contents*, which is the one place
 //     a save records individual stacks rather than a count.
+//   * v11: cargo capacity became a total item count rather than a slot count, so
+//     its base and per-level step both moved. `cargoMax` is no longer trusted
+//     verbatim on load: the number of cargo-bay upgrades the save paid for is
+//     recovered and rebuilt on the new scale, so older saves keep their levels.
 // Older blobs still load; they just restore a pristine mine, and pre-v5 saves
 // start at the depot the way they always did.
 //
@@ -76,11 +80,15 @@ interface SavedProgress {
 }
 
 export const SAVE_KEY = 'moleload-progress-v1';
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 /** A stored stack is a count, not a licence to write an unbounded number. */
 const MAX_SAVED_STACK = 9999;
-const LEGACY_CARGO_STEP = 10;
-const CARGO_BALANCE_SAVE_VERSION = 2;
+/** Cargo-bay upgrade maths as older saves stored it, so a save keeps its levels. */
+const LEGACY_CARGO_START = 10;      // starting capacity before the item-count rebalance
+const LEGACY_CARGO_STEP = 10;       // per-level step in v1 saves
+const V2_CARGO_STEP = 5;            // per-level step in v2..v10 saves
+const CARGO_BALANCE_SAVE_VERSION = 2;   // v1 → v2: cargo step 10 → 5
+const CARGO_REBALANCE_SAVE_VERSION = 11; // v10 → v11: slots → total item count
 
 export function numeric(value: unknown, fallback: number, min=0, max=Number.MAX_SAFE_INTEGER): number {
   const n = Number(value);
@@ -211,11 +219,17 @@ export function load(state: GameState): void {
     state.cash = numeric(save.cash, state.cash, 0);
     p.fuelMax = numeric(save.fuelMax, p.fuelMax, LIMITS.fuelMax.min, LIMITS.fuelMax.max);
     p.hullMax = numeric(save.hullMax, p.hullMax, LIMITS.hullMax.min, LIMITS.hullMax.max);
-    const savedCargoMax = numeric(save.cargoMax, p.cargoMax, LIMITS.cargoMax.min, LIMITS.cargoMax.max);
-    const cargoUpgradeLevel = Math.max(0, Math.round((savedCargoMax - STARTING.cargoMax) / LEGACY_CARGO_STEP));
-    p.cargoMax = numeric(save.version, 1, 1) < CARGO_BALANCE_SAVE_VERSION
-      ? STARTING.cargoMax + cargoUpgradeLevel * ECONOMY.cargo.step
-      : savedCargoMax;
+    // Cargo capacity is a total item count now, and its base and step both moved
+    // in the rebalance. Rather than trust the stored number, recover how many
+    // cargo-bay upgrades the save paid for — using the base/step that save's
+    // version used — and rebuild the capacity on today's scale, so a returning
+    // player keeps every level they bought.
+    const version = numeric(save.version, 1, 1);
+    const rawCargoMax = numeric(save.cargoMax, STARTING.cargoMax, 0, LIMITS.cargoMax.max);
+    const cargoLevel = version < CARGO_REBALANCE_SAVE_VERSION
+      ? Math.max(0, Math.round((rawCargoMax - LEGACY_CARGO_START) / (version < CARGO_BALANCE_SAVE_VERSION ? LEGACY_CARGO_STEP : V2_CARGO_STEP)))
+      : Math.max(0, Math.round((rawCargoMax - STARTING.cargoMax) / ECONOMY.cargo.step));
+    p.cargoMax = Math.max(LIMITS.cargoMax.min, Math.min(LIMITS.cargoMax.max, STARTING.cargoMax + cargoLevel * ECONOMY.cargo.step));
     p.drill = numeric(save.drill, p.drill, LIMITS.drill.min, LIMITS.drill.max);
     p.visibility = Math.floor(numeric(save.visibility, p.visibility, LIMITS.visibility.min, LIMITS.visibility.max));
     // Equipment comes back into the bay the run starts with; `run.resume()` clears

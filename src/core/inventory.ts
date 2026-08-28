@@ -1,30 +1,34 @@
-// The ship's slot-based inventory. Pure, DOM-free, and immutable.
+// The ship's cargo bay. Pure, DOM-free, and immutable.
 //
-// The bay is a fixed row of slots, each either empty or holding one stack of a
-// single item kind. Items of the same kind always land in the stack that is
-// already open for them, so a kind never occupies two slots and "is there room"
-// is a question about one kind at a time, not about free slots alone.
+// The bay is a list of stacks, each holding one item kind. Items of the same
+// kind always land in the stack that is already open for them, so a kind never
+// occupies two stacks. What bounds the bay is not the number of stacks but the
+// total number of *items* across them: capacity is an item count, so "is there
+// room" is a question about the sum of every stack, not about how many kinds are
+// aboard. A bay whose capacity is 20 holds twenty units, in one stack or ten.
 //
 // Every helper returns a new inventory rather than mutating the one it was given.
 // That is what makes the 60 Hz HUD sync cheap: the array's identity changes
 // exactly when its contents do, so the UI can skip rebuilding the panel by
 // comparing one reference.
 //
-// Ores are the only kind stored here today. Their stacks carry the ore's own
-// label, colour and unit price, so selling and the cargo readouts never have to
-// look a name up in a table that a co-op peer's world might not agree with.
-// `InventoryItemKind` is a namespaced string union, so equipment kinds —
-// 'dynamite', 'scanner', 'gun', 'teleporter', 'container' — sit beside the ore
-// stacks without disturbing anything below.
+// Ores are the richest kind stored here, carrying their own label, colour and
+// unit price so selling and the cargo readouts never have to look a name up in a
+// table that a co-op peer's world might not agree with. `InventoryItemKind` is a
+// namespaced string union, so equipment kinds — 'dynamite', 'scanner', 'gun',
+// 'teleporter', 'container' — sit beside the ore stacks and count toward the same
+// capacity: a bay full of dynamite has no room for ore, and vice versa.
 //
 // The module is deliberately not "the ship's bay" in its types: a cargo container
-// left in the mine is another row of these slots, obeying the same stacking rules,
-// so `core/cargo-container.ts` reuses every helper here rather than restating them.
+// left in the mine is another list of these stacks, obeying the same item-count
+// capacity, so `core/cargo-container.ts` reuses every helper here rather than
+// restating them.
 
+import { STARTING } from './balance';
 import type { Ore } from './types';
 
-/** Slots a fresh cargo bay ships with. */
-export const INVENTORY_SLOTS = 5;
+/** Total item count a fresh cargo bay can hold, before any Cargo Bay upgrade. */
+export const INVENTORY_CAPACITY = STARTING.cargoMax;
 
 /** Namespaces one ore type's stack; the suffix is the ore's own name. */
 const ORE_KIND_PREFIX = 'ore:';
@@ -48,19 +52,16 @@ export interface InventoryItem {
 
 export interface InventoryStack {
   kind: InventoryItemKind;
-  /** Units held. Always at least 1; an emptied stack becomes `null`. */
+  /** Units held. Always at least 1; an emptied stack drops out of the list. */
   count: number;
   item: InventoryItem;
 }
 
-/** One slot: a stack, or nothing. */
-export type InventorySlot = InventoryStack | null;
+/** The whole bay: one stack per kind, in arrival order. Never holds empty gaps. */
+export type Inventory = readonly InventoryStack[];
 
-/** The whole bay. Its length is the slot count and never changes. */
-export type Inventory = readonly InventorySlot[];
-
-export function createInventory(slots: number = INVENTORY_SLOTS): Inventory {
-  return Array.from({length: Math.max(0, slots)}, () => null);
+export function createInventory(): Inventory {
+  return [];
 }
 
 export function oreKind(name: string): OreKind {
@@ -76,72 +77,72 @@ export function oreItem(ore: Ore): InventoryItem {
   return {kind: oreKind(ore.name), label: ore.name, color: ore.color, value: ore.value};
 }
 
-/** The occupied slots, in slot order. */
+/** Every stack aboard, in arrival order. */
 export function inventoryStacks(inventory: Inventory): InventoryStack[] {
-  return inventory.filter((slot): slot is InventoryStack => slot !== null);
+  return [...inventory];
 }
 
 export function findStack(inventory: Inventory, kind: InventoryItemKind): InventoryStack | null {
-  return inventory.find(slot => slot?.kind === kind) ?? null;
+  return inventory.find(stack => stack.kind === kind) ?? null;
 }
 
 export function countItem(inventory: Inventory, kind: InventoryItemKind): number {
   return findStack(inventory, kind)?.count ?? 0;
 }
 
-/** Units held across every slot. */
+/** Units held across every stack — the number capacity is measured against. */
 export function totalItems(inventory: Inventory): number {
-  return inventory.reduce((sum, slot) => sum + (slot?.count ?? 0), 0);
+  return inventory.reduce((sum, stack) => sum + stack.count, 0);
 }
 
-/** Whether this kind has a stack open, or an empty slot to open one in. */
-export function hasRoomFor(inventory: Inventory, kind: InventoryItemKind): boolean {
-  return inventory.some(slot => slot === null || slot.kind === kind);
+/** Units this bay could still take before it hits `capacity`. */
+export function roomLeft(inventory: Inventory, capacity: number): number {
+  return Math.max(0, capacity - totalItems(inventory));
 }
 
-/** The bay cannot take another unit of this kind: no stack and no free slot. */
-export function isFullFor(inventory: Inventory, kind: InventoryItemKind): boolean {
-  return !hasRoomFor(inventory, kind);
+/** Whether the bay is holding its whole capacity already. */
+export function isFull(inventory: Inventory, capacity: number): boolean {
+  return roomLeft(inventory, capacity) <= 0;
 }
 
 /**
- * Stack `count` units of `item`, in its open stack or the first empty slot.
- * Returns `null` — and changes nothing — when neither exists.
+ * Stack up to `count` units of `item`, growing its open stack or opening a new
+ * one, without any capacity limit — callers that care enforce it first (see
+ * `addOre` and the container transfers). A non-positive count changes nothing.
  */
-export function addItem(inventory: Inventory, item: InventoryItem, count = 1): Inventory | null {
+export function addItem(inventory: Inventory, item: InventoryItem, count = 1): Inventory {
   if (count <= 0) return inventory;
-  const existing = inventory.findIndex(slot => slot?.kind === item.kind);
-  const index = existing === -1 ? inventory.indexOf(null) : existing;
-  if (index === -1) return null;
+  const index = inventory.findIndex(stack => stack.kind === item.kind);
   const next = [...inventory];
-  const slot = next[index];
-  next[index] = slot ? {...slot, count: slot.count + count} : {kind: item.kind, count, item};
+  if (index === -1) next.push({kind: item.kind, count, item});
+  else next[index] = {...next[index], count: next[index].count + count};
   return next;
 }
 
-/** Take up to `count` units out; a stack drained to zero frees its slot. */
+/** Take up to `count` units out; a stack drained to zero drops out of the list. */
 export function removeItem(inventory: Inventory, kind: InventoryItemKind, count = 1): Inventory {
-  const index = inventory.findIndex(slot => slot?.kind === kind);
+  const index = inventory.findIndex(stack => stack.kind === kind);
   if (index === -1 || count <= 0) return inventory;
-  const slot = inventory[index]!;
+  const stack = inventory[index];
+  if (stack.count <= count) return inventory.filter((_, i) => i !== index);
   const next = [...inventory];
-  next[index] = slot.count > count ? {...slot, count: slot.count - count} : null;
+  next[index] = {...stack, count: stack.count - count};
   return next;
 }
 
-/** Empty every slot whose kind matches. */
+/** Drop every stack whose kind matches. */
 export function removeMatching(inventory: Inventory, matches: (kind: InventoryItemKind) => boolean): Inventory {
-  if (!inventory.some(slot => slot !== null && matches(slot.kind))) return inventory;
-  return inventory.map(slot => slot !== null && matches(slot.kind) ? null : slot);
+  if (!inventory.some(stack => matches(stack.kind))) return inventory;
+  return inventory.filter(stack => !matches(stack.kind));
 }
 
-// --- Ore, the one kind the bay holds today ---------------------------------
+// --- Ore, the sellable cargo the bay is measured for -----------------------
 
 export function oreStacks(inventory: Inventory): InventoryStack[] {
-  return inventoryStacks(inventory).filter(stack => isOreKind(stack.kind));
+  return inventory.filter(stack => isOreKind(stack.kind));
 }
 
-/** Ore units aboard, which is what the cargo gauge and `cargoMax` count. */
+/** Ore units aboard, which is what the cargo value totals and the depot sells. */
 export function countOres(inventory: Inventory): number {
   return oreStacks(inventory).reduce((sum, stack) => sum + stack.count, 0);
 }
@@ -152,11 +153,11 @@ export function removeOres(inventory: Inventory): Inventory {
 }
 
 /**
- * Load one mined ore. It needs a slot *and* room under the cargo-bay upgrade,
- * so the `cargoMax` purchase keeps meaning what it always did. Returns `null`
- * when either limit refuses it.
+ * Load one mined ore, refused once the bay is at capacity. Capacity counts every
+ * item aboard, ore and equipment alike, so a bay crammed with tools mines less.
+ * Returns `null` — and changes nothing — when there is no room.
  */
-export function addOre(inventory: Inventory, ore: Ore, cargoMax: number): Inventory | null {
-  if (countOres(inventory) >= cargoMax) return null;
+export function addOre(inventory: Inventory, ore: Ore, capacity: number): Inventory | null {
+  if (isFull(inventory, capacity)) return null;
   return addItem(inventory, oreItem(ore));
 }

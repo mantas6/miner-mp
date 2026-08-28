@@ -10,7 +10,7 @@ import { START_Y, WORLD_W } from '../../shared/constants';
 import { ECONOMY, FUEL, HULL } from '../core/balance';
 import { claimArtifact } from '../core/artifacts';
 import { beginExtraction, completeExtractionAtDepot } from '../core/extraction-phase';
-import { addOre, isFullFor, oreKind } from '../core/inventory';
+import { addOre } from '../core/inventory';
 import { fuelAfterMovement, isOpenSpaceDestination, movementDestination, sprintCrashDamage, sprintMomentumAfterMove } from '../core/movement';
 import type {
   AirTile,
@@ -175,15 +175,13 @@ export function createMovement(deps: GameMovementDeps): GameMovement {
       return 'blocked';
     }
     if (tile.type === 'ore') {
-      // Ore needs a stack (or a free slot) *and* room under the cargo-bay
-      // upgrade; either refusal leaves the seam standing with one hit left.
+      // Ore needs room under the cargo-bay upgrade, measured in total items
+      // aboard; a full bay leaves the seam standing with one hit left.
       const loaded = addOre(player.inventory, tile.ore, player.cargoMax);
       if (!loaded) {
         tile.hp = 1;
         grid.set(nx, ny, tile);
-        toast(isFullFor(player.inventory, oreKind(tile.ore.name))
-          ? 'No free inventory slot. Go sell at the surface.'
-          : 'Cargo bay full. Go sell at the surface.');
+        toast('Cargo bay full. Go sell at the surface.');
         audio.alarm();
         return 'blocked';
       }

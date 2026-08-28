@@ -263,10 +263,12 @@ zooming the camera with the wheel or a trackpad.
 
 - You start with limited cash, fuel, hull, cargo capacity, and drill power.
 - Dig ore, return to the surface, and sell cargo for cash.
-- The cargo bay is five inventory slots (`src/core/inventory.ts`), shown as a
-  collapsible HUD panel. Each ore type stacks in one slot, so a load needs both a
-  free slot (or a stack already open for that ore) and room under the Cargo Bay
-  upgrade's total ore cap. Selling empties every ore stack at once.
+- The cargo bay (`src/core/inventory.ts`) holds a total *item count*, not a fixed
+  number of slots, shown as a collapsible HUD panel. Each ore type stacks in one
+  row, but what limits a load is the sum of every stack against the Cargo Bay
+  upgrade's capacity — equipment counts toward it too, so a bay crammed with tools
+  mines less ore. A fresh bay holds 20 items; each Cargo Bay level adds 10, up to
+  1000. Selling empties every ore stack at once and frees that room again.
 - Refuel and repair at the surface depot.
 - The depot shop sells five upgrades — Cargo Bay, Fuel Tank, Hull, Drill, Sensor
   Array — plus the consumables: dynamite, teleporters, scanners, Linebreaker guns,
@@ -286,13 +288,14 @@ zooming the camera with the wheel or a trackpad.
   behind. The trip up costs the item; the trip back is free.
 - Cargo containers (`src/core/cargo-container.ts`) are the one purchase that is
   never used up. Set one down on explored, cleared ground from its inventory slot
-  and it becomes five more inventory slots standing in the mine, obeying the same
-  stacking rules as the bay. Press it from an adjacent tile — or `C` while on or
-  beside it — to open a two-column transfer menu; a press on a stack sends it to
-  the other side. A crate keeps what it holds through death, reload and the sale of
-  everything aboard, which makes it the only way to protect ore from a lost run.
-  Ore taken back out still obeys the Cargo Bay upgrade's total ore cap, so a crate
-  buys storage, never carrying capacity. Six may stand in the mine at once.
+  and it becomes a 50-item store standing in the mine, obeying the same stacking
+  rules as the bay. Press it from an adjacent tile — or `C` while on or beside it —
+  to open a two-column transfer menu; a press on a stack sends it to the other
+  side, up to whatever room the destination has left. A crate keeps what it holds
+  through death, reload and the sale of everything aboard, which makes it the only
+  way to protect ore from a lost run. Anything taken back out still counts against
+  the Cargo Bay upgrade's capacity, so a crate buys storage, never carrying
+  capacity. Six may stand in the mine at once.
 - Low fuel warnings appear below 25%; return to the surface quickly.
 - The HUD reserve readout forecasts the climb home (safe/caution/urgent), the
   scanner reads the tile the drill is aimed at, and the depth readout counts

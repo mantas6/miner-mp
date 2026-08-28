@@ -1,5 +1,5 @@
 import { FUEL, HULL } from './balance';
-import { countOres } from './inventory';
+import { totalItems } from './inventory';
 import type { GameState } from './types';
 
 /**
@@ -16,7 +16,7 @@ export function isBelowWarningFraction(current: number, max: number, fraction: n
 }
 
 /**
- * Return true while cargo slots are full or overfilled.
+ * Return true while the cargo bay is full or overfilled, measured in items.
  * Empty or invalid max values are treated as safe to avoid false warning flashes.
  *
  * @param {number} current
@@ -39,5 +39,5 @@ export function shouldHullBarFlash(state: GameState): boolean {
 
 /** @param {import('./state').GameState} state @returns {boolean} */
 export function shouldCargoBarFlash(state: GameState): boolean {
-  return !state.gameOver && isAtOrAboveCapacity(countOres(state.player.inventory), state.player.cargoMax);
+  return !state.gameOver && isAtOrAboveCapacity(totalItems(state.player.inventory), state.player.cargoMax);
 }

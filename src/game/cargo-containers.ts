@@ -150,7 +150,7 @@ export function createCargoContainers(deps: CargoContainerDeps): CargoContainerS
     setArmed(false);
     saveProgress();
     audio.blip(320, .1, 'square', .045, -40);
-    toast(`Container set down. Stand beside it and press it to move ${CARGO_CONTAINER.slots} slots of cargo in or out.`);
+    toast(`Container set down. Stand beside it and press it to move up to ${CARGO_CONTAINER.capacity} items of cargo in or out.`);
     return true;
   }
 

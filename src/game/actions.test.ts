@@ -4,7 +4,7 @@ import { ECONOMY, LIMITS, STARTING } from '../core/balance';
 import { CARGO_CONTAINER_ITEM } from '../core/cargo-container';
 import { cargoCost, drillCost, partialFill, refuelCost, repairCost } from '../core/economy';
 import { DYNAMITE_ITEM } from '../core/dynamite';
-import { INVENTORY_SLOTS, addItem, addOre, countItem, countOres, createInventory } from '../core/inventory';
+import { addItem, addOre, countItem, countOres, createInventory } from '../core/inventory';
 import { SCANNER_ITEM } from '../core/scanner-device';
 import { createInitialState } from '../core/state';
 import { TELEPORTER_ITEM } from '../core/teleporter';
@@ -89,7 +89,7 @@ describe('selling cargo', () => {
     expect(h.state.cash).toBe(STARTING.cash + expected);
     expect(h.state.stats.totalCashEarned).toBe(expected);
     expect(countOres(h.state.player.inventory)).toBe(0);
-    expect(h.state.player.inventory).toHaveLength(INVENTORY_SLOTS);
+    expect(h.state.player.inventory).toHaveLength(0);
     expect(h.saveProgress).toHaveBeenCalled();
     expect(h.audio.played).toContain('cash');
   });
@@ -283,21 +283,22 @@ describe('buying equipment', () => {
     ['gun', GUN_ITEM.kind, ECONOMY.gun.price, (actions: GameActions) => actions.buyGun()],
     ['teleporter', TELEPORTER_ITEM.kind, ECONOMY.teleporter.price, (actions: GameActions) => actions.buyTeleporter()],
     ['container', CARGO_CONTAINER_ITEM.kind, ECONOMY.container.price, (actions: GameActions) => actions.buyContainer()]
-  ])('loads a %s into a cargo slot, and refuses one the bay cannot hold', (_name, kind, price, buy) => {
+  ])('loads a %s into the bay, and refuses one the bay cannot hold', (_name, kind, price, buy) => {
     const h = harness();
     h.state.cash = price * 2;
 
     buy(h.actions);
     buy(h.actions);
 
-    // Two units of one kind share a slot, so the bay is one slot down, not two.
+    // Two units of one kind stack together — two items in one stack.
     expect(countItem(h.state.player.inventory, kind)).toBe(2);
     expect(h.state.cash).toBe(0);
 
-    // Fill every slot with other kinds: there is now nowhere for it to go.
+    // Fill the bay to its item capacity: there is now nowhere for it to go.
     h.state.cash = price;
-    h.state.player.inventory = ORES.slice(0, INVENTORY_SLOTS)
-      .reduce<ReturnType<typeof createInventory>>((bay, ore) => addOre(bay, ore, 99)!, createInventory());
+    let full = createInventory();
+    for (let i = 0; i < h.state.player.cargoMax; i++) full = addOre(full, ORES[0], h.state.player.cargoMax)!;
+    h.state.player.inventory = full;
 
     buy(h.actions);
 
