@@ -10,9 +10,8 @@
 // disposes it on unmount, so the game's lifetime is this component's lifetime.
 // Rendering the shell without a factory (the UI tests) mounts chrome and no game.
 //
-// The boot overlays are mounted by phase, not hidden by class: at most one of
-// Intro/Lobby exists in the tree at any time, so neither can bleed through the
-// other and no z-index has to arbitrate between them.
+// The intro overlay is mounted by phase, not hidden by class: it exists in the
+// tree only before the run starts.
 //
 // The canvas is the only tab stop of the game surface, and it carries the whole
 // accessible account of it: a name, a description listing the keys, and a polite
@@ -26,7 +25,6 @@ import { FuelWarning } from './FuelWarning';
 import { Hud } from './Hud';
 import { InfoScreen } from './InfoScreen';
 import { Intro } from './Intro';
-import { Lobby } from './Lobby';
 import { ShopScreen } from './ShopScreen';
 import { useUiStore } from './store';
 import { SurfaceHint } from './SurfaceHint';
@@ -84,7 +82,6 @@ export function MinerApp({ createRuntime }: MinerAppProps) {
         <FuelWarning />
         <Toast />
         {phase === 'intro' && <Intro />}
-        {phase === 'lobby' && <Lobby />}
       </section>
       <RuntimeFailure />
     </main>

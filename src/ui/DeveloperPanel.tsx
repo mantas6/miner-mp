@@ -62,7 +62,7 @@ export function DeveloperPanel() {
       </div>
       <div className={styles.playerDataReset} aria-labelledby="player-data-reset-title">
         <h4 id="player-data-reset-title">Player Data</h4>
-        <p>Start this player over without regenerating or repairing the shared mine terrain. Your saved relay URL is also preserved.</p>
+        <p>Start this player over without regenerating or repairing the mine terrain.</p>
         <button
           id="resetPlayerDataBtn"
           type="button"
@@ -70,8 +70,8 @@ export function DeveloperPanel() {
         >Reset All Player Data</button>
       </div>
       <div className={styles.worldStateReset} aria-labelledby="world-state-reset-title">
-        <h4 id="world-state-reset-title">Shared World State</h4>
-        <p>Regenerate terrain and world enemies for this mine without changing any player&apos;s cash, upgrades, inventory, stats, ship condition, or settings. Explored fog is cleared so regenerated terrain is not revealed.</p>
+        <h4 id="world-state-reset-title">World State</h4>
+        <p>Regenerate terrain and world enemies for this mine without changing your cash, upgrades, inventory, stats, ship condition, or settings. Explored fog is cleared so regenerated terrain is not revealed.</p>
         <button
           id="resetWorldStateBtn"
           type="button"

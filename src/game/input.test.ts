@@ -100,16 +100,9 @@ beforeEach(() => {
 });
 
 describe('phase gating', () => {
-  it('ignores keys on the splash and in the lobby, then obeys them in the run', () => {
+  it('ignores keys on the splash, then obeys them in the run', () => {
     const h = harness();
 
-    press('s');
-    press('Enter');
-    h.input.tick();
-    expect(h.move).not.toHaveBeenCalled();
-    expect(h.actions.sell).not.toHaveBeenCalled();
-
-    uiStore.getState().setPhase('lobby');
     press('s');
     press('Enter');
     h.input.tick();
@@ -136,8 +129,7 @@ describe('phase gating', () => {
   it('leaves held keys behind when the run starts', () => {
     const h = harness();
 
-    // Pressed while the lobby was up: never recorded, so nothing auto-repeats.
-    uiStore.getState().setPhase('lobby');
+    // Pressed while the splash was up: never recorded, so nothing auto-repeats.
     press('d');
     uiStore.getState().setPhase('playing');
     h.input.tick();
@@ -255,12 +247,10 @@ describe('restarting after a death', () => {
     expect(h.restartGame).not.toHaveBeenCalled();
   });
 
-  it('never restarts from a press on the splash or the lobby', () => {
+  it('never restarts from a press on the splash', () => {
     const h = harness();
     h.state.gameOver = true;
 
-    pointerDown();
-    uiStore.getState().setPhase('lobby');
     pointerDown();
 
     expect(h.restartGame).not.toHaveBeenCalled();

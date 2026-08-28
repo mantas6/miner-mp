@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ORES } from '../../shared/constants';
-import { MULTIPLAYER_SETTINGS_KEY } from '../net/multiplayer-settings';
 import { addItem, addOre, createInventory } from './inventory';
 import { confirmPlayerDataReset, resetPlayerData } from './player-data-reset';
 import { SAVE_KEY } from '../persistence';
@@ -43,9 +42,6 @@ describe('player-data reset', () => {
     state.particles.push({x:1,y:1,vx:1,vy:1,life:1,color:'#fff',size:1});
     state.stats = {maxDepth: 900, totalCashEarned: 800, oreMined: 7, artifactsFound: 6, enemiesDestroyed: 5, deaths: 4, motherlodeClaims: 3, motherlodeExtractions: 2};
     state.extractionPhase = 'returning';
-    state.role = 'host';
-    state.connected = true;
-    state.remotePlayers.push({x:1,y:1,drawX:1,drawY:1,facing:1,drillAnim:0,drillDx:0,drillDy:1,bob:0});
     state.teleportReturnPosition = {x: 8, y: 80};
     state.exploredTiles.add(1234);
     state.input.gunArmed = true;
@@ -56,9 +52,8 @@ describe('player-data reset', () => {
     expect(state.player).toEqual(fresh.player);
     expect(state).toMatchObject({
       cash: fresh.cash, tick: 0, gameOver: false, camX: 0, camY: 0,
-      particles: [], stats: fresh.stats, extractionPhase: 'none', role: null,
-      connected: false, remotePlayers: [], teleportEffect: null,
-      teleportReturnPosition: null, input: fresh.input
+      particles: [], stats: fresh.stats, extractionPhase: 'none',
+      teleportEffect: null, teleportReturnPosition: null, input: fresh.input
     });
     expect(state.exploredTiles.size).toBe(0);
     expect(storage.removeItem).toHaveBeenCalledWith(SAVE_KEY);
@@ -76,9 +71,8 @@ describe('player-data reset', () => {
     expect(confirm).toHaveBeenCalledOnce();
   });
 
-  it('preserves shared world state and the non-player relay setting', () => {
-    const relay = JSON.stringify({serverUrl:'wss://relay.example'});
-    const storage = storageWith([[SAVE_KEY, '{}'], [MULTIPLAYER_SETTINGS_KEY, relay]]);
+  it('preserves the current world state and enemies', () => {
+    const storage = storageWith([[SAVE_KEY, '{}']]);
     vi.stubGlobal('localStorage', storage);
     const state = createInitialState();
     const world = [[{type:'air'}]] as typeof state.world;
@@ -90,7 +84,5 @@ describe('player-data reset', () => {
 
     expect(state.world).toBe(world);
     expect(state.enemies).toBe(enemies);
-    expect(storage.values.get(MULTIPLAYER_SETTINGS_KEY)).toBe(relay);
-    expect(storage.removeItem).not.toHaveBeenCalledWith(MULTIPLAYER_SETTINGS_KEY);
   });
 });

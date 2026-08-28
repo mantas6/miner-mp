@@ -15,7 +15,6 @@ import {
   createAudioStub,
   createEnemySimStub,
   createFakeGrid,
-  createSessionStub,
   createToastLog,
   type AudioStub
 } from './test-support';
@@ -48,7 +47,6 @@ function harness(): Harness {
   };
   const actions = createActions({
     state,
-    session: createSessionStub(),
     enemies: context.enemies,
     grid: context.grid,
     audio: context.audio,

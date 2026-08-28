@@ -140,15 +140,11 @@ export interface ToastMessage {
  * Which screen the player is on. The whole boot flow is this one field:
  *
  *   intro --(any press)---> playing
- *         --(MP button)---> lobby --(paired)--> playing
- *                                 --(back)----> intro
  *
- * Solo is what a press on the splash does, so there is no mode picker between the
- * two: `lobby` is the relay panel and nothing else. React renders the overlay for
- * the current phase and nothing else, so the splash and the relay panel can never
- * be on screen at the same time, and the game only takes input once the run is live.
+ * React renders the overlay for the current phase and nothing else, so the game
+ * only takes input once the run is live.
  */
-export type UiPhase = 'intro' | 'lobby' | 'playing';
+export type UiPhase = 'intro' | 'playing';
 
 /**
  * Whether the simulation behind the canvas is alive.
@@ -193,8 +189,6 @@ export interface UiState {
   runtimeStatus: RuntimeStatus;
   /** Why the runtime failed, when it did. Shown verbatim in the failure notice. */
   runtimeError: string | null;
-  connectionStatus: string;
-  connectionInHud: boolean;
   /** Soundtrack and sound effects mute independently, one button each. */
   musicOn: boolean;
   musicLabel: string;
@@ -227,7 +221,6 @@ export interface UiState {
   setInfoTab(tab: InfoTab): void;
   setPhase(phase: UiPhase): void;
   setRuntimeStatus(status: RuntimeStatus, error?: string | null): void;
-  setConnection(status: string, showInHud: boolean): void;
   setMusic(on: boolean, label: string): void;
   setSfx(on: boolean, label: string): void;
   pushToast(message: string): void;
@@ -364,8 +357,6 @@ export const uiStore = createStore<UiState>((set, get) => ({
   phase: 'intro',
   runtimeStatus: 'booting',
   runtimeError: null,
-  connectionStatus: 'Disconnected',
-  connectionInHud: false,
   musicOn: false,
   musicLabel: 'Enable music',
   sfxOn: false,
@@ -433,12 +424,6 @@ export const uiStore = createStore<UiState>((set, get) => ({
     const state = get();
     if (state.runtimeStatus === status && state.runtimeError === error) return;
     set({runtimeStatus: status, runtimeError: error});
-  },
-
-  setConnection(status, showInHud) {
-    const state = get();
-    if (state.connectionStatus === status && state.connectionInHud === showInHud) return;
-    set({connectionStatus: status, connectionInHud: showInHud});
   },
 
   setMusic(on, label) {

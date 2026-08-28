@@ -129,8 +129,7 @@
   color: #ffd65c;
   font: inherit;
 }
-/* The prompt and the multiplayer opt-out, on one line: solo is what the card
-   itself does, so MP sits beside it as a small aside rather than a second offer. */
+/* The start prompt's row. */
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -155,23 +154,9 @@
   text-shadow: none;
   animation: startPulse 0.85s ease-in-out infinite alternate;
 }
-.cta:focus-visible,
-.mp:focus-visible {
+.cta:focus-visible {
   outline: 3px solid #fff4d7;
   outline-offset: 3px;
-}
-/* Outlined rather than filled: the same pill, one step quieter than the prompt. */
-.mp {
-  padding: 9px 14px;
-  border: 2px solid rgba(255, 214, 92, 0.6);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.3);
-  box-shadow: none;
-  color: #ffd65c;
-  font-size: var(--fs-sm);
-  font-weight: 1000;
-  letter-spacing: 0.1em;
-  text-shadow: none;
 }
 @keyframes startPulse {
   from {

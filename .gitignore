@@ -8,7 +8,6 @@ dist/
 .vite/
 .vite-dev.log
 .vite-dev.pid
-server/data/
 
 # Playwright artifacts
 test-results/

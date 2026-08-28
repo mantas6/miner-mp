@@ -1,5 +1,5 @@
 // The world's data shapes are defined once, as zod schemas, in
-// `shared/world-schema.ts` — the relay validates against the same definitions.
+// `shared/world-schema.ts`.
 import type { EnemyKind, Tile } from '../../shared/world-schema';
 // Type-only: neither the track registry nor the tile diff becomes a runtime
 // dependency of this module.
@@ -53,7 +53,7 @@ export interface Player {
   inventory: Inventory;
 }
 
-/** The transform fields shared by the local ship, its replicas, and renderers. */
+/** The transform fields the ship shares with the renderer. */
 export type ShipTransform = Pick<
   Player,
   'x' | 'y' | 'drawX' | 'drawY' | 'facing' | 'bob' | 'drillAnim' | 'drillDx' | 'drillDy'
@@ -72,22 +72,6 @@ export interface Enemy {
   moveTick: number;
   biteTick: number;
   flash: number;
-}
-
-/** A partner ship as seen locally: transform data only (no vitals). */
-export interface RemotePlayer {
-  x: number;
-  y: number;
-  drawX: number;
-  drawY: number;
-  /** Latest remote render target; drawX/drawY ease toward these values locally. */
-  targetDrawX?: number;
-  targetDrawY?: number;
-  facing: number;
-  drillAnim: number;
-  drillDx: number;
-  drillDy: number;
-  bob: number;
 }
 
 export interface Particle {
@@ -142,9 +126,8 @@ export interface InputState {
 export interface GameState {
   world: Tile[][];
   /**
-   * Tile mutations of the *solo* world, against the terrain `world.ts`
-   * regenerates. Persisted to `localStorage` and re-applied on every restart;
-   * co-op terrain comes from the relay instead, so it is not recorded here.
+   * Tile mutations of the world, against the terrain `world.ts` regenerates.
+   * Persisted to `localStorage` and re-applied on every restart.
    */
   soloTileDiff: TileDiff;
   cash: number;
@@ -154,41 +137,22 @@ export interface GameState {
   camY: number;
   particles: Particle[];
   enemies: Enemy[];
-  /** Next id handed to an awakened enemy; re-seeded when adopting a peer's list. */
+  /** Next id handed to an awakened enemy. */
   enemyIdCounter: number;
   input: InputState;
   player: Player;
   stats: GameStats;
   extractionPhase: import('./extraction-phase').ExtractionPhase;
-  /** Current multiplayer role; `null` when no relay session is connected. */
-  role: 'host' | 'guest' | null;
-  /** Whether the relay socket is currently connected. */
-  connected: boolean;
-  /** Partner ships (transform-only). For 2-player co-op this holds 0 or 1. */
-  remotePlayers: RemotePlayer[];
   teleportEffect: TeleportEffect | null;
   teleportReturnPosition: TeleportReturnPosition | null;
   reducedMotion: boolean;
   /** Explored underground cells as row-major indexes; surface rows are implicitly visible. */
   exploredTiles: Set<number>;
-  /**
-   * Scanner devices left in the mine, clearing fog around themselves. Local to
-   * this client: the tiles they reveal are shared through the ordinary
-   * exploration message, but the hardware itself is one miner's business.
-   */
+  /** Scanner devices left in the mine, clearing fog around themselves. */
   scannerDevices: ScannerDevice[];
-  /**
-   * Dynamite planted in the mine and still burning. Local to this client, like
-   * the scanners: the tiles a blast clears travel to a partner as ordinary tile
-   * updates, but the stick itself — and the hull damage it can do — belongs to
-   * the simulation that lit it.
-   */
+  /** Dynamite planted in the mine and still burning. */
   placedDynamite: PlacedDynamite[];
-  /**
-   * Cargo containers standing in the mine, each with its own slots. Local to this
-   * client, like the scanners and the dynamite: the crate is one miner's property
-   * left in a shared world, and nothing about it needs the peer's agreement.
-   */
+  /** Cargo containers standing in the mine, each with its own slots. */
   cargoContainers: PlacedContainer[];
 }
 

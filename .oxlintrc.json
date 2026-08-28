@@ -10,7 +10,7 @@
     "browser": true,
     "es2022": true
   },
-  "ignorePatterns": ["dist", "public", "server/data", "test-results", "playwright-report"],
+  "ignorePatterns": ["dist", "public", "test-results", "playwright-report"],
   "rules": {
     // Style the codebase already follows everywhere, pinned so it stays that way.
     "eqeqeq": "error",
@@ -20,15 +20,15 @@
     // The automatic JSX runtime (`"jsx": "react-jsx"`) means React is never
     // imported for JSX, and the components rely on that.
     "react/react-in-jsx-scope": "off",
-    // Every overlay that can be one *is* a native `<dialog>` now (shop, info,
-    // lobby). What is left are roles with no tag to prefer: the fuel gauge is a
+    // Every overlay that can be one *is* a native `<dialog>` now (shop, info).
+    // What is left are roles with no tag to prefer: the fuel gauge is a
     // `role="meter"` div because it paints two slices, and the canvas is a
     // `role="application"`.
     "jsx-a11y/prefer-tag-over-role": "off",
     // Side-effect imports are how CSS modules and global stylesheets are pulled in.
     "import/no-unassigned-import": "off",
-    // Factory modules (renderer, session, run, relay) deliberately declare their
-    // helpers inside the closure that owns the state, next to their only caller.
+    // Factory modules (renderer, run) deliberately declare their helpers inside
+    // the closure that owns the state, next to their only caller.
     "unicorn/consistent-function-scoping": "off",
     // Nested helpers intentionally re-take the outer name for the same value
     // (`ctx`, `save`, throwaway `_` destructuring holes).
@@ -36,10 +36,10 @@
     // `.sort()` is only ever called on freshly built arrays here, and the
     // suggested `toSorted()` is outside the ES2022 lib this project targets.
     "unicorn/no-array-sort": "off",
-    // The relay client owns exactly one handler per socket event and detaches
-    // them by assigning `null` on disconnect, which needs the `on*` properties.
+    // The audio controller owns one handler per media element event and detaches
+    // it by assigning `null`, which needs the `on*` properties.
     "unicorn/prefer-add-event-listener": "off",
-    // Sequentially awaiting inside a loop is the point in the relay/polling tests.
+    // Sequentially awaiting inside a loop is the point in the polling tests.
     "no-await-in-loop": "off",
     // Vitest's `expect(value, message)` takes an assertion label as 2nd argument.
     "vitest/valid-expect": ["error", { "maxArgs": 2 }],
@@ -58,10 +58,6 @@
         "react-hooks/rules-of-hooks": "error",
         "react-hooks/exhaustive-deps": "error"
       }
-    },
-    {
-      "files": ["server/**/*.js"],
-      "env": { "browser": false, "node": true }
     },
     {
       // The Playwright suite straddles both: the spec bodies run in Node, and the

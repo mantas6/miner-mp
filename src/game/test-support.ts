@@ -1,26 +1,24 @@
 // Test doubles for the game modules.
 //
 // After the game.ts split every module takes its collaborators as a dependency
-// object, so unit tests only need small honest stand-ins for the three awkward
-// ones: the relay session, the enemy simulation, and audio. They live here
-// instead of in each test file because all of them are wide interfaces whose
-// details are irrelevant to any single behaviour under test.
+// object, so unit tests only need small honest stand-ins for the two awkward
+// ones: the enemy simulation and audio. They live here instead of in each test
+// file because both are wide interfaces whose details are irrelevant to any
+// single behaviour under test.
 
 import { vi } from 'vitest';
 import { DEFAULT_TRACK_ID } from '../audio/tracks';
 import type { AudioController, Enemy, Tile } from '../core/types';
-import type { NetMessage } from '../net/net-protocol';
 import type { EnemySim } from './enemies';
 import type { GameInput } from './input';
-import type { GameSession } from './session';
 import type { WorldGrid } from './world-grid';
 
 /** An in-memory tile grid: no lazy generation, every write recorded. */
 export interface FakeGrid extends WorldGrid {
   /** Seed a tile without recording a write. */
   put(x: number, y: number, tile: Tile): void;
-  /** Every `set` in order, including the broadcast flag. */
-  readonly writes: {x: number; y: number; tile: Tile; broadcast: boolean}[];
+  /** Every `set` in order. */
+  readonly writes: {x: number; y: number; tile: Tile}[];
 }
 
 export function createFakeGrid(fill: (x: number, y: number) => Tile = () => ({type: 'air'})): FakeGrid {
@@ -40,9 +38,9 @@ export function createFakeGrid(fill: (x: number, y: number) => Tile = () => ({ty
       tiles.set(key, created);
       return created;
     },
-    set(x, y, tile, broadcast = true) {
+    set(x, y, tile) {
       tiles.set(`${x},${y}`, tile);
-      writes.push({x, y, tile, broadcast});
+      writes.push({x, y, tile});
     },
     ensureRow() {
       return undefined;
@@ -50,47 +48,6 @@ export function createFakeGrid(fill: (x: number, y: number) => Tile = () => ({ty
     put(x, y, tile) {
       tiles.set(`${x},${y}`, tile);
     }
-  };
-}
-
-export interface SessionStubRole {
-  paired: boolean;
-  /** `isGuestEnemyReplica()`: this client mirrors the host's enemies. */
-  guestReplica: boolean;
-  /** `isPairedHost()`: this client owns the authoritative simulation. */
-  pairedHost: boolean;
-}
-
-export interface SessionStub extends GameSession {
-  /** Mutable role switches, so one test can change sides mid-scenario. */
-  readonly role: SessionStubRole;
-  /** Every message handed to `send`, in order. */
-  readonly sent: NetMessage[];
-}
-
-export function createSessionStub(role: Partial<SessionStubRole> = {}): SessionStub {
-  const roleState: SessionStubRole = {paired: false, guestReplica: false, pairedHost: false, ...role};
-  const sent: NetMessage[] = [];
-  return {
-    role: roleState,
-    sent,
-    get paired() {
-      return roleState.paired;
-    },
-    isGuestEnemyReplica: () => roleState.guestReplica,
-    isPairedHost: () => roleState.pairedHost,
-    send: message => { sent.push(message); },
-    sendPlayerState: vi.fn(),
-    sendEnemySnapshot: vi.fn(),
-    recordTile: vi.fn(),
-    broadcastExploration: vi.fn(),
-    setConnectionStatus: vi.fn(),
-    startOnline: vi.fn(),
-    cancelOnline: vi.fn(),
-    playSolo: vi.fn(),
-    resetForPlayerData: vi.fn(),
-    requestWorldReset: vi.fn(() => false),
-    dispose: vi.fn()
   };
 }
 
@@ -109,12 +66,7 @@ export function createEnemySimStub(): EnemySimStub {
     damageEnemy: vi.fn(),
     damageEnemyTile: vi.fn(() => true),
     destroyDormantEnemy: vi.fn(() => true),
-    creditBounty: vi.fn(),
-    applyEntries: vi.fn(),
-    mergeEntries: vi.fn(),
-    update: vi.fn(),
-    updatePresentation: vi.fn(),
-    updateBites: vi.fn()
+    update: vi.fn()
   };
   return stub;
 }

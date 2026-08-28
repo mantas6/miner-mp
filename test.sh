@@ -22,9 +22,3 @@ if command -v chromium >/dev/null 2>&1 \
 else
   echo 'test.sh: no system Chromium on PATH — skipping npm run test:e2e' >&2
 fi
-
-# The relay imports shared/ directly, so client-side changes there can break it.
-if [ ! -d server/node_modules ]; then
-  npm --prefix server install
-fi
-npm --prefix server test

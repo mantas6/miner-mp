@@ -4,18 +4,12 @@ import styles from './Intro.module.css';
 import '../styles/intro-art.css';
 
 /**
- * Title card: the first and only screen before the run. Any press starts a solo
- * shift; the small MP button beside the prompt is the one way to the relay panel.
- *
- * There used to be a mode picker between this card and the game, asking a question
- * almost every press answered the same way. Solo is now the default the card
- * itself carries, and multiplayer is one small button — one screen instead of two,
- * with nothing lost but a step.
+ * Title card: the first and only screen before the run. Any press starts a shift.
  *
  * Deliberately short. The full rules live in the in-game Info / Cargo overlay
  * (`InfoScreen.tsx`), which the player can open at any time, so the splash only
  * carries the name, one line of flavour, the three keys needed to start, and
- * the prompt to leave.
+ * the prompt to begin.
  *
  * The prompt is a real `<button>`, so activation is the browser's job in every
  * mode it can happen: a mouse click, Enter or Space on the focused button, or the
@@ -33,9 +27,8 @@ export function Intro() {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key !== 'Enter' && event.key !== ' ') return;
-      // Both keys activate a focused button by themselves. Answering for it here
-      // would take Enter away from MP and start a solo run instead, so a press
-      // aimed at a button is left to the browser.
+      // Both keys activate a focused button by themselves, so a press aimed at
+      // the start button is left to the browser rather than answered twice.
       if (event.target instanceof HTMLElement && event.target.closest('button')) return;
       // A key press cannot unlock audio, so no event is forwarded here.
       uiCommands.playSolo();
@@ -89,18 +82,6 @@ export function Intro() {
               type="button"
               onClick={event => uiCommands.playSolo(event.nativeEvent)}
             >★ Press Enter to start ★</button>
-            {/* The card's press handler is the whole screen, so this button has to
-                claim its own press: without that, `pointerdown` would bubble up and
-                start a solo run before the click ever landed here. It is not
-                cancelled, only stopped, so the click still follows. */}
-            <button
-              id="introMpBtn"
-              className={styles.mp}
-              type="button"
-              aria-label="Multiplayer"
-              onPointerDown={event => event.stopPropagation()}
-              onClick={event => uiCommands.openMultiplayer(event.nativeEvent)}
-            >MP</button>
           </div>
         </div>
       </div>

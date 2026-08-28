@@ -9,12 +9,11 @@
 // and a runtime that could not be disposed left a second simulation running
 // behind the first, doubling keypresses, saves and audio.
 //
-// Anything with a life of its own lives next door: `session.ts` (relay session),
-// `enemies.ts` (enemy simulation), `actions.ts` (player transactions),
-// `move.ts` (one step of the ship), `run.ts` (run lifecycle and death),
-// `input.ts` (keyboard), `world-grid.ts` (tile access). What stays here is the
-// glue those modules share — progress saving, particles, the UI sync, and the
-// loop itself.
+// Anything with a life of its own lives next door: `enemies.ts` (enemy
+// simulation), `actions.ts` (player transactions), `move.ts` (one step of the
+// ship), `run.ts` (run lifecycle and death), `input.ts` (keyboard),
+// `world-grid.ts` (tile access). What stays here is the glue those modules
+// share — progress saving, particles, the UI sync, and the loop itself.
 //
 // The UI is React reading `src/ui/store.ts`. This module pushes a snapshot into
 // that store once per frame (`syncUi()`) and exposes a flat command table
@@ -47,12 +46,9 @@ import { formatExpeditionStats } from '../core/stats';
 import { formatSurfaceActionHint } from '../core/surface-hint';
 import { rand } from '../world/world';
 import { resetUiCommands, setUiCommands } from '../ui/commands';
-import { RELAY_PROBLEM_STATUS } from '../ui/connection-status';
 import { buildCargoRows, buildInventorySlots, pushToast as toast, uiStore, type HudSnapshot, type PlayerSnapshot } from '../ui/store';
 
 import { formatExtractionPresentation } from '../core/extraction-presentation';
-import { interpolateRemotePlayers } from '../net/net-protocol';
-import { saveServerUrl } from '../net/multiplayer-settings';
 import { TELEPORTER_ITEM, advanceTeleportEffect, canTeleportToSurface, canUseTeleporter } from '../core/teleporter';
 import type { AudioController } from '../core/types';
 import { applyPlayerUpgrade, type PlayerUpgradeId } from '../core/upgrades';
@@ -61,8 +57,8 @@ import { confirmPlayerDataReset, resetPlayerData } from '../core/player-data-res
 import { DEVELOPER_CASH_GRANT, developerRefuel, developerRepairHull, grantDeveloperCash, type DeveloperServiceId } from '../core/developer';
 import { confirmWorldStateReset } from '../world/world-state';
 import { createFixedStepper } from '../core/fixed-step';
+import { recordTileDiff } from '../world/tile-diff';
 import { createWorldGrid, type WorldGrid } from './world-grid';
-import { createSession, type GameSession } from './session';
 import { createEnemySim, type EnemySim } from './enemies';
 import { createActions, type GameActions } from './actions';
 import { createScannerDevices, type ScannerDeviceSim } from './scanner-devices';
@@ -78,8 +74,8 @@ export type GameRuntimeOptions = GameSurfaceRefs;
 export interface GameRuntime {
   /**
    * Undo everything the runtime installed: window/document listeners, the save
-   * interval, the animation-frame loop, the relay socket, the audio graph and the
-   * command table. Idempotent, and safe to call from a React effect cleanup.
+   * interval, the animation-frame loop, the audio graph and the command table.
+   * Idempotent, and safe to call from a React effect cleanup.
    */
   dispose(): void;
 }
@@ -98,7 +94,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
 
   // Feature modules, constructed by wireModules() once audio exists.
   let grid: WorldGrid;
-  let session: GameSession;
   let enemies: EnemySim;
   let actions: GameActions;
   let run: GameRun;
@@ -146,17 +141,13 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   function invalidateFogTiles(indexes: number[]) {
     for (const index of indexes) renderer?.invalidateFog(index % WORLD_W, Math.floor(index / WORLD_W));
   }
-  function revealAtPlayer(broadcast=true) {
+  function revealAtPlayer() {
     const added = revealFootprint(state.exploredTiles, state.player.x, state.player.y, state.player.visibility);
     if (!added.length) return;
     invalidateFogTiles(added);
-    if (broadcast) session.broadcastExploration();
     progressSave.schedule();
   }
-  /**
-   * Explore individual tiles — what a deployed scanner reports. It travels the
-   * same path the ship's own footprint does, so a partner's fog lifts with ours.
-   */
+  /** Explore individual tiles — what a deployed scanner reports. */
   function revealTiles(indexes: number[]) {
     const added: number[] = [];
     for (const index of indexes) {
@@ -166,7 +157,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     }
     if (!added.length) return;
     invalidateFogTiles(added);
-    session.broadcastExploration();
     progressSave.schedule();
   }
 
@@ -266,13 +256,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       closeInfo: closeInfoScreen,
       toggleMusic: () => { void audio.toggleMusic(); },
       toggleSfx: () => { void audio.toggleSfx(); },
-      openMultiplayer: event => openMultiplayer(event),
-      connect: url => {
-        if (!url) { session.setConnectionStatus(RELAY_PROBLEM_STATUS.noUrl); return; }
-        saveServerUrl(url);
-        session.startOnline(url);
-      },
-      leaveMultiplayer: () => leaveMultiplayer(),
       playSolo: event => playSolo(event),
       grantDeveloperCash: grantDeveloperMoney,
       runDeveloperService,
@@ -280,24 +263,20 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       resetPlayerData: () => {
         if (!confirmPlayerDataReset(message => window.confirm(message))) return;
         progressSave.cancel();
-        session.resetForPlayerData();
         gameInput.clearKeys();
         resetPlayerData(state);
         readouts.reset();
-        revealAtPlayer(false);
+        revealAtPlayer();
         progressSave.cancel();
         saveProgress();
-        session.setConnectionStatus('Solo');
         closeInfoScreen();
-        toast('Player data reset. Shared mine terrain preserved.');
+        toast('Player data reset. Mine terrain preserved.');
       },
       resetWorldState: () => {
         if (!confirmWorldStateReset(message => window.confirm(message))) return;
-        if (!session.requestWorldReset()) {
-          run.clearWorldRuntime();
-          saveProgress();
-          toast('World state reset locally. Player progress preserved.');
-        }
+        run.clearWorldRuntime();
+        saveProgress();
+        toast('World state reset. Player progress preserved.');
         closeInfoScreen();
       },
       resetGame: () => {
@@ -387,7 +366,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     p.drawY += (p.y - p.drawY) * 0.23;
     p.bob *= 0.86;
     p.drillAnim *= 0.90;
-    state.remotePlayers = interpolateRemotePlayers(state.remotePlayers, 0.23);
     state.teleportEffect = advanceTeleportEffect(state.teleportEffect);
     // A settling zoom grows the view around its own centre, so the ship stays put
     // instead of sliding in from a corner while the follow easing catches up.
@@ -487,7 +465,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   // times per frame at exactly 60 Hz, independent of the display's refresh rate.
   function step(){
     gameInput.tick();
-    if (!state.gameOver && session.paired && state.connected) session.sendPlayerState();
     if (isPlaying()) {
       // Deployed hardware keeps working while the ship is elsewhere, but only
       // while the run is live: a paused splash must not burn survey time, and a
@@ -495,13 +472,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       scanners.tick();
       dynamite.tick();
       containers.tick();
-      if (session.isGuestEnemyReplica()) {
-        enemies.updatePresentation();
-        enemies.updateBites();
-      } else {
-        enemies.update();
-        if (session.isPairedHost()) session.sendEnemySnapshot();
-      }
+      enemies.update();
     }
     updateAnimation();
   }
@@ -535,11 +506,10 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   }
   /**
    * Take the keyboard for a run that has just started. `focusGame()` cannot do it
-   * on the spot: the lobby is a modal `<dialog>` until React commits the phase
-   * change, and everything outside a modal dialog is inert — so the call would be
-   * a silent no-op and the run would begin with focus on `<body>`. Retrying for a
-   * few frames covers both the synchronous flush React gives a click and the
-   * scheduled one it gives a relay message.
+   * on the spot: the intro overlay may still hold focus until React commits the
+   * phase change, so the call would be a silent no-op and the run would begin with
+   * focus on `<body>`. Retrying for a few frames covers the flush React gives the
+   * press that started the run.
    */
   function claimFocusForRun(attempts = 4){
     focusGame();
@@ -551,39 +521,17 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     return uiStore.getState().phase === 'playing';
   }
   /**
-   * Splash → solo run. The splash's default: any press on the title card, and the
+   * Splash → run. The splash's default: any press on the title card, and the
    * Enter or Space that reaches it from the canvas, comes here.
    *
    * The press that got us here is also the audio-unlock gesture, spent by
-   * `startGame()` at the end of `session.playSolo()`.
+   * `startGame()`.
    */
   function playSolo(event?: Event){
     if (uiStore.getState().phase !== 'intro') return;
-    session.playSolo(event);
+    startGame(event);
   }
-  /** Splash → relay panel, the one thing on the card that is not "start". */
-  function openMultiplayer(event?: Event){
-    const store = uiStore.getState();
-    if (store.phase !== 'intro') return;
-    tryAutoAudio(event);
-    store.setPhase('lobby');
-  }
-  /**
-   * Relay panel → splash. The panel is the whole `lobby` phase now, so backing out
-   * of it is backing out of multiplayer: the pending socket goes with it, because a
-   * host left waiting would otherwise drag the player into a run from a screen that
-   * offers no multiplayer at all.
-   */
-  function leaveMultiplayer(){
-    session.cancelOnline();
-    const store = uiStore.getState();
-    if (store.phase === 'lobby') store.setPhase('intro');
-  }
-  /**
-   * The one way into the run: solo play, a host whose partner arrived, and a guest
-   * auto-started by pairing all land here, so the start-of-run side effects exist
-   * exactly once.
-   */
+  /** The one way into the run, so the start-of-run side effects exist exactly once. */
   function startGame(event?: Event){
     const store = uiStore.getState();
     if (store.phase === 'playing') return;
@@ -595,34 +543,19 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
 
   /**
    * Build the feature modules and connect them. A few dependencies are late-bound
-   * closures because the graph has cycles by design: the tile grid replicates
-   * through the session, the session dispatches into the enemy simulation, and the
-   * enemy simulation writes tiles back through the grid.
+   * closures because the graph has cycles by design: the enemy simulation writes
+   * tiles back through the grid it reads from.
    */
   function wireModules(){
     grid = createWorldGrid({
       state,
       invalidateTerrain: (x, y) => renderer?.invalidateTerrain(x, y),
-      onTileSet: (x, y, tile, broadcast) => session.recordTile(x, y, tile, broadcast)
-    });
-    session = createSession({
-      state,
-      grid,
-      audio,
-      enemies: () => enemies,
-      toast,
-      saveProgress,
-      invalidateFogTiles,
-      invalidateTerrain: () => renderer?.invalidateTerrain(),
-      invalidateFog: () => renderer?.invalidateFog(),
-      spawnDust,
-      spawnExplosion,
-      clearWorldRuntime: () => run.clearWorldRuntime(),
-      startGame
+      // A world regenerates from its seed on every restart, so the diff is the
+      // only record that a tunnel was ever dug.
+      onTileSet: (x, y, tile) => recordTileDiff(state.soloTileDiff, {x, y, tile})
     });
     run = createRun({
       state,
-      session,
       audio,
       enemies: () => enemies,
       input: () => gameInput,
@@ -635,7 +568,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     });
     enemies = createEnemySim({
       state,
-      session,
       grid,
       audio,
       toast,
@@ -663,7 +595,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     });
     actions = createActions({
       state,
-      session,
       enemies,
       grid,
       audio,
@@ -774,7 +705,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     audio.stopMusic();
     // A leaked AudioContext survives the mount and browsers only allow a handful.
     void audio.ctx?.close().catch(() => { /* already closed */ });
-    session.dispose();
     scope.dispose();
     // Buttons must not reach a runtime whose listeners and frames are gone, and a
     // replacement runtime re-announces its own boot toast.

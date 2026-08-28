@@ -14,7 +14,6 @@ import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react';
 import { AUDIO_SETTINGS_KEY } from './audio/audio-settings';
 import { ZOOM_SETTINGS_KEY } from './game/zoom-settings';
-import { MULTIPLAYER_SETTINGS_KEY } from './net/multiplayer-settings';
 import { SAVE_KEY } from './persistence';
 import { GAME_RESET_CONFIRMATION, PERSISTED_STORAGE_KEYS, clearPersistedGameData } from './persistence-reset';
 import { uiCommands } from './ui/commands';
@@ -38,7 +37,7 @@ describe('the stored keys a full reset owns', () => {
    */
   it('names the save file and every preference key, once each', () => {
     expect([...PERSISTED_STORAGE_KEYS]).toEqual([
-      SAVE_KEY, AUDIO_SETTINGS_KEY, ZOOM_SETTINGS_KEY, MULTIPLAYER_SETTINGS_KEY
+      SAVE_KEY, AUDIO_SETTINGS_KEY, ZOOM_SETTINGS_KEY
     ]);
     expect(new Set(PERSISTED_STORAGE_KEYS).size).toBe(PERSISTED_STORAGE_KEYS.length);
     expect(GAME_RESET_CONFIRMATION).toContain('permanently deletes');
@@ -65,7 +64,7 @@ describe('the stored keys a full reset owns', () => {
     });
 
     expect(() => clearPersistedGameData()).not.toThrow();
-    expect(removed).toEqual([AUDIO_SETTINGS_KEY, ZOOM_SETTINGS_KEY, MULTIPLAYER_SETTINGS_KEY]);
+    expect(removed).toEqual([AUDIO_SETTINGS_KEY, ZOOM_SETTINGS_KEY]);
   });
 });
 

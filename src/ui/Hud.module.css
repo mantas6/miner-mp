@@ -31,12 +31,6 @@
   gap: 8px;
   max-width: min(410px, 52%);
 }
-.connectionStatus {
-  composes: connectionStatus from "./common.module.css";
-}
-.connectionStatus[hidden] {
-  display: none;
-}
 .soundBtn {
   position: relative;
   min-width: 0;

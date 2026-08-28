@@ -13,16 +13,13 @@ import {
   createAudioStub,
   createEnemySimStub,
   createInputStub,
-  createSessionStub,
   createToastLog,
   type AudioStub,
-  type EnemySimStub,
-  type SessionStub
+  type EnemySimStub
 } from './test-support';
 
 interface Harness {
   state: GameState;
-  session: SessionStub;
   enemies: EnemySimStub;
   audio: AudioStub;
   input: ReturnType<typeof createInputStub>;
@@ -55,7 +52,6 @@ function harness(): Harness {
   state.exploredTiles.add(1234);
   const context = {
     state,
-    session: createSessionStub(),
     enemies: createEnemySimStub(),
     audio: createAudioStub(),
     input: createInputStub(),
@@ -66,7 +62,6 @@ function harness(): Harness {
   };
   const run = createRun({
     state,
-    session: context.session,
     audio: context.audio,
     enemies: () => context.enemies,
     input: () => context.input,
@@ -127,19 +122,6 @@ describe('death consequences', () => {
     expect(h.state.stats.deaths).toBe(1);
     expect(h.toasts.messages).toEqual(['First']);
   });
-
-  it('tells a paired peer about the death, but says nothing while solo', () => {
-    const h = harness();
-
-    h.run.gameOver();
-    expect(h.session.sent).toEqual([]);
-
-    h.state.gameOver = false;
-    h.state.connected = true;
-    h.session.role.paired = true;
-    h.run.gameOver();
-    expect(h.session.sent).toEqual([{type: 'died'}]);
-  });
 });
 
 describe('restarting after a death', () => {
@@ -168,18 +150,13 @@ describe('restarting after a death', () => {
     expect(h.toasts.saw('Replacement ship')).toBe(true);
   });
 
-  it('regenerates the whole world offline, but only the ship while online', () => {
+  it('regenerates the whole world and re-seeds enemy exposure', () => {
     const h = harness();
     h.state.world = [[{type: 'air'}]];
 
     h.run.restartGame();
     expect(h.state.world).toEqual([]);
     expect(h.enemies.resetExposure).toHaveBeenCalled();
-
-    h.state.world = [[{type: 'air'}]];
-    h.state.connected = true;
-    h.run.restartGame();
-    expect(h.state.world).toEqual([[{type: 'air'}]]);
   });
 
   it('digs the solo tunnels back out of the regenerated terrain', () => {
@@ -200,26 +177,11 @@ describe('restarting after a death', () => {
     expect(h.state.soloTileDiff).toEqual(createTileDiff([dug, cracked]));
   });
 
-  it('announces the replacement ship to a paired peer', () => {
-    const h = harness();
-    h.state.connected = true;
-    h.session.role.paired = true;
-    h.run.gameOver();
-    h.session.sent.length = 0;
-
-    h.run.restartGame();
-
-    expect(h.session.sent).toEqual([{type: 'respawned', x: Math.floor(WORLD_W / 2), y: START_Y}]);
-  });
-
   it('stays quiet when a live run is reset by hand instead of by dying', () => {
     const h = harness();
-    h.state.connected = true;
-    h.session.role.paired = true;
 
     h.run.restartGame();
 
-    expect(h.session.sent).toEqual([]);
     expect(h.toasts.saw('Replacement ship')).toBe(false);
   });
 });

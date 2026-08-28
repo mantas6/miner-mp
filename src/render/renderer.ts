@@ -1,6 +1,5 @@
 import { SURFACE_HEIGHT, TILE, WORLD_W } from '../../shared/constants';
 import { viewport } from '../game/viewport';
-import { getPartnerIndicator } from './partner-indicator';
 import { getVisibleTileRange } from '../world/visible-tile-range';
 import { isTileExplored } from '../../shared/exploration-codec';
 import { getEnemyType } from '../core/enemy-types';
@@ -14,7 +13,6 @@ import type {
   Enemy,
   EnemyKind,
   Particle,
-  RemotePlayer,
   ShipTransform,
   TeleportEffect,
   Tile
@@ -39,7 +37,6 @@ export interface RendererState {
   gameOver: boolean;
   particles: Particle[];
   enemies: Enemy[];
-  remotePlayers: RemotePlayer[];
   player: ShipTransform;
   reducedMotion?: boolean;
   /** Absent means "everything is visible": no fog is painted. */
@@ -247,7 +244,6 @@ export function createRenderer({ state, canvas, ctx, get, rand }: RendererDeps):
       ctx.fillRect(sx, sy, pt.size*TILE, pt.size*TILE);
       ctx.globalAlpha = 1;
     }
-    drawRemotePlayers(camX, camY);
     fogLayer.draw(camX, camY);
     const sx=(p.drawX-camX)*TILE, sy=(p.drawY-camY)*TILE;
     drawTeleportEffect(camX, camY, false);
@@ -256,10 +252,9 @@ export function createRenderer({ state, canvas, ctx, get, rand }: RendererDeps):
     ctx.translate(sx+TILE*.5, sy+TILE*.5 + Math.sin(state.tick*.45)*p.bob*TILE*.08);
     ctx.rotate((p.x - p.drawX) * -0.12 + (p.y - p.drawY) * 0.08 + (p.drillDy > 0 ? p.drillAnim * 0.10 : 0));
     ctx.scale(p.facing, 1);
-    drawShip(p, false, state.input?.sprintDirection);
+    drawShip(p, state.input?.sprintDirection);
     ctx.restore();
     drawTeleportEffect(camX, camY, true);
-    drawPartnerIndicators(camX, camY, sx + TILE*.5, sy + TILE*.5);
     ctx.restore();
     if(state.gameOver){
       ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,0,viewport.widthPx,viewport.heightPx);
@@ -348,51 +343,6 @@ export function createRenderer({ state, canvas, ctx, get, rand }: RendererDeps):
       }
     }
     ctx.restore();
-  }
-  function drawRemotePlayers(camX: number, camY: number) {
-    for (const remote of state.remotePlayers) {
-      if (!isExplored(Math.round(remote.x), Math.round(remote.y))) continue;
-      const sx = (remote.drawX - camX) * TILE, sy = (remote.drawY - camY) * TILE;
-      if (sx < -TILE || sy < -TILE || sx > viewport.worldWidthPx + TILE || sy > viewport.worldHeightPx + TILE) continue;
-      ctx.save();
-      ctx.globalAlpha = 0.56;
-      ctx.translate(sx + TILE*.5, sy + TILE*.5 + Math.sin(state.tick*.45)*remote.bob*TILE*.08);
-      ctx.rotate((remote.x - remote.drawX) * -0.12 + (remote.y - remote.drawY) * 0.08 + (remote.drillDy > 0 ? remote.drillAnim * 0.10 : 0));
-      ctx.scale(remote.facing, 1);
-      drawShip(remote, true);
-      ctx.restore();
-      ctx.save();
-      ctx.fillStyle = '#bfeaff';
-      ctx.font = `bold ${Math.max(10, Math.floor(TILE*.16))}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText('PARTNER', sx + TILE*.5, sy - TILE*.16);
-      ctx.restore();
-    }
-  }
-  function drawPartnerIndicators(camX: number, camY: number, playerX: number, playerY: number) {
-    for (const remote of state.remotePlayers) {
-      if (!isExplored(Math.round(remote.x), Math.round(remote.y))) continue;
-      const targetX = (remote.drawX - camX + .5) * TILE;
-      const targetY = (remote.drawY - camY + .5) * TILE;
-      const indicator = getPartnerIndicator(
-        playerX, playerY, targetX, targetY,
-        viewport.worldWidthPx, viewport.worldHeightPx, TILE*.65, 64
-      );
-      if (!indicator) continue;
-
-      ctx.save();
-      ctx.translate(indicator.x, indicator.y);
-      ctx.fillStyle = 'rgba(7,20,34,.82)';
-      ctx.strokeStyle = '#bfeaff';
-      ctx.lineWidth = 3;
-      ctx.shadowColor = '#5cc8ff';
-      ctx.shadowBlur = 10;
-      ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-      ctx.rotate(indicator.angle);
-      ctx.fillStyle = '#bfeaff';
-      ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-7, -9); ctx.lineTo(-3, 0); ctx.lineTo(-7, 9); ctx.closePath(); ctx.fill();
-      ctx.restore();
-    }
   }
   /**
    * Cargo containers, as a banded crate. A crate with something in it shows a lit
@@ -820,8 +770,8 @@ export function createRenderer({ state, canvas, ctx, get, rand }: RendererDeps):
       ctx.fill();
     }
   }
-  function drawShip(p: ShipTransform, remote=false, sprintDirection: Direction | null = null) {
-    const dead = !remote && state.gameOver;
+  function drawShip(p: ShipTransform, sprintDirection: Direction | null = null) {
+    const dead = state.gameOver;
     const wobble = Math.sin(state.tick*.22) * p.bob * TILE*.025;
     ctx.translate(0, wobble);
     if (!dead && sprintDirection) drawBoostFlames(sprintDirection, p.facing);

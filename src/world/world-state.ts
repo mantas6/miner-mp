@@ -1,7 +1,7 @@
 import { placeAtSurfaceSpawn } from '../core/state';
 import type { GameState } from '../core/types';
 
-export const WORLD_STATE_RESET_CONFIRMATION = 'Reset world state for everyone? This permanently regenerates all terrain, restores dug-out blocks and world enemies, clears explored fog, and removes deployed equipment along with anything stored in it. Player cash, upgrades, cargo bay, stats, settings, and ship condition are preserved.';
+export const WORLD_STATE_RESET_CONFIRMATION = 'Reset world state? This permanently regenerates all terrain, restores dug-out blocks and world enemies, clears explored fog, and removes deployed equipment along with anything stored in it. Player cash, upgrades, cargo bay, stats, settings, and ship condition are preserved.';
 
 export function confirmWorldStateReset(confirmReset: (message: string) => boolean): boolean {
   return confirmReset(WORLD_STATE_RESET_CONFIRMATION);

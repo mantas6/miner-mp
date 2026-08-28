@@ -2,13 +2,13 @@ import { SAVE_KEY, save } from '../persistence';
 import { createInitialState } from './state';
 import type { GameState } from './types';
 
-export const PLAYER_DATA_RESET_CONFIRMATION = 'Reset all player data? This permanently clears cash, upgrades, equipment, cargo, stats, objectives, explored fog, and current ship progress. The shared mine terrain and relay URL will be preserved.';
+export const PLAYER_DATA_RESET_CONFIRMATION = 'Reset all player data? This permanently clears cash, upgrades, equipment, cargo, stats, objectives, explored fog, and current ship progress. The mine terrain will be preserved.';
 
 export function confirmPlayerDataReset(confirmReset: (message: string) => boolean): boolean {
   return confirmReset(PLAYER_DATA_RESET_CONFIRMATION);
 }
 
-/** Reset player-owned state while retaining the current shared world and enemies. */
+/** Reset player-owned state while retaining the current world and enemies. */
 export function resetPlayerData(state: GameState): void {
   const fresh = createInitialState();
 
@@ -20,9 +20,6 @@ export function resetPlayerData(state: GameState): void {
   state.particles = fresh.particles;
   state.stats = fresh.stats;
   state.extractionPhase = fresh.extractionPhase;
-  state.role = fresh.role;
-  state.connected = fresh.connected;
-  state.remotePlayers = fresh.remotePlayers;
   state.teleportEffect = fresh.teleportEffect;
   state.teleportReturnPosition = fresh.teleportReturnPosition;
   state.exploredTiles = fresh.exploredTiles;

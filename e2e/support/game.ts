@@ -1,9 +1,9 @@
 // Shared fixtures for the end-to-end suite.
 //
 // Everything here drives the app the way a player does — keys and clicks on the
-// documented element ids (`#intro`, `#introMpBtn`, `#game`, `#hud`, the dialog ids)
-// — with one deliberate exception, `openOverlayDirectly()`, which is explained at
-// its own definition.
+// documented element ids (`#intro`, `#game`, `#hud`, the dialog ids) — with one
+// deliberate exception, `openOverlayDirectly()`, which is explained at its own
+// definition.
 
 import { expect, type ConsoleMessage, type Locator, type Page } from '@playwright/test';
 
@@ -58,32 +58,20 @@ export async function openIntro(page: Page): Promise<void> {
 }
 
 /**
- * Splash → a live solo run with the canvas holding the keyboard.
+ * Splash → a live run with the canvas holding the keyboard.
  *
- * A press is the whole flow: solo is what the title card does, so there is no
- * mode picker to step through. The corner of the card is deliberate for the
- * pointer variant — it is the backdrop, well clear of the two buttons.
+ * A press is the whole flow. The corner of the card is deliberate for the pointer
+ * variant — it is the backdrop, well clear of the start button.
  */
 export async function startSoloRun(page: Page, how: 'keyboard' | 'click' = 'keyboard'): Promise<void> {
   await openIntro(page);
   if (how === 'keyboard') await page.keyboard.press('Enter');
   else await page.locator('#intro').click({position: {x: 8, y: 8}});
   await expect(page.locator('#intro')).toHaveCount(0);
-  await expect(page.locator('#lobby-screen')).toHaveCount(0);
   await expect(page.locator('#hud')).toBeVisible();
   // `claimFocusForRun()` retries across a few frames, because React has not
   // necessarily committed the phase change when the press returns.
   await expect(page.locator('#game')).toBeFocused();
-}
-
-/** Splash → the relay panel, waiting until the URL field has the keyboard. */
-export async function openMultiplayer(page: Page): Promise<void> {
-  await page.locator('#introMpBtn').click();
-  await expect(page.locator('#intro')).toHaveCount(0);
-  await expect(page.locator('#lobby-screen')).toBeVisible();
-  // The panel focuses the URL itself, so this is also the point at which the modal
-  // dialog is known to be up rather than merely mounted.
-  await expect(page.locator('#serverUrl')).toBeFocused();
 }
 
 /**

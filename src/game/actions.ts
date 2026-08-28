@@ -31,7 +31,6 @@ import { applyPlayerUpgrade, getPlayerUpgradeProgress, type PlayerUpgradeId } fr
 import { GUN_ITEM, canFireGun, resolveShot } from '../core/weapon';
 import { viewport } from './viewport';
 import type { EnemySim } from './enemies';
-import type { GameSession } from './session';
 import type { WorldGrid } from './world-grid';
 
 /** A partial top-up bought at the depot: fuel or hull, same money math. */
@@ -73,7 +72,6 @@ export interface GameActions {
 
 export interface GameActionsDeps {
   state: GameState;
-  session: GameSession;
   enemies: EnemySim;
   grid: WorldGrid;
   audio: AudioController;
@@ -90,7 +88,7 @@ export interface GameActionsDeps {
 }
 
 export function createActions(deps: GameActionsDeps): GameActions {
-  const {state, session, enemies, grid, audio, toast, saveProgress, addCash, atSurface} = deps;
+  const {state, enemies, grid, audio, toast, saveProgress, addCash, atSurface} = deps;
 
   function currentCargoValue(): number {
     return cargoValue(state.player.inventory);
@@ -283,8 +281,7 @@ export function createActions(deps: GameActionsDeps): GameActions {
       toast(`Direct enemy hit. ${remaining} Linebreakers remain.`);
     } else if (target?.kind === 'tile') {
       if (target.tile.type === 'enemy') {
-        if (session.isGuestEnemyReplica()) session.send({type: 'enemyTileShot', x: target.x, y: target.y, by: 'guest'});
-        else enemies.destroyDormantEnemy(target.x, target.y, 'host');
+        enemies.destroyDormantEnemy(target.x, target.y);
       } else {
         grid.set(target.x, target.y, {type: 'air'});
         enemies.wakeEnemiesNear(target.x, target.y);
@@ -323,7 +320,6 @@ export function createActions(deps: GameActionsDeps): GameActions {
     state.camX = Math.max(0, p.x - Math.floor(viewport.tilesX / 2));
     state.camY = surf ? Math.max(0, p.y - Math.floor(viewport.tilesY / 2)) : 0;
     saveProgress();
-    if (state.connected && session.paired) session.send({type: 'teleported', x: p.x, y: p.y});
     toast(surf
       ? 'Returned to the underground teleport point.'
       : 'Teleported safely to the depot. Press T to return underground.');

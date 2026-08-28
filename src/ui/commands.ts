@@ -50,12 +50,7 @@ export interface UiCommands {
   closeInfo(): void;
   toggleMusic(): void;
   toggleSfx(): void;
-  /** Leave the splash for the relay panel; the press doubles as the audio gesture. */
-  openMultiplayer(event?: Event): void;
-  connect(url: string): void;
-  /** Leave the relay panel for the splash, dropping any pending connection. */
-  leaveMultiplayer(): void;
-  /** Start the run alone. The splash's default: any press on the card lands here. */
+  /** Start the run. The splash's default: any press on the card lands here. */
   playSolo(event?: Event): void;
   grantDeveloperCash(): void;
   runDeveloperService(id: DeveloperServiceId): void;
@@ -103,9 +98,6 @@ function noopCommands(): UiCommands {
     closeInfo: noop,
     toggleMusic: noop,
     toggleSfx: noop,
-    openMultiplayer: noop,
-    connect: noop,
-    leaveMultiplayer: noop,
     playSolo: noop,
     grantDeveloperCash: noop,
     runDeveloperService: noop,

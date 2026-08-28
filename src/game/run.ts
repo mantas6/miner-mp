@@ -5,8 +5,7 @@
 // The rules worth remembering:
 //   * hull damage that empties the hull ends the run exactly once;
 //   * death keeps cash, upgrades and stats, and loses cargo and position;
-//   * a boot keeps the position the save recorded, because only dying costs it;
-//   * an online reset replaces only this miner's ship, never the shared world.
+//   * a boot keeps the position the save recorded, because only dying costs it.
 
 import { START_Y } from '../../shared/constants';
 import { STARTING } from '../core/balance';
@@ -19,7 +18,6 @@ import { resetWorldTerrain } from '../world/world-state';
 import type { AudioController, GameState } from '../core/types';
 import type { EnemySim } from './enemies';
 import type { GameInput } from './input';
-import type { GameSession } from './session';
 import { viewport } from './viewport';
 
 export interface GameRun {
@@ -31,9 +29,9 @@ export interface GameRun {
   clearWorldRuntime(): void;
   /** Redeploy the ship; `full` also wipes cash, upgrades, stats, and fog. */
   resetPlayer(full?: boolean): void;
-  /** R or a tap after death: a replacement ship, or a whole new world offline. */
+  /** R or a tap after death: a whole new world. */
   restartGame(): void;
-  /** End the run once, banking the death and telling the peer. */
+  /** End the run once, banking the death. */
   gameOver(message?: string): void;
   /** Apply hull damage; an emptied hull ends the run. */
   damage(amount: number): void;
@@ -41,7 +39,6 @@ export interface GameRun {
 
 export interface GameRunDeps {
   state: GameState;
-  session: GameSession;
   audio: AudioController;
   /**
    * Resolved lazily: both the enemy simulation and the keyboard are constructed
@@ -51,8 +48,8 @@ export interface GameRunDeps {
   input(): GameInput;
   toast(message: string): void;
   saveProgress(): void;
-  /** Reveal the sensor footprint around the ship; `broadcast` shares it. */
-  revealAtPlayer(broadcast?: boolean): void;
+  /** Reveal the sensor footprint around the ship. */
+  revealAtPlayer(): void;
   spawnExplosion(x: number, y: number): void;
   /** Drop the whole terrain cache (world replaced wholesale). */
   invalidateTerrain(): void;
@@ -61,7 +58,7 @@ export interface GameRunDeps {
 }
 
 export function createRun(deps: GameRunDeps): GameRun {
-  const {state, session, audio, toast, saveProgress, spawnExplosion} = deps;
+  const {state, audio, toast, saveProgress, spawnExplosion} = deps;
 
   /** Snap the camera onto the ship, so a run never opens mid-pan. */
   function centreCameraOnShip(): void {
@@ -101,7 +98,7 @@ export function createRun(deps: GameRunDeps): GameRun {
     toast('Fresh drill deployed.');
   }
 
-  /** The solo mine rebuilt from its seed, with the saved diff dug back out. */
+  /** The mine rebuilt from its seed, with the saved diff dug back out. */
   function buildSoloWorld(): void {
     state.enemies = [];
     state.world = [];
@@ -120,8 +117,7 @@ export function createRun(deps: GameRunDeps): GameRun {
     buildSoloWorld();
     const p = state.player;
     // The save carries a tile, not a guarantee: a capped or quota-dropped diff
-    // can leave that coordinate solid again, and a position last written in
-    // co-op means nothing in this world. Anything but open air returns to the
+    // can leave that coordinate solid again. Anything but open air returns to the
     // depot, because a ship buried in dirt cannot drill its way back up.
     if (ensureWorldRow(state.world, p.y)?.[p.x]?.type !== 'air') placeAtSurfaceSpawn(p);
     // Fuel, hull and cargo are never saved, so a resumed run is a fresh ship
@@ -147,14 +143,8 @@ export function createRun(deps: GameRunDeps): GameRun {
   function restartGame(): void {
     const died = state.gameOver;
     deps.input().reset();
-    // An online death/reset only replaces this miner's ship; the shared world
-    // and host-owned enemy list must remain intact for the other player.
-    if (state.connected) resetPlayer(false);
-    else generate();
+    generate();
     if (died) toast('Replacement ship deployed. Cash and upgrades kept; cargo lost.');
-    if (died && state.connected && session.paired) {
-      session.send({type:'respawned', x:state.player.x, y:state.player.y});
-    }
   }
 
   function gameOver(message = 'Game over. Tap anywhere or press R to restart.'): void {
@@ -165,7 +155,6 @@ export function createRun(deps: GameRunDeps): GameRun {
     state.extractionPhase = cancelExtraction();
     state.stats.deaths++;
     saveProgress();
-    if (state.connected && session.paired) session.send({type:'died'});
     toast(message);
     spawnExplosion(state.player.x, state.player.y);
     audio.explosion(1.2);

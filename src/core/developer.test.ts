@@ -67,22 +67,19 @@ describe('developer ship services', () => {
     expect(state.player).toMatchObject({ fuel: 240, fuelMax: 240, hull: 360, hullMax: 360 });
   });
 
-  it('charges no cash, changes no statistics, and does not affect peers', () => {
+  it('charges no cash and changes no statistics', () => {
     const state = createInitialState();
     state.cash = 0;
     state.player.fuel = 10;
     state.player.hull = 20;
     state.stats.maxDepth = 80;
     const stats = { ...state.stats };
-    state.remotePlayers = [{ x: 1, y: 2, drawX: 1, drawY: 2, facing: 1, drillAnim: 0, drillDx: 0, drillDy: 1, bob: 0 }];
-    const peers = structuredClone(state.remotePlayers);
 
     developerRefuel(state.player);
     developerRepairHull(state.player);
 
     expect(state.cash).toBe(0);
     expect(state.stats).toEqual(stats);
-    expect(state.remotePlayers).toEqual(peers);
   });
 
   it('is a no-op at full and disables controls with clear full-state copy', () => {

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { expandReachableAir } from './enemy-exposure';
-import { applyEnemySpawn, enemySnapshotFrom, mergeEnemySnapshot } from '../net/net-protocol';
-import type { Enemy, Tile } from './types';
+import type { Tile } from './types';
 
 function dirt(): Tile {
   return {type: 'dirt', hp: 2, maxHp: 2};
@@ -42,20 +41,5 @@ describe('buried enemy exposure', () => {
     tiles[3][4] = {type: 'air'};
 
     expect(expandReachableAir(tiles, reachable, [{x: 2, y: 3}])).toEqual([{x: 5, y: 3}]);
-  });
-
-  it('synchronizes only the active enemy created after exposure', () => {
-    const tiles = world();
-    tiles[3][1] = {type: 'air'};
-    tiles[3][2] = {type: 'air'};
-    tiles[3][3] = {type: 'enemy', kind:'skitterling', hp: 4, maxHp: 4};
-    const exposed = expandReachableAir(tiles, new Set(), [{x: 1, y: 3}], true);
-    const spawn = {type: 'enemySpawn' as const, id: 7, kind:'skitterling' as const, ...exposed[0], hp: 4, maxHp: 4};
-    const guestSpawn = applyEnemySpawn([], spawn);
-    const hostEnemy: Enemy = {...guestSpawn[0], moveTick: 0, biteTick: 0, flash: 0};
-    const sync = enemySnapshotFrom([hostEnemy]);
-
-    expect(exposed).toEqual([{x: 3, y: 3}]);
-    expect(mergeEnemySnapshot([], sync.enemies)).toEqual(guestSpawn);
   });
 });

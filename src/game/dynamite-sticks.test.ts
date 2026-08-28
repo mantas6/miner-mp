@@ -184,7 +184,7 @@ describe('a burning stick', () => {
     h.dynamite.tick();
 
     expect(h.state.placedDynamite).toEqual([]);
-    expect(h.grid.writes).toContainEqual({x: 40, y: 101, tile: {type: 'air'}, broadcast: true});
+    expect(h.grid.writes).toContainEqual({x: 40, y: 101, tile: {type: 'air'}});
     expect(h.wakeEnemiesNear).toHaveBeenCalledWith(40, 100);
     expect(h.spawnExplosion).toHaveBeenCalledWith(40, 100);
     expect(h.audio.played).toContain('explosion');

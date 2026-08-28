@@ -9,27 +9,23 @@ A small browser-based Motherload-style mining game. Mine ore, return to the surf
 The client is React + TypeScript around a canvas: React paints the chrome from a
 zustand store, the canvas renders the mine, and the simulation runs in fixed
 60 Hz steps so tick-based tuning behaves the same on any refresh rate. Booting
-walks a UI phase machine — intro splash → playing, or splash → lobby (the relay
-panel, behind the splash's MP button) → playing.
-Co-op adds a Node WebSocket relay in `server/` that owns the shared mine.
+walks a UI phase machine — intro splash → playing.
 
-A solo mine is persistent. Terrain is never stored tile by tile — it regenerates
+The mine is persistent. Terrain is never stored tile by tile — it regenerates
 from its coordinate seed — so the save keeps the *diff*: the list of
-`shared/world-schema.ts` tile entries the miners changed, exactly the format the
-relay uses for the shared world. Dying or refreshing rebuilds the terrain and
-lays that diff back over it, so tunnels, mined ore, and cracked blocks stay where
-you left them. The save keeps the newest 20,000 mutations and forgets older ones
-rather than outgrowing `localStorage`. Co-op terrain belongs to the relay and is
-never written to the local save.
+`shared/world-schema.ts` tile entries the miner changed. Dying or refreshing
+rebuilds the terrain and lays that diff back over it, so tunnels, mined ore, and
+cracked blocks stay where you left them. The save keeps the newest 20,000
+mutations and forgets older ones rather than outgrowing `localStorage`.
 
 The ship is part of that mine. The save records the tile it parked on, so a
 refresh resumes down the shaft instead of at the depot — with a full tank, a
 whole hull and an empty cargo bay, since none of those are saved. Only dying
 costs you your position. If the restored mine turns out to be solid rock at that
-tile (a capped save, or a position last written in co-op), the ship starts at the
-depot rather than buried, because the drill cannot dig upward.
+tile (a capped save), the ship starts at the depot rather than buried, because
+the drill cannot dig upward.
 
-Underground fog of war is persistent. Movement initially reveals a 3x3 square; each Sensor Array level adds one tile to both dimensions, up to 8x8. For even sizes the ship is the top-left cell of the central 2x2, so 4x4 covers offsets `-1..2` horizontally and vertically. Surface rows are always visible. Co-op miners union and persist their explored tiles because terrain and enemies already use a shared-world model, while each miner's sensor level remains individual.
+Underground fog of war is persistent. Movement initially reveals a 3x3 square; each Sensor Array level adds one tile to both dimensions, up to 8x8. For even sizes the ship is the top-left cell of the central 2x2, so 4x4 covers offsets `-1..2` horizontally and vertically. Surface rows are always visible.
 
 ## Project structure
 
@@ -57,8 +53,6 @@ miner-mp/
 ├── shared/
 │   ├── constants.ts
 │   ├── exploration-codec.ts
-│   ├── protocol.ts
-│   ├── protocol-fixtures.ts
 │   ├── tile-key.ts
 │   └── world-schema.ts
 ├── soundtrack/
@@ -78,7 +72,6 @@ miner-mp/
 │   ├── core/
 │   ├── world/
 │   ├── game/
-│   ├── net/
 │   ├── render/
 │   ├── audio/
 │   │   ├── audio.ts
@@ -95,10 +88,6 @@ miner-mp/
 │   ├── failure.spec.ts
 │   └── support/
 │       └── game.ts
-├── server/
-│   ├── index.js
-│   ├── world-state.js
-│   └── test/
 └── .github/
     └── workflows/
         ├── build.yml
@@ -109,19 +98,16 @@ miner-mp/
 |---|---|
 | `AGENTS.md` | Working agreements for anyone changing the code: avoid UI clutter, keep the rules pure, verify with `./test.sh`. |
 | `index.html` | Main game page and root mount node; loaded by Vite. |
-| `shared/constants.ts` | World constants, camera scale (36px tiles), protocol limits, ore and artifact tables. Consumed by both the client and the relay server. |
-| `shared/exploration-codec.ts` | Fog-of-war index math and the run-length encoding shared with persistence and the relay. |
-| `shared/protocol.ts` | Zod schemas and derived types for every co-op message and the relay envelope. |
-| `shared/protocol-fixtures.ts` | Shared message fixtures, so the client and relay protocol tests assert against the same payloads. |
+| `shared/constants.ts` | World constants, camera scale (36px tiles), persistence limits, ore and artifact tables. |
+| `shared/exploration-codec.ts` | Fog-of-war index math and the run-length encoding used by persistence. |
 | `shared/world-schema.ts` | Zod schemas and derived types for tiles, enemies, and the persisted world state. |
-| `shared/tile-key.ts` | Canonical `"x,y"` coordinate key used by tile maps on both sides. |
+| `shared/tile-key.ts` | Canonical `"x,y"` coordinate key used by tile maps. |
 | `src/main.tsx` | Vite entry point: imports global styles and renders the app inside `<StrictMode>` and an error boundary, handing the game-runtime factory to it. |
-| `src/persistence.ts` | Local save/load of player progress, the ship's parked tile, explored tiles, and the solo world's tile diff (`localStorage`). |
+| `src/persistence.ts` | Local save/load of player progress, the ship's parked tile, explored tiles, and the world's tile diff (`localStorage`). |
 | `src/core/` | Pure gameplay rules and types: balance, economy, upgrades, shop catalog, movement, weapon, dynamite, teleporter, cargo containers, enemies, objectives, extraction, scanner, fuel reserve, depth milestones, spoken ship status, stats, danger, fixed-step clock, developer tools. |
-| `src/world/` | World generation, the tile diff that turns a saved or relayed world back into terrain (`tile-diff.ts`), shared world-state reset, and visible tile range. |
-| `src/game/` | Gameplay orchestration (`game.ts`, the `createGameRuntime()` factory) plus its feature modules — `session.ts` (relay session), `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `zoom.ts` (wheel/pinch camera zoom maths), `zoom-settings.ts` (the remembered zoom level), `readouts.ts`, `scanner-devices.ts`, `dynamite-sticks.ts`, `cargo-containers.ts` — the canvas surface factory (`dom.ts`) and the teardown registry every side effect registers with (`disposal.ts`). |
-| `src/net/` | Relay client (partysocket, auto-reconnect), wire protocol codec, and multiplayer settings. |
-| `src/render/` | Canvas drawing, terrain/fog chunk cache policy, and partner indicator. |
+| `src/world/` | World generation, the tile diff that turns a saved world back into terrain (`tile-diff.ts`), world-state reset, and visible tile range. |
+| `src/game/` | Gameplay orchestration (`game.ts`, the `createGameRuntime()` factory) plus its feature modules — `enemies.ts`, `actions.ts`, `move.ts`, `run.ts`, `input.ts`, `world-grid.ts`, `viewport.ts`, `zoom.ts` (wheel/pinch camera zoom maths), `zoom-settings.ts` (the remembered zoom level), `readouts.ts`, `scanner-devices.ts`, `dynamite-sticks.ts`, `cargo-containers.ts` — the canvas surface factory (`dom.ts`) and the teardown registry every side effect registers with (`disposal.ts`). |
+| `src/render/` | Canvas drawing, and the terrain/fog chunk cache policy. |
 | `src/audio/` | Web Audio graph, sound effects, soundtrack playback, and autoplay permission. |
 | `src/audio/tracks.ts` | Track registry for playback: the `TrackId` union, `TRACKS` (title plus mp3/ogg URLs), `DEFAULT_TRACK_ID`. |
 | `src/audio/encoding.ts` | `prefersMp3()`/`pickSource()`: the one place that decides mp3 or ogg for an asset that ships as both. |
@@ -130,7 +116,7 @@ miner-mp/
 | `soundtrack/tracks/__init__.py` | Generator-side registry: the `TRACKS` dict keyed by slug and `get_track()`. |
 | `soundtrack/render.py` | CLI that renders registered tracks into `public/assets/music/`. |
 | `public/assets/music/` | The shipped soundtrack assets (`golden-signal.mp3`, `golden-signal.ogg`) — build products of `soundtrack/render.py`, copied verbatim into `dist/` by Vite. |
-| `src/ui/` | React components, the zustand UI store (`store.ts`), the command table the buttons dispatch into (`commands.ts`), the effect that owns the runtime's lifetime (`useGameRuntime.ts`), the relay status vocabulary both layers share (`connection-status.ts`), the boot/crash notices (`Failure.tsx`), and co-located CSS modules. |
+| `src/ui/` | React components, the zustand UI store (`store.ts`), the command table the buttons dispatch into (`commands.ts`), the effect that owns the runtime's lifetime (`useGameRuntime.ts`), the boot/crash notices (`Failure.tsx`), and co-located CSS modules. |
 | `src/styles/base.css` | Design tokens plus element-level styling (`button`, `ul`, `kbd`, `meter`, `canvas`, `#shell`, `#game-panel`) and the app-wide `:focus-visible` ring. |
 | `src/styles/icons.css` | Global equipment sprite sheet (`icon-*`), addressed by name from the shop catalog. |
 | `src/styles/intro-art.css` | Global intro badge art. |
@@ -139,14 +125,11 @@ miner-mp/
 | `tsconfig.e2e.json` | The third `npm run typecheck` pass: `e2e/` and `playwright.config.ts`, which run in Node and so need those globals rather than Vitest's. |
 | `playwright.config.ts` | End-to-end config: one Chromium project, the Vite dev server started as a `webServer`, and the local/CI browser resolution described under "End-to-end tests". |
 | `e2e/` | The Playwright suite — boot flow, keyboard mining, the modal dialogs and focus restoration, the `:focus-visible` ring, and the runtime-failure notice — plus `support/game.ts`, the shared page fixtures. |
-| `.oxlintrc.json` | Lint rules for `src/`, `shared/`, `server/` and `e2e/` (oxlint), with the reason behind every disabled rule. |
+| `.oxlintrc.json` | Lint rules for `src/`, `shared/` and `e2e/` (oxlint), with the reason behind every disabled rule. |
 | `.oxfmtrc.json` | oxfmt configuration; `npm run fmt` formats every stylesheet under `src/`. |
 | `init.sh` | Installs dependencies and starts a background Vite dev server for smoke testing. |
-| `start.sh` | Builds, then runs the relay and the preview server together for local co-op. |
-| `test.sh` | Full check sequence: lint, CSS format check, client tests, typecheck, production build, the Playwright suite when a system Chromium is available, relay tests. |
-| `server/index.js` | Co-op multiplayer relay server (Node + `ws`). |
-| `server/world-state.js` | Authoritative shared-mine state and its on-disk persistence. |
-| `server/test/` | Relay tests (`node --test`): protocol parity with the client, relay behaviour, world-state persistence. |
+| `start.sh` | Builds, then runs the preview server. |
+| `test.sh` | Full check sequence: lint, CSS format check, unit tests, typecheck, production build, and the Playwright suite when a system Chromium is available. |
 | `.github/workflows/build.yml` | CI: lint, CSS format check, typecheck, unit tests and production build, plus a parallel job that installs Chromium and runs the Playwright suite. |
 | `.github/workflows/deploy-pages.yml` | Manually triggered GitHub Pages deployment of `dist/`. |
 
@@ -213,83 +196,16 @@ Preview the built site locally:
 npm run preview
 ```
 
-## Multiplayer (co-op)
-
-Co-op play uses an authoritative WebSocket world server in `server/`. It is a
-Node process built on the [`ws`](https://github.com/websockets/ws) library. It
-imports the shared zod schemas in `shared/` directly, so it needs a Node release
-with TypeScript type stripping (Node 22.18+ or newer).
-
-For a one-command local session, `./start.sh` installs anything missing, builds
-the client against the local relay URL, then runs the relay and `vite preview`
-side by side until Ctrl-C (honouring `PORT`, default `8081`).
-
-To run the pieces yourself, install the relay's dependencies once:
-
-```bash
-npm --prefix server install
-```
-
-Start the relay server:
-
-```bash
-node server/index.js
-```
-
-The server listens on the port given by the `PORT` environment variable and
-defaults to `8081`:
-
-```bash
-PORT=9000 node server/index.js
-```
-
-A room holds exactly two miners — the first connection becomes the host, the
-second the guest, and a third is told `room-full` and closed. The host simulates
-the enemies; the guest replicates them.
-
-The server persists the shared mine to `server/data/world-state.json` by
-default. Set `WORLD_STATE_PATH` to a writable file on a durable mounted volume
-for relay/container deployments whose application filesystem is ephemeral:
-
-```bash
-WORLD_STATE_PATH=/var/lib/moleload/world-state.json PORT=9000 node server/index.js
-```
-
-The ignored runtime file is versioned JSON (`version: 1`) containing the world
-revision, generated non-air tile values, explicit air/dug overrides, active
-world enemies, and shared exploration ranges. Input is schema-, coordinate-,
-count-, and size-validated against `shared/world-schema.ts` — the same
-definitions the client validates against, so neither side can accept a message
-the other silently drops. Updates are written atomically with
-[`write-file-atomic`](https://github.com/npm/write-file-atomic), and a failed
-write is logged rather than crashing the relay. Clients receive this
-authoritative snapshot before their pairing event, and every mutation carries a
-world revision so traffic from before a reset cannot repopulate the new mine.
-
-The relay pings each connection every 30 seconds and drops peers that miss two
-pings, so a dead transport frees its room slot; it also rate limits each
-connection to 200 messages per second. Clients reconnect automatically with
-backoff (0.5 s, growing 1.5x per attempt, capped at 10 s) and re-hydrate through
-the normal snapshot-then-pair handshake.
+## Cheats
 
 The cheat menu — cash grants, free refuel/repair, free upgrades, and the player
-and shared-world reset controls — lives in the **Settings** tab of Info / Cargo,
-behind a "Show cheat menu" disclosure. It is available in every build with no
+and world reset controls — lives in the **Settings** tab of Info / Cargo, behind
+a "Show cheat menu" disclosure. It is available in every build with no
 environment opt-in, and it is mounted only while that disclosure is expanded.
 
-The shared-world reset regenerates terrain, enemies, caches, and fog while
-preserving each player's cash, upgrades, inventory/cargo, stats, ship condition,
-and settings.
-
-The client connects to the relay via the `VITE_MP_SERVER_URL` environment
-variable, which defaults to `ws://localhost:8081`. The lobby pre-fills that URL
-and remembers whatever you last connected to, so it can also be changed without
-rebuilding. Set it when running the dev server or building to change the
-default:
-
-```bash
-VITE_MP_SERVER_URL=ws://localhost:9000 npm run dev
-```
+The world reset regenerates terrain, enemies, caches, and fog while preserving
+the player's cash, upgrades, inventory/cargo, stats, ship condition, and
+settings.
 
 ## Controls
 
@@ -299,8 +215,7 @@ zooming the camera with the wheel or a trackpad.
 
 | Action | Keyboard | UI (click/tap) |
 |---|---|---|
-| Start a solo run | `Enter` or `Space` | Click/tap intro screen |
-| Play co-op instead | — | Intro: MP → Connect |
+| Start a run | `Enter` or `Space` | Click/tap intro screen |
 | Move / fly / dig | `WASD` or arrow keys | — |
 | Sprint through open space | Hold `Shift` + direction | — |
 | Zoom the camera (0.5x–2x, remembered) | — | Wheel scroll or trackpad pinch over the mine |
@@ -320,7 +235,7 @@ zooming the camera with the wheel or a trackpad.
 | Redeploy mid-run | `R`, then `R` again within 3.5 s | — |
 | Restart after game over | `R` | Click/tap outside the dialogs |
 | Toggle sound | — | 🔊 button; a trusted pointer/touch gesture may auto-enable |
-| Reset shared world (development opt-in only) | — | Info / Cargo -> Dev tools (local) -> Reset World State |
+| Reset world | — | Info / Cargo -> Settings -> cheats -> Reset World State |
 
 ## Accessibility
 
@@ -337,10 +252,10 @@ zooming the camera with the wheel or a trackpad.
   fuel banner are live regions, and `#game-status` politely announces the ship's
   situation — at the depot, in the mine, holds full, hull critical, ship lost. It is
   driven by thresholds, so the 60 Hz HUD sync never makes it talk.
-- **Native dialogs.** The intro prompt and its MP button are `<button>`s; the lobby,
-  shop, info and cargo-container overlays are modal `<dialog>`s, so the browser
-  contains Tab, makes the rest of the page inert, and each close returns focus to
-  the control that opened it.
+- **Native dialogs.** The intro prompt is a `<button>`; the shop, info and
+  cargo-container overlays are modal `<dialog>`s, so the browser contains Tab,
+  makes the rest of the page inert, and each close returns focus to the control
+  that opened it.
 - **`prefers-reduced-motion`.** The looping start-prompt, low-fuel and HUD-alert
   animations stop; the alert colours stay.
 
@@ -377,9 +292,7 @@ zooming the camera with the wheel or a trackpad.
   the other side. A crate keeps what it holds through death, reload and the sale of
   everything aboard, which makes it the only way to protect ore from a lost run.
   Ore taken back out still obeys the Cargo Bay upgrade's total ore cap, so a crate
-  buys storage, never carrying capacity. Six may stand in the mine at once, and
-  like scanners and dynamite they are local to this client rather than shared with
-  a co-op partner.
+  buys storage, never carrying capacity. Six may stand in the mine at once.
 - Low fuel warnings appear below 25%; return to the surface quickly.
 - The HUD reserve readout forecasts the climb home (safe/caution/urgent), the
   scanner reads the tile the drill is aimed at, and the depth readout counts
@@ -496,8 +409,8 @@ restarts playback from that track's beginning if music was already running.
 ## Development checklist
 
 After making changes, run the full check sequence — `./test.sh` does all of it
-(lint, CSS format check, unit tests, typecheck, production build, the Playwright
-suite when a system Chromium is available, then the relay's own tests):
+(lint, CSS format check, unit tests, typecheck, production build, and the
+Playwright suite when a system Chromium is available):
 
 ```bash
 ./test.sh
@@ -506,7 +419,7 @@ suite when a system Chromium is available, then the relay's own tests):
 The individual commands, if you want them one at a time:
 
 ```bash
-npm run lint        # oxlint over src/, shared/, server/ and vite.config.ts
+npm run lint        # oxlint over src/, shared/, e2e/ and the config files
 npm run lint:fix    # same, applying the safe autofixes
 npm run fmt         # oxfmt over every stylesheet under src/
 npm run fmt:check   # same, failing instead of rewriting
@@ -516,8 +429,6 @@ npm run test:e2e    # Playwright, e2e/*.spec.ts against a Vite dev server
 npm run test:e2e:ui # the same suite in Playwright's UI mode
 npm run typecheck   # tsc over the app, the tests, then the e2e suite
 npm run build       # production build into dist/
-npm --prefix server test        # relay tests (node --test)
-npm --prefix server run typecheck   # node --check over the relay sources
 ```
 
 Lint rules live in `.oxlintrc.json`: `correctness`, `suspicious` and `perf` are
@@ -535,9 +446,9 @@ the boot flow gets from the splash to a live run without the browser complaining
 
 | Spec | Covers |
 |---|---|
-| `e2e/boot.spec.ts` | The title card, its start button and its MP button; `Enter` and "press anywhere" both starting a solo run with the canvas focused, the HUD painted and the scanner reading real terrain; MP opening the relay panel instead of starting a run; the canvas being the surface's only tab stop; the whole flow producing no console errors and no page errors. |
+| `e2e/boot.spec.ts` | The title card and its start button; `Enter` and "press anywhere" both starting a run with the canvas focused, the HUD painted and the scanner reading real terrain; the canvas being the surface's only tab stop; the whole flow producing no console errors and no page errors. |
 | `e2e/gameplay.spec.ts` | One keypress charged exactly once and clearing exactly one tile (the fence against a doubled input/step pipeline); depth rising and fuel falling over a descent; the depot actions swapping for the underground ones, live region included; focus staying on the canvas while mining. |
-| `e2e/dialogs.spec.ts` | Shop and info opening with focus inside the dialog; `Escape`, the × button and the backdrop each closing it and restoring focus to the trigger; Tab never escaping into the HUD behind; the info tablist's click and arrow-key navigation; the two overlays handing the screen over rather than stacking; the relay panel containing Tab, and its `Escape` and Back button both stepping back to the splash. |
+| `e2e/dialogs.spec.ts` | Shop and info opening with focus inside the dialog; `Escape`, the × button and the backdrop each closing it and restoring focus to the trigger; Tab never escaping into the HUD behind; the info tablist's click and arrow-key navigation; the two overlays handing the screen over rather than stacking. |
 | `e2e/focus-visible.spec.ts` | The ring drawn for `Tab` (3px, and inset on the canvas) and gone for a click that moves focus, including the focus a clicked-shut dialog restores. |
 | `e2e/failure.spec.ts` | A refused 2D context — stubbed with an init script — surfacing as the "Mine offline" notice with its detail line, its `role="alert"` and a working Reload, while the crash boundary stays out of it. |
 
@@ -599,8 +510,7 @@ march means autoplay was rejected and the synth fallback took over.
 
 ## Deployment
 
-Two GitHub Actions workflows cover the client; the relay is not deployed by
-either of them.
+Two GitHub Actions workflows cover the client.
 
 - `.github/workflows/build.yml` runs `npm ci`, then lint, CSS format check,
   typecheck, unit tests and `npm run build` on pushes to `main`, on pull requests,
@@ -611,5 +521,4 @@ either of them.
   Pages when triggered manually.
 
 `vite.config.ts` sets a relative `base`, so the same build works at a domain
-root and under the `/miner-mp/` Pages project subpath. The deployed site is
-solo play unless the lobby is pointed at a relay it can reach.
+root and under the `/miner-mp/` Pages project subpath.

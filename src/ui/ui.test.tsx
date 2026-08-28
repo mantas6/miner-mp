@@ -12,14 +12,13 @@ import { DYNAMITE_ITEM } from '../core/dynamite';
 import { addItem, addOre, createInventory } from '../core/inventory';
 import { SCANNER_ITEM } from '../core/scanner-device';
 import { setUiCommands, uiCommands } from './commands';
-import { RELAY_PROBLEM_STATUS } from './connection-status';
 import { buildInventorySlots, uiStore, type HudSnapshot } from './store';
 import { MinerApp } from './ui';
 
 /** Ids the game runtime, the keyboard layer, and the tests address directly. */
 const DOM_CONTRACT = [
   'shell', 'game-panel', 'game', 'game-instructions', 'game-status',
-  'hud', 'musicBtn', 'sfxBtn', 'connectionStatus', 'cash', 'depth', 'depthTarget', 'scanner',
+  'hud', 'musicBtn', 'sfxBtn', 'cash', 'depth', 'depthTarget', 'scanner',
   'fuel', 'fuelLabel', 'fuelReturn', 'fuelSurplus', 'hull', 'hullLabel', 'cargo', 'cargoLabel', 'extractionStatus',
   // The inventory panel ships expanded, so its slot list is part of the contract.
   'inventory', 'inventoryToggleBtn', 'inventorySlots',
@@ -49,9 +48,6 @@ const INFO_TAB_CONTRACT = [
   {tabId: 'info-tab-hazards', ids: ['dangerGuide']},
   {tabId: 'info-tab-settings', ids: ['settingsMusicBtn', 'settingsSfxBtn', 'resetGameBtn']}
 ];
-
-/** Ids that only exist in the lobby phase, which is the relay panel and nothing else. */
-const LOBBY_CONTRACT = ['lobby-screen', 'serverUrl', 'lobbyConnectionStatus', 'connectBtn', 'lobbyBackBtn'];
 
 const pristine = {...uiStore.getState()};
 const pristineCommands = {...uiCommands};
@@ -286,26 +282,16 @@ describe('closed overlays', () => {
 });
 
 describe('boot phase machine', () => {
-  it('mounts the intro alone, then the relay panel alone, then neither', () => {
+  it('mounts the intro alone, then neither', () => {
     render(<MinerApp />);
 
     expect(document.getElementById('intro')).not.toBeNull();
-    expect(document.getElementById('lobby-screen')).toBeNull();
-
-    act(() => { uiStore.getState().setPhase('lobby'); });
-    expect(document.getElementById('intro')).toBeNull();
-    for (const id of LOBBY_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
-    // A real modal, so the browser contains Tab instead of letting it walk into the
-    // HUD of a run that has not started.
-    expect(dialog('lobby-screen').tagName).toBe('DIALOG');
-    expect(dialog('lobby-screen').open).toBe(true);
 
     act(() => { uiStore.getState().setPhase('playing'); });
     expect(document.getElementById('intro')).toBeNull();
-    expect(document.getElementById('lobby-screen')).toBeNull();
   });
 
-  it('keeps the splash copy to the title, one tagline, the start prompt and MP', () => {
+  it('keeps the splash copy to the title, one tagline and the start prompt', () => {
     render(<MinerApp />);
 
     const intro = document.getElementById('intro')!;
@@ -313,12 +299,11 @@ describe('boot phase machine', () => {
     expect(intro.textContent).toContain('Press Enter to start');
     // The rules live in Info / Cargo now: a wall of text here buries the prompt.
     expect(intro.querySelectorAll('li')).toHaveLength(0);
-    // Two buttons and no third offer: start, and the way out to a relay.
-    expect([...intro.querySelectorAll('button')].map(button => button.id)).toEqual(['introStartBtn', 'introMpBtn']);
-    expect(document.getElementById('introMpBtn')?.getAttribute('aria-label')).toBe('Multiplayer');
+    // One button and no other offer: start.
+    expect([...intro.querySelectorAll('button')].map(button => button.id)).toEqual(['introStartBtn']);
   });
 
-  it('starts a solo run on a press anywhere, forwarding the gesture for audio unlock', () => {
+  it('starts a run on a press anywhere, forwarding the gesture for audio unlock', () => {
     const playSolo = vi.fn();
     setUiCommands({playSolo});
     render(<MinerApp />);
@@ -334,7 +319,7 @@ describe('boot phase machine', () => {
    * so the click a screen reader synthesises fell on the floor. The prompt is a
    * real button now, and a click is all it takes.
    */
-  it('starts a solo run from the start button a screen reader can click', () => {
+  it('starts a run from the start button a screen reader can click', () => {
     const playSolo = vi.fn();
     setUiCommands({playSolo});
     render(<MinerApp />);
@@ -347,7 +332,7 @@ describe('boot phase machine', () => {
     expect(playSolo).toHaveBeenCalledTimes(1);
   });
 
-  it('starts a solo run on Enter or Space wherever focus happens to be', () => {
+  it('starts a run on Enter or Space wherever focus happens to be', () => {
     const playSolo = vi.fn();
     setUiCommands({playSolo});
     render(<MinerApp />);
@@ -360,135 +345,15 @@ describe('boot phase machine', () => {
     expect(playSolo).toHaveBeenCalledTimes(2);
   });
 
-  /**
-   * The card's own handlers cover the whole screen, so both of them have to leave
-   * the MP button alone — a press that bubbled, or an Enter answered for the
-   * focused button, would start the solo run the player was steering away from.
-   */
-  it('opens the relay panel from MP without starting a run', () => {
-    const playSolo = vi.fn();
-    const openMultiplayer = vi.fn();
-    setUiCommands({playSolo, openMultiplayer});
-    render(<MinerApp />);
-    const mp = document.getElementById('introMpBtn')!;
-
-    fireEvent.keyDown(mp, {key: 'Enter'});
-    expect(playSolo).not.toHaveBeenCalled();
-
-    fireEvent.pointerDown(mp);
-    fireEvent.click(mp);
-
-    expect(playSolo).not.toHaveBeenCalled();
-    expect(openMultiplayer).toHaveBeenCalledTimes(1);
-    expect(openMultiplayer.mock.calls[0][0]).toBeInstanceOf(Event);
-  });
-
-  it('stops listening for the intro keys once the relay panel takes over', () => {
+  it('stops listening for the intro keys once the run starts', () => {
     const playSolo = vi.fn();
     setUiCommands({playSolo});
     render(<MinerApp />);
 
-    act(() => { uiStore.getState().setPhase('lobby'); });
+    act(() => { uiStore.getState().setPhase('playing'); });
     fireEvent.keyDown(document.body, {key: 'Enter'});
 
     expect(playSolo).not.toHaveBeenCalled();
-  });
-
-  /** The lobby phase is the relay panel outright: the mode picker it used to open behind is gone. */
-  it('mounts the relay panel with the URL focused, and nothing else', () => {
-    render(<MinerApp />);
-    act(() => { uiStore.getState().setPhase('lobby'); });
-
-    for (const id of LOBBY_CONTRACT) expect(document.getElementById(id), id).not.toBeNull();
-    expect(document.getElementById('soloBtn')).toBeNull();
-    expect(document.getElementById('multiplayerBtn')).toBeNull();
-    expect(document.activeElement?.id).toBe('serverUrl');
-  });
-
-  it('describes the relay field with its status line, and marks it invalid on failure', () => {
-    render(<MinerApp />);
-    act(() => { uiStore.getState().setPhase('lobby'); });
-    const field = document.getElementById('serverUrl') as HTMLInputElement;
-
-    expect(field.getAttribute('aria-describedby')).toBe('lobbyConnectionStatus');
-    expect(field.getAttribute('aria-invalid')).toBe('false');
-
-    // Progress is not a problem with what was typed; a refused relay is.
-    act(() => { uiStore.getState().setConnection('Connecting...', true); });
-    expect(field.getAttribute('aria-invalid')).toBe('false');
-
-    act(() => { uiStore.getState().setConnection(RELAY_PROBLEM_STATUS.socket, true); });
-    expect(field.getAttribute('aria-invalid')).toBe('true');
-  });
-
-  /**
-   * Escape steps back to the splash, and it must be the phase machine that does it:
-   * left to the browser the key is a close request, which would drop the card
-   * without telling anyone and leave a mine that has not started underneath.
-   */
-  it('takes Escape out of the browser\'s hands and steps back to the splash', () => {
-    setUiCommands({leaveMultiplayer: () => uiStore.getState().setPhase('intro')});
-    render(<MinerApp />);
-    act(() => { uiStore.getState().setPhase('lobby'); });
-
-    const event = new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true});
-    act(() => { window.dispatchEvent(event); });
-
-    // Refused before the browser can turn the key into a close request at all.
-    expect(event.defaultPrevented).toBe(true);
-    expect(document.getElementById('lobby-screen')).toBeNull();
-    expect(document.getElementById('intro')).not.toBeNull();
-  });
-
-  it('keeps the keyboard on the card when the dimmed area is pressed', () => {
-    render(<MinerApp />);
-    act(() => { uiStore.getState().setPhase('lobby'); });
-    expect(document.activeElement?.id).toBe('serverUrl');
-
-    const press = new PointerEvent('pointerdown', {bubbles: true, cancelable: true});
-    act(() => { dialog('lobby-screen').dispatchEvent(press); });
-
-    // Cancelling the press is what stops the dialog itself from taking focus.
-    expect(press.defaultPrevented).toBe(true);
-    expect(document.activeElement?.id).toBe('serverUrl');
-  });
-
-  it('connects with the entered relay URL from the button and from Enter', () => {
-    const connect = vi.fn();
-    setUiCommands({connect});
-    render(<MinerApp />);
-    act(() => { uiStore.getState().setPhase('lobby'); });
-
-    fireEvent.change(document.getElementById('serverUrl')!, {target: {value: ' ws://relay.test '}});
-    fireEvent.click(document.getElementById('connectBtn')!);
-    expect(connect).toHaveBeenCalledWith('ws://relay.test');
-
-    // Connect is the form's submit action, so Enter in the field reaches it too.
-    // (happy-dom has no implicit submission, hence the direct submit event.)
-    fireEvent.submit(document.getElementById('serverUrl')!.closest('form')!);
-    expect(connect).toHaveBeenCalledTimes(2);
-  });
-
-  it('leaves multiplayer from the Back button and from Escape', () => {
-    const leaveMultiplayer = vi.fn();
-    setUiCommands({leaveMultiplayer});
-    render(<MinerApp />);
-    act(() => { uiStore.getState().setPhase('lobby'); });
-
-    act(() => { fireEvent.click(document.getElementById('lobbyBackBtn')!); });
-    expect(leaveMultiplayer).toHaveBeenCalledTimes(1);
-
-    act(() => { fireEvent.keyDown(document.body, {key: 'Escape'}); });
-    expect(leaveMultiplayer).toHaveBeenCalledTimes(2);
-  });
-
-  it('keeps reporting connection progress while the host waits in the lobby', () => {
-    render(<MinerApp />);
-    act(() => { uiStore.getState().setPhase('lobby'); });
-
-    act(() => { uiStore.getState().setConnection('Host - waiting for player', true); });
-
-    expect(document.getElementById('lobbyConnectionStatus')?.textContent).toBe('Host - waiting for player');
   });
 });
 
