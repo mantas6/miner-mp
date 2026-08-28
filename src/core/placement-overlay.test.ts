@@ -28,7 +28,9 @@ function world(overrides: Partial<PlacementOverlayWorld> = {}): PlacementOverlay
     scannerDevices: [],
     placedDynamite: [],
     cargoContainers: [],
+    oilExtractors: [],
     isOpen: () => true,
+    isOilPatch: () => false,
     ...overrides
   };
 }

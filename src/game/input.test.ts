@@ -29,6 +29,7 @@ function createActionsSpy() {
     buyScanner: vi.fn(),
     buyGun: vi.fn(),
     buyContainer: vi.fn(),
+    buyExtractor: vi.fn(),
     setGunArmed: vi.fn(),
     fireGun: vi.fn(() => true),
     useTeleporter: vi.fn()

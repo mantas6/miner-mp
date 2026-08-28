@@ -65,6 +65,7 @@ export function createInitialState(): GameState {
     scannerDevices: [],
     placedDynamite: [],
     cargoContainers: [],
+    oilExtractors: [],
     armedPlacement: null,
     hoverTile: null,
     input: {

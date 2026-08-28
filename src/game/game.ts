@@ -36,6 +36,7 @@ import { countItem, totalItems, type Inventory, type InventoryItemKind } from '.
 import { isPlaceableKind } from '../core/placement-overlay';
 import { CARGO_CONTAINER_ITEM } from '../core/cargo-container';
 import { DYNAMITE_ITEM } from '../core/dynamite';
+import { OIL_EXTRACTOR_ITEM } from '../core/oil-extractor';
 import { SCANNER_ITEM } from '../core/scanner-device';
 import { GUN_ITEM } from '../core/weapon';
 import { shouldCargoBarFlash, shouldFuelBarFlash, shouldHullBarFlash } from '../core/hud-alerts';
@@ -65,6 +66,7 @@ import { createActions, type GameActions } from './actions';
 import { createScannerDevices, type ScannerDeviceSim } from './scanner-devices';
 import { createDynamiteSticks, type DynamiteSim } from './dynamite-sticks';
 import { createCargoContainers, type CargoContainerSim } from './cargo-containers';
+import { createOilExtractors, type OilExtractorSim } from './oil-extractors';
 import { createMovement } from './move';
 import { createReadouts, type HudReadouts } from './readouts';
 import { createRun, type GameRun } from './run';
@@ -103,6 +105,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   let scanners: ScannerDeviceSim;
   let dynamite: DynamiteSim;
   let containers: CargoContainerSim;
+  let oilExtractors: OilExtractorSim;
 
   state.stats = createDefaultStats();
 
@@ -249,15 +252,17 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       buyTeleporter: () => actions.buyTeleporter(),
       buyScanner: () => actions.buyScanner(),
       // Only one press on the mine is available, so arming any deployable stands
-      // the other two down.
-      toggleScannerPlacement: () => { dynamite.disarm(); containers.disarm(); scanners.toggleArmed(); },
-      toggleDynamitePlacement: () => { scanners.disarm(); containers.disarm(); dynamite.toggleArmed(); },
-      toggleContainerPlacement: () => { scanners.disarm(); dynamite.disarm(); containers.toggleArmed(); },
+      // the others down.
+      toggleScannerPlacement: () => { dynamite.disarm(); containers.disarm(); oilExtractors.disarm(); scanners.toggleArmed(); },
+      toggleDynamitePlacement: () => { scanners.disarm(); containers.disarm(); oilExtractors.disarm(); dynamite.toggleArmed(); },
+      toggleContainerPlacement: () => { scanners.disarm(); dynamite.disarm(); oilExtractors.disarm(); containers.toggleArmed(); },
+      toggleExtractorPlacement: () => { scanners.disarm(); dynamite.disarm(); containers.disarm(); oilExtractors.toggleArmed(); },
       closeContainer: () => containers.close(),
       storeInContainer: (kind, single) => containers.store(kind, single),
       takeFromContainer: (kind, single) => containers.take(kind, single),
       buyGun: () => actions.buyGun(),
       buyContainer: () => actions.buyContainer(),
+      buyExtractor: () => actions.buyExtractor(),
       useTeleporter: () => actions.useTeleporter(),
       toggleGunArmed: () => actions.setGunArmed(!state.input.gunArmed),
       openShop: openShopScreen,
@@ -303,11 +308,12 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   }
   /** Stand down whichever deployable is waiting for a press on the mine. */
   function disarmPlacements(): boolean {
-    // All three, and not short-circuited: only one can be armed, but a disarm must
-    // never depend on which.
+    // All of them, and not short-circuited: only one can be armed, but a disarm
+    // must never depend on which.
     const hadScanner = scanners.disarm();
     const hadDynamite = dynamite.disarm();
-    return containers.disarm() || hadDynamite || hadScanner;
+    const hadContainer = containers.disarm();
+    return oilExtractors.disarm() || hadContainer || hadDynamite || hadScanner;
   }
   function openShopScreen(){
     if (!atSurface()) return toast('Shop is at the surface depot.');
@@ -350,6 +356,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     playerScratch.dynamite = countItem(p.inventory, DYNAMITE_ITEM.kind);
     playerScratch.guns = countItem(p.inventory, GUN_ITEM.kind);
     playerScratch.containers = countItem(p.inventory, CARGO_CONTAINER_ITEM.kind);
+    playerScratch.extractors = countItem(p.inventory, OIL_EXTRACTOR_ITEM.kind);
     uiStore.getState().syncPlayer(playerScratch);
   }
   function syncInfoDetails(){
@@ -481,6 +488,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       scanners.tick();
       dynamite.tick();
       containers.tick();
+      oilExtractors.tick();
       enemies.update();
     }
     updateAnimation();
@@ -650,6 +658,14 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
         store.setActiveOverlay('container');
       }
     });
+    oilExtractors = createOilExtractors({
+      state,
+      grid,
+      audio,
+      toast,
+      saveProgress,
+      setArmedUi: value => paintArmedPlacement(value ? OIL_EXTRACTOR_ITEM.kind : null)
+    });
     gameInput = createInput({
       state,
       actions,
@@ -681,7 +697,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
    */
   function handleMinePointerDown(event: PointerEvent){
     if (!isPlaying()) return;
-    const armed = scanners.armed || dynamite.armed || containers.armed;
+    const armed = scanners.armed || dynamite.armed || containers.armed || oilExtractors.armed;
     // Nothing is armed and something is already over the mine: the press belongs
     // to whatever is on top of it, not to the tile underneath.
     if (!armed && uiStore.getState().activeOverlay !== null) return;
@@ -698,6 +714,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     if (scanners.armed) scanners.placeAt(point.x, point.y);
     else if (dynamite.armed) dynamite.placeAt(point.x, point.y);
     else if (containers.armed) containers.placeAt(point.x, point.y);
+    else if (oilExtractors.armed) oilExtractors.placeAt(point.x, point.y);
     // A press on bare rock is not a refusal; it simply was not about a crate.
     else containers.openAt(point.x, point.y);
   }
