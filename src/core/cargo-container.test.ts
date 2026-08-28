@@ -151,6 +151,26 @@ describe('storing a stack', () => {
 
     expect(result).toEqual({ok: false, refusal: 'Nothing of that kind is aboard.'});
   });
+
+  it('moves only one unit when asked, leaving the rest of the stack aboard', () => {
+    const result = storeInContainer(withOre(COPPER, 6), createInventory(), oreItem(COPPER).kind, 1);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.moved).toBe(1);
+    expect(countOres(result.ship)).toBe(5);
+    expect(countOres(result.container)).toBe(1);
+  });
+
+  it('a single-unit store into a nearly full crate still fits within its room', () => {
+    const crate = withOre(COPPER, CARGO_CONTAINER.capacity - 1);
+    const result = storeInContainer(withOre(COPPER, 4), crate, oreItem(COPPER).kind, 1);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.moved).toBe(1);
+    expect(totalItems(result.container)).toBe(CARGO_CONTAINER.capacity);
+  });
 });
 
 describe('taking a stack back', () => {
@@ -208,6 +228,16 @@ describe('taking a stack back', () => {
     const result = takeFromContainer(createInventory(), createInventory(), DYNAMITE_ITEM.kind, 99);
 
     expect(result).toEqual({ok: false, refusal: 'Nothing of that kind is in the container.'});
+  });
+
+  it('moves only one unit when asked, leaving the rest in the crate', () => {
+    const result = takeFromContainer(createInventory(), withOre(COPPER, 6), oreItem(COPPER).kind, 10, 1);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.moved).toBe(1);
+    expect(countOres(result.ship)).toBe(1);
+    expect(countOres(result.container)).toBe(5);
   });
 });
 

@@ -40,10 +40,10 @@ export interface UiCommands {
   toggleContainerPlacement(): void;
   /** Shut the transfer menu; also what the dialog's own close request reports. */
   closeContainer(): void;
-  /** Move one whole stack of this kind out of the bay into the open container. */
-  storeInContainer(kind: InventoryItemKind): void;
-  /** Move it back, as far as the cargo-bay limit allows. */
-  takeFromContainer(kind: InventoryItemKind): void;
+  /** Move a stack of this kind out of the bay into the open container; `single` moves one. */
+  storeInContainer(kind: InventoryItemKind, single?: boolean): void;
+  /** Move it back, as far as the cargo-bay limit allows; `single` moves one. */
+  takeFromContainer(kind: InventoryItemKind, single?: boolean): void;
   openShop(): void;
   closeShop(): void;
   openInfo(): void;

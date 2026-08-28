@@ -154,18 +154,25 @@ function moveStack(
 
 /**
  * Bay → crate, capped by the crate's own item capacity. A partial load is a
- * success — the crate takes what fits and the rest stays aboard — but the whole
+ * success — the crate takes what fits and the rest stays aboard — and the whole
  * stack goes in one press when there is room, because a menu that moved one unit
- * per click would ask for forty presses to empty a full load of ore.
+ * per click would ask for forty presses to empty a full load of ore. `maxUnits`
+ * caps the move below the whole stack — a Ctrl-click asks for exactly one — and
+ * is still held under the crate's remaining room.
  */
-export function storeInContainer(ship: Inventory, container: Inventory, kind: InventoryItemKind): ContainerTransfer {
+export function storeInContainer(
+  ship: Inventory,
+  container: Inventory,
+  kind: InventoryItemKind,
+  maxUnits = Infinity
+): ContainerTransfer {
   const room = roomLeft(container, CARGO_CONTAINER.capacity);
   if (room <= 0) {
     return findStack(ship, kind)
       ? {ok: false, refusal: 'Container is full. Take something out before storing more.'}
       : {ok: false, refusal: 'Nothing of that kind is aboard.'};
   }
-  const moved = moveStack(ship, container, kind, room);
+  const moved = moveStack(ship, container, kind, Math.min(room, maxUnits));
   if (!moved) return {ok: false, refusal: 'Nothing of that kind is aboard.'};
   return {ok: true, ship: moved.from, container: moved.to, moved: moved.moved, label: moved.item.label};
 }
@@ -174,19 +181,22 @@ export function storeInContainer(ship: Inventory, container: Inventory, kind: In
  * Crate → bay, capped by the cargo-bay upgrade. Room is measured against every
  * item already aboard, so equipment counts the same as ore. A partial load is a
  * success: taking two of the ten ore a crate holds is what a ship two short of
- * `cargoMax` should be able to do, and the rest stays where it was.
+ * `cargoMax` should be able to do, and the rest stays where it was. `maxUnits`
+ * caps the move below the whole stack — a Ctrl-click asks for exactly one — and
+ * is still held under the bay's remaining room.
  */
 export function takeFromContainer(
   ship: Inventory,
   container: Inventory,
   kind: InventoryItemKind,
-  cargoMax: number
+  cargoMax: number,
+  maxUnits = Infinity
 ): ContainerTransfer {
   const room = roomLeft(ship, cargoMax);
   if (room <= 0) {
     return {ok: false, refusal: `Cargo bay is full at ${cargoMax} items. Sell or unload before taking more aboard.`};
   }
-  const moved = moveStack(container, ship, kind, room);
+  const moved = moveStack(container, ship, kind, Math.min(room, maxUnits));
   if (!moved) return {ok: false, refusal: 'Nothing of that kind is in the container.'};
   return {ok: true, ship: moved.to, container: moved.from, moved: moved.moved, label: moved.item.label};
 }

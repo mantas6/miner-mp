@@ -83,10 +83,23 @@ describe('cargo transfer dialog', () => {
     open();
 
     fireEvent.click(stack('store', 'dynamite'));
-    expect(storeInContainer).toHaveBeenCalledWith('dynamite');
+    expect(storeInContainer).toHaveBeenCalledWith('dynamite', false);
 
     fireEvent.click(stack('take', 'ore:Copper'));
-    expect(takeFromContainer).toHaveBeenCalledWith('ore:Copper');
+    expect(takeFromContainer).toHaveBeenCalledWith('ore:Copper', false);
+  });
+
+  it('asks for a single unit when the press is held with Ctrl or ⌘', () => {
+    const storeInContainer = vi.fn();
+    const takeFromContainer = vi.fn();
+    setUiCommands({storeInContainer, takeFromContainer});
+    open();
+
+    fireEvent.click(stack('store', 'dynamite'), {ctrlKey: true});
+    expect(storeInContainer).toHaveBeenCalledWith('dynamite', true);
+
+    fireEvent.click(stack('take', 'ore:Copper'), {metaKey: true});
+    expect(takeFromContainer).toHaveBeenCalledWith('ore:Copper', true);
   });
 
   it('dispatches close from the close button, the backdrop, and the browser', () => {

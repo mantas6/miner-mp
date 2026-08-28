@@ -291,7 +291,8 @@ zooming the camera with the wheel or a trackpad.
   and it becomes a 50-item store standing in the mine, obeying the same stacking
   rules as the bay. Press it from an adjacent tile — or `C` while on or beside it —
   to open a two-column transfer menu; a press on a stack sends it to the other
-  side, up to whatever room the destination has left. A crate keeps what it holds
+  side, up to whatever room the destination has left, and Ctrl-click (⌘ on a Mac)
+  moves just one item of the stack. A crate keeps what it holds
   through death, reload and the sale of everything aboard, which makes it the only
   way to protect ore from a lost run. Anything taken back out still counts against
   the Cargo Bay upgrade's capacity, so a crate buys storage, never carrying

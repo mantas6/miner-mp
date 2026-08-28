@@ -56,10 +56,10 @@ export interface CargoContainerSim {
   openNearest(): boolean;
   /** Put the lid down. Idempotent; also what the dialog's own close reports. */
   close(): void;
-  /** Move one whole stack out of the bay and into the open crate. */
-  store(kind: InventoryItemKind): void;
-  /** Move one stack back, as far as the cargo-bay upgrade allows. */
-  take(kind: InventoryItemKind): void;
+  /** Move a stack out of the bay and into the open crate; `single` moves just one. */
+  store(kind: InventoryItemKind, single?: boolean): void;
+  /** Move a stack back, as far as the cargo-bay upgrade allows; `single` moves just one. */
+  take(kind: InventoryItemKind, single?: boolean): void;
   /** One fixed 60 Hz step: nothing to run, only a lost ship to tidy up after. */
   tick(): void;
 }
@@ -187,15 +187,17 @@ export function createCargoContainers(deps: CargoContainerDeps): CargoContainerS
   }
 
   /** Both directions differ only in which way the stack goes and what it says. */
-  function transfer(kind: InventoryItemKind, direction: 'store' | 'take'): void {
+  function transfer(kind: InventoryItemKind, direction: 'store' | 'take', single = false): void {
     const container = open;
     if (!container || state.gameOver) return;
     // A reset can take the mine out from under an open crate. Moving cargo into
     // one the world no longer contains would quietly delete it.
     if (!state.cargoContainers.includes(container)) return close();
+    // A Ctrl-click asks for exactly one unit; a plain click moves the whole stack.
+    const maxUnits = single ? 1 : Infinity;
     const result = direction === 'store'
-      ? storeInContainer(state.player.inventory, container.inventory, kind)
-      : takeFromContainer(state.player.inventory, container.inventory, kind, state.player.cargoMax);
+      ? storeInContainer(state.player.inventory, container.inventory, kind, maxUnits)
+      : takeFromContainer(state.player.inventory, container.inventory, kind, state.player.cargoMax, maxUnits);
     if (!result.ok) {
       audio.alarm();
       return toast(result.refusal);
@@ -232,8 +234,8 @@ export function createCargoContainers(deps: CargoContainerDeps): CargoContainerS
     openAt,
     openNearest,
     close,
-    store: kind => transfer(kind, 'store'),
-    take: kind => transfer(kind, 'take'),
+    store: (kind, single) => transfer(kind, 'store', single),
+    take: (kind, single) => transfer(kind, 'take', single),
     tick
   };
 }

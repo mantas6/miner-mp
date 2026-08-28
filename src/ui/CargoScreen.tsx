@@ -80,7 +80,7 @@ function CargoCard({closeRef}: {closeRef: RefObject<HTMLButtonElement | null>}) 
             slots={containerSlots}
             capacity={CARGO_CONTAINER.capacity}
             action="take"
-            onPress={kind => uiCommands.takeFromContainer(kind)}
+            onPress={(kind, single) => uiCommands.takeFromContainer(kind, single)}
           />
           <SlotColumn
             listId="shipSlots"
@@ -89,9 +89,10 @@ function CargoCard({closeRef}: {closeRef: RefObject<HTMLButtonElement | null>}) 
             slots={shipSlots}
             capacity={cargoMax}
             action="store"
-            onPress={kind => uiCommands.storeInContainer(kind)}
+            onPress={(kind, single) => uiCommands.storeInContainer(kind, single)}
           />
         </div>
+        <p className={styles.tip}>Ctrl+click a stack to transfer one.</p>
         <p className={styles.note}>
           Holds up to {CARGO_CONTAINER.capacity} items and keeps them through death and reload.
           Anything taken back aboard still obeys the cargo-bay limit.
@@ -110,7 +111,8 @@ interface SlotColumnProps {
   capacity: number;
   /** Which direction a press on this column moves a stack; also the test hook. */
   action: 'store' | 'take';
-  onPress(kind: InventoryItemKind): void;
+  /** `single` is true when the player held Ctrl/⌘, asking for one unit only. */
+  onPress(kind: InventoryItemKind, single: boolean): void;
 }
 
 /** One side of the transfer: the stacks it holds, headed by how full it is. */
@@ -131,7 +133,7 @@ function SlotColumn({listId, title, hint, slots, capacity, action, onPress}: Slo
               className={styles.slot}
               data-cargo-action={action}
               data-cargo-kind={slot.kind}
-              onClick={() => onPress(slot.kind)}
+              onClick={event => onPress(slot.kind, event.ctrlKey || event.metaKey)}
             >
               <span className={styles.icon} style={{background: slot.color}} aria-hidden="true" />
               <span className={styles.label}>{slot.label}</span>

@@ -151,6 +151,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A quiet one-liner for the Ctrl-click shortcut: present for those who look for
+   it, never loud enough to compete with the stacks themselves. */
+.tip {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  text-align: center;
+}
+
 .note {
   margin: 12px 0 0;
   padding: 10px 12px;

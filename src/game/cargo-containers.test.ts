@@ -275,6 +275,27 @@ describe('moving cargo across', () => {
     expect(h.toasts.saw('Stored 6 × Copper')).toBe(true);
   });
 
+  it('stores a single unit on a Ctrl-click, leaving the rest aboard', () => {
+    const h = opened();
+
+    h.containers.store(oreItem(COPPER).kind, true);
+
+    expect(countOres(h.state.player.inventory)).toBe(5);
+    expect(countOres(h.state.cargoContainers[0].inventory)).toBe(1);
+    expect(h.toasts.saw('Stored 1 × Copper')).toBe(true);
+  });
+
+  it('takes a single unit on a Ctrl-click, leaving the rest stored', () => {
+    const h = opened();
+    h.containers.store(oreItem(COPPER).kind);
+
+    h.containers.take(oreItem(COPPER).kind, true);
+
+    expect(countOres(h.state.player.inventory)).toBe(1);
+    expect(countOres(h.state.cargoContainers[0].inventory)).toBe(5);
+    expect(h.toasts.saw('Took 1 × Copper aboard')).toBe(true);
+  });
+
   it('takes it back again', () => {
     const h = opened();
     h.containers.store(oreItem(COPPER).kind);
