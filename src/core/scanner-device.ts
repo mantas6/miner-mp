@@ -22,9 +22,9 @@ export const SCANNER_DEVICE = Object.freeze({
   /** Side of the square it maps, centred on the device. */
   size: 5,
   /** Seconds between reveals, as the shop and the toasts word it. */
-  intervalSeconds: 15,
+  intervalSeconds: 7.5,
   /** The same wait in fixed 60 Hz simulation steps. */
-  intervalTicks: 15 * 60,
+  intervalTicks: 7.5 * 60,
   /**
    * Devices that may be deployed at once. A soft cap: it exists so a save can
    * never grow without bound, and so a stack of scanners cannot be emptied into
