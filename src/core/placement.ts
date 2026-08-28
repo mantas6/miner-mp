@@ -45,3 +45,17 @@ export function placementRefusal(x: number, y: number, site: PlacementSite, copy
   if (site.occupied) return copy.occupied;
   return null;
 }
+
+/**
+ * Whether this tile can take the device — the same five questions
+ * `placementRefusal` asks, reduced to a yes/no. The overlay that previews where a
+ * carried device may go reuses this so the tint can never disagree with the toast
+ * a press would earn.
+ */
+export function canPlaceDevice(x: number, y: number, site: PlacementSite): boolean {
+  return !site.full
+    && inMineBounds(x, y)
+    && site.explored.has(explorationIndex(x, y))
+    && site.open
+    && !site.occupied;
+}

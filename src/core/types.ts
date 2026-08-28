@@ -6,7 +6,7 @@ import type { EnemyKind, Tile } from '../../shared/world-schema';
 import type { TrackId } from '../audio/tracks';
 import type { PlacedContainer } from './cargo-container';
 import type { PlacedDynamite } from './dynamite';
-import type { Inventory } from './inventory';
+import type { Inventory, InventoryItemKind } from './inventory';
 import type { ScannerDevice } from './scanner-device';
 import type { TileDiff } from '../world/tile-diff';
 
@@ -154,6 +154,20 @@ export interface GameState {
   placedDynamite: PlacedDynamite[];
   /** Cargo containers standing in the mine, each with its own slots. */
   cargoContainers: PlacedContainer[];
+  /**
+   * The carried device armed for placement, or `null` when nothing is. Only the
+   * placeable kinds (scanner, dynamite, container) ever appear here; it drives the
+   * canvas placement grid, and mirrors the same state the sims paint onto the HUD
+   * slot. Purely transient — never saved, since it is about what the player is
+   * doing this instant, not what they own.
+   */
+  armedPlacement: InventoryItemKind | null;
+  /**
+   * The tile under the pointer while a device is armed, or `null`. Drives the
+   * stronger hover highlight on the placement grid. Transient, like the pointer
+   * itself.
+   */
+  hoverTile: {x: number; y: number} | null;
 }
 
 export interface AudioController {

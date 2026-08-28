@@ -32,7 +32,8 @@ import { createDefaultStats, createInitialState } from '../core/state';
 import { createRenderer, type Renderer } from '../render/renderer';
 import { FUEL, ECONOMY } from '../core/balance';
 import { cargoCost, tankCost, hullCost, drillCost, visibilityCost, cargoValue } from '../core/economy';
-import { countItem, countOres, type Inventory } from '../core/inventory';
+import { countItem, countOres, type Inventory, type InventoryItemKind } from '../core/inventory';
+import { isPlaceableKind } from '../core/placement-overlay';
 import { CARGO_CONTAINER_ITEM } from '../core/cargo-container';
 import { DYNAMITE_ITEM } from '../core/dynamite';
 import { SCANNER_ITEM } from '../core/scanner-device';
@@ -164,6 +165,17 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     state.cash += amount;
     if (amount > 0) state.stats.totalCashEarned += amount;
     saveProgress();
+  }
+
+  /**
+   * Record which device is armed for placement, for both the canvas grid (read
+   * off `state`) and the HUD slot (read off the store). Disarming also drops the
+   * hover tile, so a stale highlight never outlives the grid it belonged to.
+   */
+  function paintArmedPlacement(kind: InventoryItemKind | null) {
+    state.armedPlacement = kind;
+    if (!kind) state.hoverTile = null;
+    uiStore.getState().setArmedPlacement(kind);
   }
 
   function cargoUsed(){ return countOres(state.player.inventory); }
@@ -615,7 +627,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       toast,
       saveProgress,
       revealTiles,
-      setArmedUi: value => uiStore.getState().setArmedPlacement(value ? SCANNER_ITEM.kind : null)
+      setArmedUi: value => paintArmedPlacement(value ? SCANNER_ITEM.kind : null)
     });
     dynamite = createDynamiteSticks({
       state,
@@ -626,7 +638,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       wakeEnemiesNear: (x, y) => enemies.wakeEnemiesNear(x, y),
       spawnExplosion,
       damagePlayer: run.damage,
-      setArmedUi: value => uiStore.getState().setArmedPlacement(value ? DYNAMITE_ITEM.kind : null)
+      setArmedUi: value => paintArmedPlacement(value ? DYNAMITE_ITEM.kind : null)
     });
     containers = createCargoContainers({
       state,
@@ -634,7 +646,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       audio,
       toast,
       saveProgress,
-      setArmedUi: value => uiStore.getState().setArmedPlacement(value ? CARGO_CONTAINER_ITEM.kind : null),
+      setArmedUi: value => paintArmedPlacement(value ? CARGO_CONTAINER_ITEM.kind : null),
       setOpenUi: contents => {
         const store = uiStore.getState();
         if (!contents) return store.closeOverlay('container');
@@ -694,6 +706,32 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     else containers.openAt(point.x, point.y);
   }
 
+  /**
+   * Track the tile under the pointer while a device is armed, so the renderer can
+   * highlight where a press would land. Only while armed: the hover grid is a
+   * placement aid, not a permanent cursor, and computing it otherwise is wasted
+   * work on every mouse move.
+   */
+  function handleMinePointerMove(event: PointerEvent){
+    if (!isPlaying() || !isPlaceableKind(state.armedPlacement)) {
+      state.hoverTile = null;
+      return;
+    }
+    const rect = surface.canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    state.hoverTile = tileAtViewportPoint(
+      (event.clientX - rect.left) * (viewport.widthPx / rect.width),
+      (event.clientY - rect.top) * (viewport.heightPx / rect.height),
+      state.camX,
+      state.camY
+    );
+  }
+
+  /** The pointer left the mine: drop the hover highlight it was driving. */
+  function handleMinePointerLeave(){
+    state.hoverTile = null;
+  }
+
   /** Hand the runtime back to the mount that owns it. */
   function dispose(){
     if (scope.disposed) return;
@@ -738,6 +776,10 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     scope.onWindow('touchstart', tryAutoAudio, {passive:true});
     surface.canvas.addEventListener('pointerdown', handleMinePointerDown);
     scope.add(() => surface.canvas.removeEventListener('pointerdown', handleMinePointerDown));
+    surface.canvas.addEventListener('pointermove', handleMinePointerMove);
+    scope.add(() => surface.canvas.removeEventListener('pointermove', handleMinePointerMove));
+    surface.canvas.addEventListener('pointerleave', handleMinePointerLeave);
+    scope.add(() => surface.canvas.removeEventListener('pointerleave', handleMinePointerLeave));
     scope.add(gameInput.attach());
     scope.onWindow('focus', focusGame);
     scope.onDocument('visibilitychange', () => {

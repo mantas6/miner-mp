@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => {
     setTransform: vi.fn(),
     shadowColor: '',
     stroke: vi.fn(),
+    strokeRect: vi.fn(),
     translate: vi.fn()
   });
 
@@ -462,6 +463,36 @@ describe('terrain cache lifecycle', () => {
     state.exploredTiles = new Set<number>();
     renderer.draw();
     expect(mocks.mainContext.translate.mock.calls.some(at)).toBe(false);
+  });
+
+  /**
+   * While a placeable device is armed, the mine gets a preview grid: a faint tint
+   * on the nearby explored tiles and a stronger outline on the tile under the
+   * pointer. It vanishes the moment nothing is armed.
+   */
+  it('paints a placement grid while a device is armed and clears it once disarmed', () => {
+    const state = {
+      world: [], camX: 10, camY: 20, tick: 0, gameOver: false, reducedMotion: false,
+      exploredTiles: new Set<number>(), teleportEffect: null,
+      particles: [], enemies: [], scannerDevices: [], placedDynamite: [], cargoContainers: [],
+      armedPlacement: 'scanner' as 'scanner' | null,
+      hoverTile: {x: 12, y: 22} as {x: number; y: number} | null,
+      player: {x:12, y:22, drawX:12, drawY:22, facing:1, bob:0, drillAnim:0, drillDx:0, drillDy:1}
+    };
+    for (let y=21;y<=23;y++) for (let x=11;x<=13;x++) state.exploredTiles.add(explorationIndex(x,y));
+    const renderer = createRenderer({state, get: () => ({type:'air'}), rand: () => 0});
+
+    renderer.draw();
+    // A full-tile fill is unique to the grid, and the hovered tile carries an outline.
+    expect(mocks.mainContext.fillRect).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), TILE, TILE);
+    expect(mocks.mainContext.strokeRect).toHaveBeenCalled();
+
+    vi.clearAllMocks();
+    state.armedPlacement = null;
+    state.hoverTile = null;
+    renderer.draw();
+    expect(mocks.mainContext.fillRect).not.toHaveBeenCalledWith(expect.any(Number), expect.any(Number), TILE, TILE);
+    expect(mocks.mainContext.strokeRect).not.toHaveBeenCalled();
   });
 
   it('keeps reduced-motion boost flames static across render frames', () => {

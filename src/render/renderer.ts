@@ -5,7 +5,8 @@ import { isTileExplored } from '../../shared/exploration-codec';
 import { getEnemyType } from '../core/enemy-types';
 import { type PlacedContainer } from '../core/cargo-container';
 import { isDynamiteFuseLit, type PlacedDynamite } from '../core/dynamite';
-import { totalItems } from '../core/inventory';
+import { totalItems, type InventoryItemKind } from '../core/inventory';
+import { isPlaceableKind, isPlacementValid, placementOverlayCells } from '../core/placement-overlay';
 import { isScannerDone, type ScannerDevice } from '../core/scanner-device';
 import { TERRAIN_CHUNK_TILES, terrainCacheScale, terrainChunkCoordinate, terrainChunkKeyForTile } from './terrain-cache-policy';
 import type {
@@ -49,6 +50,10 @@ export interface RendererState {
   cargoContainers?: readonly PlacedContainer[];
   teleportEffect?: TeleportEffect | null;
   input?: {sprintDirection?: Direction | null};
+  /** The carried device armed for placement, or `null`/absent when none is. */
+  armedPlacement?: InventoryItemKind | null;
+  /** The tile under the pointer, for the stronger placement hover highlight. */
+  hoverTile?: {x: number; y: number} | null;
 }
 
 export interface RendererDeps {
@@ -245,6 +250,7 @@ export function createRenderer({ state, canvas, ctx, get, rand }: RendererDeps):
       ctx.globalAlpha = 1;
     }
     fogLayer.draw(camX, camY);
+    drawPlacementOverlay(camX, camY);
     const sx=(p.drawX-camX)*TILE, sy=(p.drawY-camY)*TILE;
     drawTeleportEffect(camX, camY, false);
     ctx.save();
@@ -264,6 +270,44 @@ export function createRenderer({ state, canvas, ctx, get, rand }: RendererDeps):
       ctx.font='18px sans-serif'; ctx.fillText('or press R', viewport.widthPx/2, 370);
       ctx.textAlign='left';
     }
+  }
+  /**
+   * The placement grid, shown only while a placeable device is armed. Nearby
+   * explored tiles are tinted green where the device would drop and red where it
+   * would not, and the tile under the pointer gets a stronger fill and an outline
+   * so a hover reads as "here, yes" or "here, no" at a glance. Deliberately faint,
+   * so it guides the eye without hiding the terrain it is drawn over.
+   */
+  function drawPlacementOverlay(camX: number, camY: number) {
+    const kind = state.armedPlacement;
+    if (!isPlaceableKind(kind) || !state.exploredTiles) return;
+    const world = {
+      explored: state.exploredTiles,
+      scannerDevices: state.scannerDevices ?? [],
+      placedDynamite: state.placedDynamite ?? [],
+      cargoContainers: state.cargoContainers ?? [],
+      isOpen: (x: number, y: number) => get(x, y).type === 'air'
+    };
+    const cells = placementOverlayCells(kind, state.player.x, state.player.y, world);
+    const hover = state.hoverTile;
+    ctx.save();
+    for (const cell of cells) {
+      // The hovered tile is drawn separately, stronger, so skip its faint tint.
+      if (hover && hover.x === cell.x && hover.y === cell.y) continue;
+      const sx = (cell.x - camX) * TILE, sy = (cell.y - camY) * TILE;
+      ctx.fillStyle = cell.valid ? 'rgba(90,220,130,.14)' : 'rgba(228,78,66,.14)';
+      ctx.fillRect(sx, sy, TILE, TILE);
+    }
+    if (hover) {
+      const valid = isPlacementValid(kind, hover.x, hover.y, world);
+      const sx = (hover.x - camX) * TILE, sy = (hover.y - camY) * TILE;
+      ctx.fillStyle = valid ? 'rgba(90,220,130,.28)' : 'rgba(228,78,66,.28)';
+      ctx.fillRect(sx, sy, TILE, TILE);
+      ctx.strokeStyle = valid ? 'rgba(158,255,190,.9)' : 'rgba(255,146,136,.9)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx + 1, sy + 1, TILE - 2, TILE - 2);
+    }
+    ctx.restore();
   }
   // Static per tile — every value is keyed off `rand(wx, wy)`, never `state.tick` —
   // so the cached image is pixel-identical to the old per-frame draw.
