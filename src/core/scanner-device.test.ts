@@ -27,18 +27,20 @@ describe('scanner footprint', () => {
     const footprint = scannerFootprint(createScannerDevice(40, 100));
 
     expect(footprint).toHaveLength(SCANNER_DEVICE.size * SCANNER_DEVICE.size);
-    expect(footprint).toContain(explorationIndex(38, 98));
-    expect(footprint).toContain(explorationIndex(42, 102));
-    expect(footprint).not.toContain(explorationIndex(43, 100));
+    expect(footprint).toContain(explorationIndex(37, 97));
+    expect(footprint).toContain(explorationIndex(43, 103));
+    expect(footprint).not.toContain(explorationIndex(44, 100));
   });
 
   it('clips at the side walls and at the top of the mine', () => {
-    expect(scannerFootprint(createScannerDevice(0, 200))).toHaveLength(3 * SCANNER_DEVICE.size);
-    expect(scannerFootprint(createScannerDevice(WORLD_W - 1, 200))).toHaveLength(3 * SCANNER_DEVICE.size);
+    // A device on the wall keeps its own column plus the reach that falls inside.
+    const clipped = (Math.floor(SCANNER_DEVICE.size / 2) + 1) * SCANNER_DEVICE.size;
+    expect(scannerFootprint(createScannerDevice(0, 200))).toHaveLength(clipped);
+    expect(scannerFootprint(createScannerDevice(WORLD_W - 1, 200))).toHaveLength(clipped);
     // Surface rows are visible by definition, so a device parked just below them
     // is not left permanently unfinished by tiles it can never claim.
     const shallow = scannerFootprint(createScannerDevice(40, SURFACE_HEIGHT));
-    expect(shallow).toHaveLength(3 * SCANNER_DEVICE.size);
+    expect(shallow).toHaveLength(clipped);
     expect(shallow.every(index => Math.floor(index / WORLD_W) >= SURFACE_HEIGHT)).toBe(true);
   });
 });
@@ -64,7 +66,7 @@ describe('scanner surveying', () => {
 
   it('picks from the fogged tiles only, wherever the roll lands', () => {
     const device = createScannerDevice(40, 100);
-    const explored = new Set(scannerFootprint(device).slice(0, 24));
+    const explored = new Set(scannerFootprint(device).slice(0, 48));
 
     const revealed = runToReveal(device, explored, () => 0.999999);
 
@@ -76,7 +78,7 @@ describe('scanner surveying', () => {
     const explored = new Set(scannerFootprint(device));
 
     expect(isScannerDone(device, explored)).toBe(true);
-    expect(scannerProgress(device, explored)).toEqual({mapped: 25, total: 25});
+    expect(scannerProgress(device, explored)).toEqual({mapped: 49, total: 49});
     expect(runToReveal(device, explored)).toBeNull();
   });
 
@@ -85,12 +87,12 @@ describe('scanner surveying', () => {
     const explored = new Set<number>();
 
     expect(scannerProgress(device, explored).mapped).toBe(0);
-    // The peer's own footprint lands on half the square.
-    for (const index of scannerFootprint(device).slice(0, 20)) explored.add(index);
+    // The peer's own footprint lands on most of the square.
+    for (const index of scannerFootprint(device).slice(0, 40)) explored.add(index);
 
-    expect(scannerProgress(device, explored)).toEqual({mapped: 20, total: 25});
+    expect(scannerProgress(device, explored)).toEqual({mapped: 40, total: 49});
     expect(isScannerDone(device, explored)).toBe(false);
-    expect(scannerPendingTiles(device, explored)).toHaveLength(5);
+    expect(scannerPendingTiles(device, explored)).toHaveLength(9);
   });
 
   it('waits the advertised fifteen seconds of simulation time', () => {

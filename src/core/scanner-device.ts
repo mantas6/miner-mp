@@ -20,7 +20,7 @@ import { placementRefusal, type PlacementCopy } from './placement';
 
 export const SCANNER_DEVICE = Object.freeze({
   /** Side of the square it maps, centred on the device. */
-  size: 5,
+  size: 7,
   /** Seconds between reveals, as the shop and the toasts word it. */
   intervalSeconds: 7.5,
   /** The same wait in fixed 60 Hz simulation steps. */

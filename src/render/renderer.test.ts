@@ -362,7 +362,7 @@ describe('terrain cache lifecycle', () => {
 
     // Everything around it explored: the survey is over, and the ring goes.
     vi.clearAllMocks();
-    for (let y = 22; y <= 26; y++) for (let x = 10; x <= 14; x++) state.exploredTiles.add(explorationIndex(x, y));
+    for (let y = 21; y <= 27; y++) for (let x = 9; x <= 15; x++) state.exploredTiles.add(explorationIndex(x, y));
     renderer.draw();
     expect(mocks.mainContext.translate.mock.calls.some(at)).toBe(true);
     expect(mocks.mainContext.arc.mock.calls.length).toBe(sweeping - 1);
