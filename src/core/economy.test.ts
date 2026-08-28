@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { refuelCost, repairCost, cargoCost, tankCost, hullCost, drillCost, visibilityCost, partialFill, cargoValue, cheapestUpgrade, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
+import { refuelCost, repairCost, cargoCost, tankCost, hullCost, drillCost, partialFill, cargoValue, cheapestUpgrade, formatCargoUpgradeFeedback, formatSurfaceServiceGuidance } from './economy';
 import { STARTING, ECONOMY } from './balance';
 import { ORES } from '../../shared/constants';
 import { addOre, createInventory } from './inventory';
@@ -9,8 +9,7 @@ describe('cost functions', () => {
     ['cargoCost', (level: number) => cargoCost({ cargoMax: STARTING.cargoMax + level * ECONOMY.cargo.step })],
     ['tankCost', (level: number) => tankCost({ fuelMax: STARTING.fuelMax + level * ECONOMY.tank.step })],
     ['hullCost', (level: number) => hullCost({ hullMax: STARTING.hullMax + level * ECONOMY.hull.step })],
-    ['drillCost', (level: number) => drillCost({ drill: STARTING.drill + level })],
-    ['visibilityCost', (level: number) => visibilityCost({ visibility: STARTING.visibility + level })]
+    ['drillCost', (level: number) => drillCost({ drill: STARTING.drill + level })]
   ])('%s is a positive whole price that grows with every upgrade level', (_name, costAtLevel) => {
     let previous = 0;
     for (let level = 0; level < 6; level++) {

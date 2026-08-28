@@ -43,7 +43,6 @@ export interface Player {
   hullMax: number;
   cargoMax: number;
   drill: number;
-  visibility: number;
   /**
    * The slot-based cargo bay. Mined ore stacks here awaiting sale at the depot
    * (artifacts are banked instead), capped by both a free slot and `cargoMax`.

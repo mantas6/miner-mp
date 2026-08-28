@@ -92,7 +92,6 @@ export function createInitialState(): GameState {
       hullMax: STARTING.hullMax,
       cargoMax: STARTING.cargoMax,
       drill: STARTING.drill,
-      visibility: STARTING.visibility,
       inventory: createInventory()
     }
   };

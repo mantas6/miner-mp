@@ -243,7 +243,7 @@ function ControlsPanel() {
           landed in the flexible column was stretched across it. */}
       <ul className={styles.controlList}>
         <li><span className={styles.controlKeys}><kbd>WASD</kbd> / <kbd>Arrows</kbd></span><span>Move, fly, and dig</span></li>
-        <li><span className={styles.controlKeys}><strong>Fog map</strong></span><span>Movement permanently reveals the sensor footprint. Co-op miners share explored tiles.</span></li>
+        <li><span className={styles.controlKeys}><strong>Fog map</strong></span><span>Movement permanently reveals a 3x3 footprint around the ship. Co-op miners share explored tiles.</span></li>
         <li><span className={styles.controlKeys}><kbd>Shift</kbd> + movement</span><span>Sprint through open space at increased fuel cost; open-space descent is free and drilling stays normal. Slamming a boosted ship into rock, a ceiling, or a wall buckles the hull.</span></li>
         <li><span className={styles.controlKeys}><kbd>Enter</kbd></span><span>Sell cargo at the surface depot</span></li>
         <li><span className={styles.controlKeys}><kbd>Space</kbd></span><span>Repair or refuel at the surface</span></li>

@@ -447,32 +447,31 @@ describe('ship position persistence', () => {
 });
 
 describe('fog exploration persistence', () => {
-  it('round-trips compact explored ranges and sensor level', () => {
+  it('round-trips compact explored ranges', () => {
     const stored = stubStorage();
     const state = createInitialState();
-    state.player.visibility = 4;
     state.exploredTiles.add(explorationIndex(10, 10));
     state.exploredTiles.add(explorationIndex(11, 10));
     save(state);
 
     const serialized = JSON.parse(stored.get(SAVE_KEY) || '{}');
-    expect(serialized).toMatchObject({version: SAVE_VERSION, visibility: 4, explored: '910-911'});
+    expect(serialized).toMatchObject({version: SAVE_VERSION, explored: '910-911'});
 
     const restored = createInitialState();
     load(restored);
-    expect(restored.player.visibility).toBe(4);
     expect(restored.exploredTiles).toEqual(state.exploredTiles);
   });
 
-  it('preserves existing saves with default sensors and no explored coordinates', () => {
-    stubStorage({ version: 2, cargoMax: 20, cash: 90 });
+  it('drops a legacy sensor level and no explored coordinates from older saves', () => {
+    stubStorage({ version: 2, cargoMax: 20, cash: 90, visibility: 6 });
     const state = createInitialState();
     load(state);
 
     expect(state.cash).toBe(90);
     // A v2 save's cargoMax of 20 was two upgrades on the old scale, rebuilt to 40.
     expect(state.player.cargoMax).toBe(40);
-    expect(state.player.visibility).toBe(3);
+    // The Sensor Array upgrade is gone, so a stored level does not resurrect a field.
+    expect('visibility' in state.player).toBe(false);
     expect(state.exploredTiles.size).toBe(0);
   });
 });

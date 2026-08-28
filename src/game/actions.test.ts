@@ -25,7 +25,6 @@ interface Harness {
   audio: AudioStub;
   toasts: ReturnType<typeof createToastLog>;
   saveProgress: ReturnType<typeof vi.fn>;
-  revealAtPlayer: ReturnType<typeof vi.fn>;
   enemies: ReturnType<typeof createEnemySimStub>;
   grid: ReturnType<typeof createFakeGrid>;
   spawnShotTrail: ReturnType<typeof vi.fn>;
@@ -39,7 +38,6 @@ function harness(): Harness {
     audio: createAudioStub(),
     toasts: createToastLog(),
     saveProgress: vi.fn(),
-    revealAtPlayer: vi.fn(),
     enemies: createEnemySimStub(),
     grid: createFakeGrid(),
     spawnShotTrail: vi.fn(),
@@ -57,7 +55,6 @@ function harness(): Harness {
       state.cash += amount;
       if (amount > 0) state.stats.totalCashEarned += amount;
     },
-    revealAtPlayer: context.revealAtPlayer,
     atSurface: () => context.flags.atSurface,
     spawnDust: vi.fn(),
     spawnShotTrail: context.spawnShotTrail,
@@ -229,23 +226,12 @@ describe('buying upgrades', () => {
     expect(h.audio.played).toContain('alarm');
   });
 
-  it('re-reveals the fog footprint after a sensor upgrade only', () => {
-    const h = harness();
-    h.state.cash = 5000;
-
-    h.actions.buyUpgrade('hull', 1, 'Hull reinforced.');
-    expect(h.revealAtPlayer).not.toHaveBeenCalled();
-
-    h.actions.buyUpgrade('visibility', 1, 'Sensor footprint expanded.');
-    expect(h.revealAtPlayer).toHaveBeenCalled();
-  });
-
   it('refuses an upgrade that is already maxed out, without charging', () => {
     const h = harness();
     h.state.cash = 5000;
-    h.state.player.visibility = LIMITS.visibility.max;
+    h.state.player.drill = LIMITS.drill.max;
 
-    h.actions.buyUpgrade('visibility', 1, 'Sensor footprint expanded.');
+    h.actions.buyUpgrade('drill', 1, 'Drill power increased.');
 
     expect(h.state.cash).toBe(5000);
     expect(h.toasts.saw('already at maximum level')).toBe(true);

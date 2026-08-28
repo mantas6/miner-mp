@@ -48,7 +48,7 @@ export interface GameRunDeps {
   input(): GameInput;
   toast(message: string): void;
   saveProgress(): void;
-  /** Reveal the sensor footprint around the ship. */
+  /** Reveal the fog footprint around the ship. */
   revealAtPlayer(): void;
   spawnExplosion(x: number, y: number): void;
   /** Drop the whole terrain cache (world replaced wholesale). */
@@ -78,7 +78,6 @@ export function createRun(deps: GameRunDeps): GameRun {
         hullMax: STARTING.hullMax,
         cargoMax: STARTING.cargoMax,
         drill: STARTING.drill,
-        visibility: STARTING.visibility,
         // Bought equipment lives in the bay, so emptying it is part of the wipe.
         inventory: createInventory()
       });

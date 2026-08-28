@@ -127,8 +127,8 @@ describe('shop dialog', () => {
 
     fireEvent.click(button('hull'));
     expect(commands.buyUpgrade).toHaveBeenCalledWith('hull');
-    fireEvent.click(document.getElementById('visibilityBtn')!);
-    expect(commands.buyUpgrade).toHaveBeenCalledWith('visibility');
+    fireEvent.click(document.getElementById('drillBtn')!);
+    expect(commands.buyUpgrade).toHaveBeenCalledWith('drill');
     fireEvent.click(document.getElementById('fuelBtn')!);
     expect(commands.refuel).toHaveBeenCalledOnce();
     fireEvent.click(document.getElementById('repairBtn')!);

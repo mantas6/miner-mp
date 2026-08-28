@@ -10,9 +10,14 @@ export const STARTING = Object.freeze({
   // Cargo capacity is a total item count now, not a slot count: the bay holds up
   // to this many units across every stack, ore and equipment alike.
   cargoMax: 20,
-  drill: 1,
-  visibility: 3
+  drill: 1
 });
+
+/**
+ * The fixed fog-reveal footprint around the ship: movement permanently uncovers
+ * this many tiles on a side (a 3x3 square). It is no longer upgradeable.
+ */
+export const REVEAL_FOOTPRINT = 3;
 
 export const LIMITS = Object.freeze({
   fuelMax: Object.freeze({ min: 100, max: 2000 }),
@@ -28,8 +33,7 @@ export const LIMITS = Object.freeze({
   /** Carried (not yet fired) Linebreaker guns; they live in the cargo bay. */
   guns: Object.freeze({ min: 0, max: 999 }),
   /** Carried (not yet placed) cargo containers; they live in the cargo bay. */
-  containers: Object.freeze({ min: 0, max: 999 }),
-  visibility: Object.freeze({ min: 3, max: 8 })
+  containers: Object.freeze({ min: 0, max: 999 })
 });
 
 export const FUEL = Object.freeze({
@@ -89,7 +93,6 @@ export const ECONOMY = Object.freeze({
   tank: Object.freeze({ base: 150, growth: 1.34, step: 20 }),
   hull: Object.freeze({ base: 180, growth: 1.38, step: 20 }),
   drill: Object.freeze({ base: 200, growth: 1.55, step: 1 }),
-  visibility: Object.freeze({ base: 175, growth: 1.45, step: 1 }),
   dynamite: Object.freeze({ price: 50, radius: 2 }),
   /**
    * One disposable teleporter: a round trip to the depot and back to the tile it

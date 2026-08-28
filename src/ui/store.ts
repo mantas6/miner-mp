@@ -95,7 +95,7 @@ const HUD_KEYS = [
 /** The ship stats the shop and the developer panel price and label their rows from. */
 export type PlayerSnapshot = Pick<
   Player,
-  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility'
+  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill'
 > & {
   /** Consumables in the cargo bay, counted out of the inventory for the shop rows. */
   scanners: number;
@@ -106,7 +106,7 @@ export type PlayerSnapshot = Pick<
 };
 
 const PLAYER_KEYS = [
-  'fuel', 'fuelMax', 'hull', 'hullMax', 'cargoMax', 'drill', 'visibility',
+  'fuel', 'fuelMax', 'hull', 'hullMax', 'cargoMax', 'drill',
   'scanners', 'dynamite', 'guns', 'teleporters', 'containers'
 ] as const satisfies readonly (keyof PlayerSnapshot)[];
 
@@ -309,7 +309,6 @@ function initialPlayer(): PlayerSnapshot {
     hullMax: player.hullMax,
     cargoMax: player.cargoMax,
     drill: player.drill,
-    visibility: player.visibility,
     teleporters: countItem(player.inventory, TELEPORTER_ITEM.kind),
     scanners: countItem(player.inventory, SCANNER_ITEM.kind),
     dynamite: countItem(player.inventory, DYNAMITE_ITEM.kind),

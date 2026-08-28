@@ -5,8 +5,7 @@ export const PLAYER_UPGRADES = [
   { id: 'cargo', label: 'Cargo Bay', stat: 'cargoMax', currentStat: null, start: STARTING.cargoMax, max: LIMITS.cargoMax.max, step: ECONOMY.cargo.step },
   { id: 'tank', label: 'Fuel Tank', stat: 'fuelMax', currentStat: 'fuel', start: STARTING.fuelMax, max: LIMITS.fuelMax.max, step: ECONOMY.tank.step },
   { id: 'hull', label: 'Hull', stat: 'hullMax', currentStat: 'hull', start: STARTING.hullMax, max: LIMITS.hullMax.max, step: ECONOMY.hull.step },
-  { id: 'drill', label: 'Drill', stat: 'drill', currentStat: null, start: STARTING.drill, max: LIMITS.drill.max, step: ECONOMY.drill.step },
-  { id: 'visibility', label: 'Sensor Array', stat: 'visibility', currentStat: null, start: STARTING.visibility, max: LIMITS.visibility.max, step: ECONOMY.visibility.step }
+  { id: 'drill', label: 'Drill', stat: 'drill', currentStat: null, start: STARTING.drill, max: LIMITS.drill.max, step: ECONOMY.drill.step }
 ] as const;
 
 export type PlayerUpgradeId = typeof PLAYER_UPGRADES[number]['id'];

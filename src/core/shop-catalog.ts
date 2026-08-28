@@ -10,7 +10,7 @@
 import { ECONOMY } from './balance';
 import { CARGO_CONTAINER } from './cargo-container';
 import { DYNAMITE } from './dynamite';
-import { cargoCost, drillCost, hullCost, refuelCost, repairCost, tankCost, visibilityCost } from './economy';
+import { cargoCost, drillCost, hullCost, refuelCost, repairCost, tankCost } from './economy';
 import { SCANNER_DEVICE } from './scanner-device';
 import { MIN_TELEPORT_DEPTH_METERS } from './teleporter';
 import type { Player } from './types';
@@ -18,7 +18,7 @@ import { PLAYER_UPGRADES, getPlayerUpgradeProgress, type PlayerUpgradeId } from 
 
 export type ShopPlayer = Pick<
   Player,
-  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill' | 'visibility'
+  'fuel' | 'fuelMax' | 'hull' | 'hullMax' | 'cargoMax' | 'drill'
 > & {
   /**
    * Consumable equipment in the cargo bay. Counted out of the inventory rather
@@ -81,12 +81,6 @@ const UPGRADE_PRESENTATION: Record<PlayerUpgradeId, Omit<ShopUpgradeEntry, 'id' 
     purpose: 'Break tougher terrain and enemies faster.',
     unit: 'power',
     cost: drillCost
-  },
-  visibility: {
-    icon: 'visibility',
-    purpose: 'Reveal a larger persistent square around the ship. Even sizes extend one extra tile right and down.',
-    unit: 'tiles wide',
-    cost: visibilityCost
   }
 };
 

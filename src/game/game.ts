@@ -30,8 +30,8 @@ import { createAudio } from '../audio/audio';
 import { shouldAttemptAutoAudio } from '../audio/audio-permission';
 import { createDefaultStats, createInitialState } from '../core/state';
 import { createRenderer, type Renderer } from '../render/renderer';
-import { FUEL, ECONOMY } from '../core/balance';
-import { cargoCost, tankCost, hullCost, drillCost, visibilityCost, cargoValue } from '../core/economy';
+import { FUEL, ECONOMY, REVEAL_FOOTPRINT } from '../core/balance';
+import { cargoCost, tankCost, hullCost, drillCost, cargoValue } from '../core/economy';
 import { countItem, totalItems, type Inventory, type InventoryItemKind } from '../core/inventory';
 import { isPlaceableKind } from '../core/placement-overlay';
 import { CARGO_CONTAINER_ITEM } from '../core/cargo-container';
@@ -143,7 +143,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     for (const index of indexes) renderer?.invalidateFog(index % WORLD_W, Math.floor(index / WORLD_W));
   }
   function revealAtPlayer() {
-    const added = revealFootprint(state.exploredTiles, state.player.x, state.player.y, state.player.visibility);
+    const added = revealFootprint(state.exploredTiles, state.player.x, state.player.y, REVEAL_FOOTPRINT);
     if (!added.length) return;
     invalidateFogTiles(added);
     progressSave.schedule();
@@ -210,7 +210,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
   // --- Cheat menu -----------------------------------------------------------
   function grantDeveloperUpgrade(id: PlayerUpgradeId){
     if (!applyPlayerUpgrade(state.player, id)) return toast('Developer upgrade already at maximum level.');
-    if (id === 'visibility') revealAtPlayer();
     saveProgress();
     syncPlayerSnapshot();
     toast('Developer action: upgrade granted for $0.');
@@ -236,8 +235,7 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     cargo: {cost: () => cargoCost(state.player), message: 'Cargo bay expanded.'},
     tank: {cost: () => tankCost(state.player), message: 'Fuel tank upgraded.'},
     hull: {cost: () => hullCost(state.player), message: 'Hull reinforced.'},
-    drill: {cost: () => drillCost(state.player), message: 'Drill power increased.'},
-    visibility: {cost: () => visibilityCost(state.player), message: 'Sensor footprint expanded.'}
+    drill: {cost: () => drillCost(state.player), message: 'Drill power increased.'}
   };
 
   /** Register the button/dialog dispatch table the React tree calls into. */
@@ -347,7 +345,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
     playerScratch.hullMax = p.hullMax;
     playerScratch.cargoMax = p.cargoMax;
     playerScratch.drill = p.drill;
-    playerScratch.visibility = p.visibility;
     playerScratch.teleporters = countItem(p.inventory, TELEPORTER_ITEM.kind);
     playerScratch.scanners = countItem(p.inventory, SCANNER_ITEM.kind);
     playerScratch.dynamite = countItem(p.inventory, DYNAMITE_ITEM.kind);
@@ -613,7 +610,6 @@ export function createGameRuntime(options: GameRuntimeOptions): GameRuntime {
       toast,
       saveProgress,
       addCash,
-      revealAtPlayer,
       atSurface,
       spawnDust,
       spawnShotTrail,

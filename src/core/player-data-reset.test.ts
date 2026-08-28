@@ -27,7 +27,7 @@ describe('player-data reset', () => {
     Object.assign(state.player, {
       x: 8, y: 80, drawX: 7, drawY: 79, facing: -1, bob: 1, drillAnim: 2,
       drillDx: 1, drillDy: 0, fuel: 2, fuelMax: 400, hull: 3, hullMax: 300,
-      cargoMax: 80, drill: 40, visibility: 20,
+      cargoMax: 80, drill: 40,
       inventory: addItem(
         addItem(addOre(createInventory(), ORES[3], 80)!, GUN_ITEM, 2)!,
         TELEPORTER_ITEM,
@@ -60,7 +60,7 @@ describe('player-data reset', () => {
     expect(JSON.parse(storage.values.get(SAVE_KEY)!)).toMatchObject({
       cash: fresh.cash, fuelMax: fresh.player.fuelMax, hullMax: fresh.player.hullMax,
       cargoMax: fresh.player.cargoMax, drill: fresh.player.drill, dynamite: 0,
-      teleporters: 0, guns: 0, visibility: fresh.player.visibility,
+      teleporters: 0, guns: 0,
       explored: '', stats: fresh.stats
     });
   });

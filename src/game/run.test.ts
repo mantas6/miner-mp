@@ -39,7 +39,6 @@ function harness(): Harness {
     fuelMax: STARTING.fuelMax + ECONOMY.tank.step,
     cargoMax: STARTING.cargoMax + ECONOMY.cargo.step,
     drill: STARTING.drill + 1,
-    visibility: 5,
     // Ore to lose with the ship, and equipment that survives it.
     inventory: addItem(
       addItem(addOre(addOre(createInventory(), ORES[0], 99)!, ORES[1], 99)!, GUN_ITEM)!,
@@ -138,8 +137,7 @@ describe('restarting after a death', () => {
       x: Math.floor(WORLD_W / 2),
       y: START_Y,
       fuel: STARTING.fuelMax + ECONOMY.tank.step,
-      hull: STARTING.hullMax,
-      visibility: 5
+      hull: STARTING.hullMax
     });
     // Equipment is not cargo: the replacement ship keeps the gun and the teleporter.
     expect(countItem(h.state.player.inventory, GUN_ITEM.kind)).toBe(1);
@@ -249,8 +247,7 @@ describe('a full player reset', () => {
       fuelMax: STARTING.fuelMax,
       hullMax: STARTING.hullMax,
       cargoMax: STARTING.cargoMax,
-      drill: STARTING.drill,
-      visibility: STARTING.visibility
+      drill: STARTING.drill
     });
     expect(countItem(h.state.player.inventory, GUN_ITEM.kind)).toBe(0);
     expect(countItem(h.state.player.inventory, TELEPORTER_ITEM.kind)).toBe(0);

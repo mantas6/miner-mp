@@ -67,7 +67,7 @@ export interface GameMovementDeps {
   /** Queue a debounced save; every step moves the ship's persisted position. */
   scheduleSave(): void;
   addCash(amount: number): void;
-  /** Reveal the sensor footprint around the ship's new position. */
+  /** Reveal the fog footprint around the ship's new position. */
   revealAtPlayer(): void;
   atSurface(): boolean;
   /** Apply hull damage, which may end the run. */

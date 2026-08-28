@@ -46,6 +46,10 @@ import type { GameState, GameStats } from './core/types';
 //     its base and per-level step both moved. `cargoMax` is no longer trusted
 //     verbatim on load: the number of cargo-bay upgrades the save paid for is
 //     recovered and rebuilt on the new scale, so older saves keep their levels.
+//   * v12: the Sensor Array upgrade was removed. `visibility` is no longer stored;
+//     the fog-reveal footprint is fixed at its base 3x3 for every ship. Older
+//     saves that carried a `visibility` level simply drop it on load — no refund,
+//     because the cash it cost was never tracked separately from the wallet.
 // Older blobs still load; they just restore a pristine mine, and pre-v5 saves
 // start at the depot the way they always did.
 //
@@ -74,13 +78,12 @@ interface SavedProgress {
   guns?: unknown;
   containers?: unknown;
   cargoContainers?: unknown;
-  visibility?: unknown;
   explored?: unknown;
   stats?: Partial<Record<keyof GameStats, unknown>>;
 }
 
 export const SAVE_KEY = 'moleload-progress-v1';
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 /** A stored stack is a count, not a licence to write an unbounded number. */
 const MAX_SAVED_STACK = 9999;
 /** Cargo-bay upgrade maths as older saves stored it, so a save keeps its levels. */
@@ -231,7 +234,8 @@ export function load(state: GameState): void {
       : Math.max(0, Math.round((rawCargoMax - STARTING.cargoMax) / ECONOMY.cargo.step));
     p.cargoMax = Math.max(LIMITS.cargoMax.min, Math.min(LIMITS.cargoMax.max, STARTING.cargoMax + cargoLevel * ECONOMY.cargo.step));
     p.drill = numeric(save.drill, p.drill, LIMITS.drill.min, LIMITS.drill.max);
-    p.visibility = Math.floor(numeric(save.visibility, p.visibility, LIMITS.visibility.min, LIMITS.visibility.max));
+    // The Sensor Array upgrade is gone: any stored `visibility` is ignored and the
+    // reveal footprint stays fixed at its base for every ship.
     // Equipment comes back into the bay the run starts with; `run.resume()` clears
     // the ore around it and leaves it alone.
     const scanners = Math.floor(numeric(save.scanners, 0, LIMITS.scanners.min, LIMITS.scanners.max));
@@ -282,7 +286,6 @@ export function save(state: GameState): void {
     dynamite: countItem(p.inventory, DYNAMITE_ITEM.kind),
     teleporters: countItem(p.inventory, TELEPORTER_ITEM.kind),
     guns: countItem(p.inventory, GUN_ITEM.kind),
-    visibility: p.visibility,
     scanners: countItem(p.inventory, SCANNER_ITEM.kind),
     scannerDevices: state.scannerDevices.slice(0, SCANNER_DEVICE.maxPlaced).map(({x, y, timer}) => ({x, y, timer})),
     dynamiteSticks: state.placedDynamite.slice(0, DYNAMITE.maxPlaced).map(({x, y, fuse}) => ({x, y, fuse})),

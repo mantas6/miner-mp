@@ -17,7 +17,7 @@ describe('world state reset', () => {
 
   it('regenerates terrain/entities/view state while preserving player progression and inventory', () => {
     const state = createInitialState();
-    Object.assign(state.player, { fuel: 17, hull: 23, fuelMax: 400, hullMax: 300, cargoMax: 80, drill: 40, visibility: 20 });
+    Object.assign(state.player, { fuel: 17, hull: 23, fuelMax: 400, hullMax: 300, cargoMax: 80, drill: 40 });
     state.player.inventory = addItem(
       addItem(state.player.inventory, GUN_ITEM, 2)!,
       TELEPORTER_ITEM,

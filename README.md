@@ -25,7 +25,7 @@ costs you your position. If the restored mine turns out to be solid rock at that
 tile (a capped save), the ship starts at the depot rather than buried, because
 the drill cannot dig upward.
 
-Underground fog of war is persistent. Movement initially reveals a 3x3 square; each Sensor Array level adds one tile to both dimensions, up to 8x8. For even sizes the ship is the top-left cell of the central 2x2, so 4x4 covers offsets `-1..2` horizontally and vertically. Surface rows are always visible.
+Underground fog of war is persistent. Movement permanently reveals a fixed 3x3 square around the ship. Surface rows are always visible.
 
 ## Project structure
 
@@ -270,10 +270,10 @@ zooming the camera with the wheel or a trackpad.
   mines less ore. A fresh bay holds 20 items; each Cargo Bay level adds 10, up to
   1000. Selling empties every ore stack at once and frees that room again.
 - Refuel and repair at the surface depot.
-- The depot shop sells five upgrades — Cargo Bay, Fuel Tank, Hull, Drill, Sensor
-  Array — plus the consumables: dynamite, teleporters, scanners, Linebreaker guns,
-  and cargo containers. Upgrade prices rise with each level; consumables are a flat
-  price each.
+- The depot shop sells four upgrades — Cargo Bay, Fuel Tank, Hull, Drill — plus
+  the consumables: dynamite, teleporters, scanners, Linebreaker guns, and cargo
+  containers. Upgrade prices rise with each level; consumables are a flat price
+  each.
 - Artifacts pay out immediately in cash and never take a cargo slot; dynamite
   and gunfire destroy valuables without any payout.
 - Dynamite and scanners are carried in the cargo bay and placed from their own

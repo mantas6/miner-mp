@@ -8,7 +8,6 @@ type RepairPlayer = Pick<Player, 'hullMax' | 'hull'>;
 type CargoUpgradePlayer = Pick<Player, 'cargoMax'>;
 type HullUpgradePlayer = Pick<Player, 'hullMax'>;
 type DrillUpgradePlayer = Pick<Player, 'drill'>;
-type VisibilityUpgradePlayer = Pick<Player, 'visibility'>;
 type UpgradeGuidancePlayer = Pick<Player, 'cargoMax' | 'fuelMax' | 'hullMax' | 'drill'>;
 type ServiceGuidancePlayer = Pick<Player, 'fuel' | 'fuelMax' | 'hull' | 'hullMax'>;
 
@@ -46,10 +45,6 @@ export function hullCost(player: HullUpgradePlayer): number {
 /** @param {import('./state').Player} player @returns {number} */
 export function drillCost(player: DrillUpgradePlayer): number {
   return Math.ceil(ECONOMY.drill.base * Math.pow(ECONOMY.drill.growth, Math.max(0, player.drill - STARTING.drill)));
-}
-
-export function visibilityCost(player: VisibilityUpgradePlayer): number {
-  return Math.ceil(ECONOMY.visibility.base * Math.pow(ECONOMY.visibility.growth, Math.max(0, player.visibility - STARTING.visibility)));
 }
 
 /** What the depot would pay for every ore stack in the bay. */

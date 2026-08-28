@@ -78,8 +78,6 @@ export interface GameActionsDeps {
   toast(message: string): void;
   saveProgress(): void;
   addCash(amount: number): void;
-  /** Reveal the visibility footprint around the ship (after a sensor upgrade). */
-  revealAtPlayer(): void;
   atSurface(): boolean;
   spawnDust(x: number, y: number, color?: string, amount?: number): void;
   spawnShotTrail(path: {x: number; y: number}[]): void;
@@ -121,7 +119,6 @@ export function createActions(deps: GameActionsDeps): GameActions {
     if (getPlayerUpgradeProgress(state.player, id).atMax) return toast('Upgrade already at maximum level.');
     spend(cost, () => {
       applyPlayerUpgrade(state.player, id);
-      if (id === 'visibility') deps.revealAtPlayer();
     }, message);
   }
 

@@ -31,7 +31,7 @@ const DOM_CONTRACT = [
 /** Ids that exist only while the shop is the overlay on screen. */
 const SHOP_CONTRACT = [
   'shop-card', 'shopCloseBtn',
-  'fuelBtn', 'repairBtn', 'cargoBtn', 'tankBtn', 'hullBtn', 'drillBtn', 'visibilityBtn',
+  'fuelBtn', 'repairBtn', 'cargoBtn', 'tankBtn', 'hullBtn', 'drillBtn',
   'shopDynamiteBtn', 'shopTeleporterBtn', 'shopScannerBtn', 'shopGunBtn', 'shopContainerBtn'
 ];
 
